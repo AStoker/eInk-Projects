@@ -47,11 +47,11 @@ VERIFY = [
 ]
 
 PARTS = [
-    ("Frame", "frame.stl", "front face on the bed", "48.1 cm&sup3;", "~60 g"),
-    ("Back cover", "cover.stl", "outer face on the bed", "38.2 cm&sup3;", "~47 g"),
+    ("Frame", "frame.stl", "front face on the bed", "43.3 cm&sup3;", "~54 g"),
+    ("Back cover", "cover.stl", "outer face on the bed", "37.7 cm&sup3;", "~47 g"),
     ("Disc", "disc.stl", "outer face on the bed", "6.7 cm&sup3;", "~8 g"),
     ("Leg", "leg.stl", "flat", "1.3 cm&sup3;", "~2 g"),
-    ("Bezel test tile", "bezel_test.stl", "front face down &mdash; print first", "17.2 cm&sup3;", "~21 g"),
+    ("Bezel test tile", "bezel_test.stl", "front face down &mdash; print first", "15.9 cm&sup3;", "~20 g"),
 ]
 
 BOM = [

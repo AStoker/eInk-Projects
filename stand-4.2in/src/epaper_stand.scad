@@ -143,19 +143,19 @@ corner_r = 5.0; cav_r = 1.5; front_chf = 0.8; win_chf = 0.9; rear_chf = 2.0;
 scr_pilot = 2.1; scr_free = 2.8; scr_head = 5.4; scr_cb = 1.6; scr_depth = 8.0;
 
 /* [Glass retention] */
-// The pocket is deliberately loose now, so the glass is taped rather than
-// press-fitted.  Tape can only bond to the front-plate lip that overhangs the
-// glass, and that lip is very uneven: 8.7 mm on the ribbon side, 2.3 on the
-// other short-axis side, 1.3 at each long-axis end.  So the pad goes on the
-// ribbon side, the only edge with room.
-// The recess matters because the pocket has just 0.21 mm of depth slack
-// (1.26 pocket, 1.05 glass).  Tape laid straight on the lip eats all of it, and
-// anything thicker than 0.21 stops the glass seating at all.  Recessed, the tape
-// thickness stops mattering.
-tape_pad = true;
-tape_w   = 5.0;                     // across the short axis, inside that 8.7 mm
-tape_len = 60.0;                    // along the long axis
-tape_dep = 0.3;                     // into the 1.4 mm front plate
+// The pocket is deliberately loose, so the glass is taped rather than press-
+// fitted, and it is taped from BEHIND: tape runs across the glass back face,
+// over the pocket edge, and onto the ledge at pcb_face_y.
+// Two pads, one at each long-axis end, each running along the short axis.  That
+// is the only place they can go - the ledge is 6.25 mm at the long-axis ends but
+// only 1.0 mm on the short-axis sides, which is too narrow to stick to.
+// The pads are RECESSED because the PCB front face lands on that same ledge, so
+// tape lying on top of it would push the module back by its own thickness.
+tape_pad   = true;
+tape_len   = 40.0;                  // along the SHORT axis (the strip's length)
+tape_reach = 5.0;                   // along the LONG axis, out from the pocket
+                                    //   edge into the 6.25 mm ledge
+tape_dep   = 0.3;                   // recessed into the ledge at pcb_face_y
 
 /* [Module retention] */
 rib_t = 2.5; rib_inset = 3.0; rib_gap = 0.25; rib_pad = 7.0;
@@ -272,15 +272,18 @@ module panel_pocket(d, y0){
     translate([cx, y0, cz]) xzext(pan_t + rib_dep)
         translate([-(pw/2 + rib_clr/2), rib_cz - cz])
             square([rib_clr + 0.02, rib_w], center=true); }
-// Recess in the front-plate lip for double-sided tape holding the glass.  Cut
-// into the lip's REAR face (depth front_t-tape_dep .. front_t), so the glass
-// still seats on bare lip either side of the strip.
+// Tape pads BEHIND the glass, at both long-axis ends.  Each starts at the pocket
+// edge and reaches tape_reach outward into the ledge, so tape can run off the
+// glass back face and onto frame without a step to climb.  Recessed tape_dep
+// into the ledge, which is also the PCB's seat.
 module tape_pocket(){
     if (tape_pad) {
-        g0 = pan_px - pan_w/2;          // glass edge, ribbon side
-        w0 = -win_w/2;                  // window edge
-        translate([(g0+w0)/2, front_t-tape_dep, Zc + pan_off_z])
-            xzext(tape_dep + 0.01) square([tape_w, tape_len], center=true);
+        ph = pan_h + 2*pan_clr_h;
+        for (sz=[-1,1])
+            translate([pan_px, pcb_face_y - tape_dep,
+                       (Zc + pan_off_z) + sz*(ph/2 + tape_reach/2)])
+                xzext(tape_dep + 0.01)
+                    square([tape_len, tape_reach + 0.02], center=true);
     } }
 module window_cut(){
     zw = Zc + act_off_z;
@@ -597,10 +600,13 @@ echo(str("RIBBON RELIEF: out ",rib_clr," (from the pocket edge) | deep ",rib_dep
 echo(str("RIBBON RELIEF along the long axis: ",rib_w," long | ",rib_off,
          " from the -Z glass edge, ",rib_far," from the +Z edge | they sum to ",
          rib_off+rib_w+rib_far," against a ",pan_h," glass"));
-echo(str("TAPE PAD: ", tape_pad ? str(tape_w," x ",tape_len," x ",tape_dep,
-         " deep, in the ribbon-side lip (",-win_w/2-(pan_px-pan_w/2),
-         " available); lip left on the glass ",
-         ((-win_w/2)-(pan_px-pan_w/2)-tape_w)/2," each side of the strip")
+echo(str("TAPE PADS: ", tape_pad
+         ? str("2 (both long-axis ends), ",tape_len," along the short axis x ",
+               tape_reach," into the ledge x ",tape_dep," deep | ledge is ",
+               cav_h/2-(pan_h+2*pan_clr_h)/2," so ",
+               cav_h/2-(pan_h+2*pan_clr_h)/2-tape_reach,
+               " of full-height PCB seat left at each end | pad face at depth ",
+               pcb_face_y-tape_dep," vs glass back ",front_t+pan_t)
          : "none"));
 echo(str("FLASH PORT: ", flash_port ? "OPEN through the long-axis +Z wall"
          : str("CLOSED - blind pocket to z ",H-flash_wall,", ",flash_wall,
@@ -662,7 +668,9 @@ if (part=="params") {
    ["mod_clr",mod_clr],["pcb_px",pcb_px],["pan_px",pan_px],
    ["cav_w",cav_w],["cav_h",cav_h],["cav_x0",cav_x0],["cav_x1",cav_x1],
    ["cav_z0",cav_z0],["cav_z1",cav_z1],["Zc",Zc],["hub_z",hub_z],
-   ["win_w",win_w],["win_h",win_h],["white_show",white_show],
+   ["win_w",win_w],["win_h",win_h],
+   ["white_show_short",white_show_short],["white_show_long",white_show_long],
+   ["tape_pad",tape_pad?1:0],["tape_len",tape_len],["tape_reach",tape_reach],["tape_dep",tape_dep],
    ["pcb_face_y",pcb_face_y],["mod_back",mod_back],
    ["cov_in",cov_in],["cov_in_pk",cov_in_pk],["pk_y0",pk_y0],["pk_d",pk_d],
    ["pk_dep",pk_dep],["pk_floor_t",pk_floor_t],["lug_out",lug_out],["lug_t",lug_t],

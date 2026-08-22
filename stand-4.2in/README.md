@@ -8,8 +8,8 @@ flush and turns 90° for portrait or landscape.
 One parametric OpenSCAD file: `src/epaper_stand.scad`.
 
 ```
-  93.9 × 108.4 × 25.0 mm         ┌──────────────┐
-  bezel 13.85 side / 10.5 top-bot│ ┌──────────┐ │
+  91.9 × 108.4 × 25.0 mm         ┌──────────────┐
+  bezel 13.45 side / 10.5 top-bot│ ┌──────────┐ │
   1.3 mm of panel white showing  │ │          │ │  ╲
   ~116 g of filament, 4 parts    │ │   ink    │ │   ╲
   both orientations lean 20°     │ │          │ │    ╲
@@ -40,13 +40,13 @@ Front to back. Not interchangeable, and each has its own clearances:
 
 | Name | What it holds | Size | Parameters |
 |---|---|---|---|
-| **window** | nothing — it's the through-opening the ink is seen through | 66.2 × 87.4 | `win_*` |
-| **glass pocket** | the glass, in a shallow step | 77.5 × 91.0 × 1.26 | `pan_*` |
+| **window** | nothing — it's the through-opening the ink is seen through | 65.0 × 87.4 | `win_*` |
+| **glass pocket** | the glass, in a shallow step | 77.5 × 91.5 × 1.26 | `pan_*` |
 | **PCB cavity** | the module PCB, behind the glass | 79.5 × 104 | `cav_*` |
 
 ### Vocabulary
 
-- **bezel** — the visible plastic between the window edge and the outer edge (13.85 on the
+- **bezel** — the visible plastic between the window edge and the outer edge (13.45 on the
   short-axis sides, 10.5 on the long-axis ends). Never the pocket. Also not a *bevel* — a
   bevel is an angled edge, which here is a **chamfer** (`front_chf`, `win_chf`, `rear_chf`).
 - **clearance** / **margin** — the gap between a part and the recess holding it. Always
@@ -62,14 +62,47 @@ Front to back. Not interchangeable, and each has its own clearances:
 
   | | Parameter | Now | Meaning |
   |---|---|---|---|
-  | **out** | `rib_clr` | 4.0 | outboard from the pocket edge, along the short axis |
+  | **out** | `rib_clr` | 3.0 | outboard from the pocket edge, along the short axis |
   | **deep** | `rib_dep` | 3.0 | past the glass back face, along depth |
-  | **long** | `rib_w` | 38.0 | along the pocket edge, on the long axis |
+  | **long** | `rib_w` | 40.0 | along the pocket edge, on the long axis. `rib_off` pins the bottom end, so raising this extends the slot **upward only** — it does not recentre |
 
-- **white show** — `white_show`, the strip of the panel's own white border left visible
-  inside the window on purpose (1.3).
+- **white show** — `white_show_short` / `white_show_long`, the strip of the panel's own white
+  border left visible inside the window on purpose. **One per axis** (0.7 short, 1.3 long),
+  because the window is specified on the short axis and one shared value cannot do both.
 - **parts** — **frame** (front shell), **cover** (back), **disc** (rotating puck), **leg**
   (kickstand), and the **bezel test tile** (front-face-only print for checking fit).
+- **tape pad** — `tape_*`, a shallow recess in the **ledge behind the glass** where tape holds
+  the glass down from the rear. Two of them, one at each long-axis end. Not visible from the
+  front.
+
+### The glass is taped from behind, not press-fitted
+
+A printed 91.0 pocket measured short on the long axis, so the pocket is now **77.5 × 91.5** —
+1.5 mm of total margin on *both* axes, sized for print variance rather than for a press fit.
+Loose enough to rattle, so the glass is taped: tape runs across the glass **back** face, over
+the pocket edge, and onto the ledge at `pcb_face_y`.
+
+That ledge — the step between the glass pocket and the larger PCB cavity — is the only frame
+surface behind the glass, and it is the reason the pads go where they do:
+
+| Edge | Ledge width | Usable |
+|---|---|---|
+| each long-axis end | **6.25 mm** | yes |
+| short-axis sides | 1.00 mm | no — too narrow to stick to |
+
+So two pads, one at each long-axis end, each **40 mm along the short axis × 5 mm into the
+ledge × 0.3 mm deep**, starting at the pocket edge so tape runs off the glass without a step
+to climb. Pad face lands at depth 2.35 against a glass back face at 2.45, so the tape dips
+0.1 mm rather than standing proud.
+
+**They are recessed because the PCB front face lands on that same ledge** (depth 2.65). Tape
+lying on top of it would push the whole module back by its own thickness. Recessed, tape
+thickness stops mattering.
+
+The cost is PCB seat: 5 mm of the 6.25 mm ledge is recessed over 40 mm of the 79.5 mm width,
+leaving 1.25 mm of full-height seat at each end plus the full ledge outboard of that 40 mm,
+and the 1.00 mm short-axis ledges untouched down both full sides. `frame_module` is clear.
+`tape_pad = false` removes them.
 
 ---
 
@@ -302,19 +335,19 @@ glass pocket that reaches **1.80 mm further out than the PCB cavity does**. The 
 width is no longer set by the boards — it's set by that notch:
 
 ```
-frame width driven by: THE RIBBON NOTCH  (cavity needs 45.15, ribbon needs 46.95)
-W x H x D = 93.9 x 108.4 x 25
+SHORT AXIS driven by: THE RIBBON RELIEF  (cavity needs 45.15, ribbon needs 45.95)
+OUTER: short axis 91.9 | long axis 108.4 | depth 25
 ```
 
 The model grows `W` automatically to keep `wall_rib = 1.0` mm of material outboard of the
 notch, so it is always valid — but it costs **3.60 mm of width** over what the electronics
-need, and the side bezels went 12.05 → 13.85 mm. Note the notch sits just outboard of the
+need, and the side bezels went 12.05 → 13.45 mm. Note the notch sits just outboard of the
 *pocket*, so widening `pan_clr_w` pushes it out and the frame grows with it — that is why
 the 0.75 mm pocket clearance cost 0.5 mm of overall width.
 
-⚠ **The three ribbon numbers don't close.** 17 + 38 + 37 = 92 against a 90 mm glass. The
-model takes the 38 mm width and the 17 mm offset as given, which leaves **35** on the far
-side. Worth re-checking which edge the 17 is measured from — `rib_off` is the one number
+⚠ **The three ribbon numbers don't close.** The measured far side was 37, and 17 + 40 + 37 =
+94 against a 90 mm glass. The model takes `rib_w` and `rib_off` as given and *derives*
+`rib_far`, so it always sums to 90 — currently **33** on the far side. Worth re-checking which edge the 17 is measured from — `rib_off` is the one number
 to change if it's the other end.
 
 **One measurement gets most of that back:** how far the glass sits from the PCB edge on the
@@ -323,7 +356,7 @@ the glass is pushed toward the *thin*-border side, the notch starts further inbo
 
 | `pan_off_x` | Frame width | Side bezel | Notes |
 |---|---|---|---|
-| 0 (glass centred, assumed) | **93.9** | 13.85 | current |
+| 0 (glass centred, assumed) | **91.9** | 13.45 | current |
 | 0.625 | 92.65 | 13.23 | |
 | 1.25 | 91.40 | 12.60 | |
 | 1.8 (glass flush to the thin-border PCB edge) | **90.3** | 12.05 | notch free — the PCB cavity takes over as the limit, so nothing past 1.8 buys width |
@@ -435,11 +468,11 @@ Two corrections worth recording, because both were wrong in the earlier revision
 
 | Part | STL | Orientation | Filament |
 |---|---|---|---|
-| Frame | `stl/frame.stl` | front face on the bed | ~60 g |
+| Frame | `stl/frame.stl` | front face on the bed | ~54 g |
 | Back cover | `stl/cover.stl` | outer face on the bed | ~47 g |
 | Disc | `stl/disc.stl` | outer face on the bed | ~8 g |
 | Leg | `stl/leg.stl` | flat | ~2 g |
-| Bezel test tile | `stl/bezel_test.stl` | front face down — **print this first** | ~21 g |
+| Bezel test tile | `stl/bezel_test.stl` | front face down — **print this first** | ~20 g |
 
 PLA or PETG, 0.2mm layers, 4 perimeters, 15–20% infill, **no supports** — the bayonet
 groove and window chamfer are both cut at 45°, and the only bridge left is the 1.9 mm ceiling
@@ -459,7 +492,7 @@ visible face on the bed; that surface finish is most of the look.
 
 ## Verify before printing the frame
 
-`bezel_test.stl` is the full front face plus a stub of the module pocket — 93.9 × 108.4 × 6.85 mm, ~45 minutes. Glass pocket **77.5 × 91.0** (1.0 mm of total margin on both axes), and the ribbon relief runs **3 mm past the glass back face** so the ribbon can fold back on itself.
+`bezel_test.stl` is the full front face plus a stub of the module pocket — 91.9 × 108.4 × 6.85 mm, ~40 minutes. Glass pocket **77.5 × 91.5** (1.5 mm of total margin on both axes — deliberately loose; the glass is taped, not press-fitted), window **65.0 × 87.4**, and the ribbon relief runs **3 mm past the glass back face** so the ribbon can fold back on itself.
 
 | Parameter | Model | Check |
 |---|---|---|
@@ -481,14 +514,14 @@ of the four pocket corners and replaced them with a plain R5 radius. What you we
 at genuinely had rounded corners — the frame did not, but the test tile did.
 
 It is now an `intersection()` of the actual `frame()` with a box — the front 6.85 mm of the
-full 93.9 × 108.4 face — so it *cannot* drift from the part you are going to print. The
+full 91.9 × 108.4 face — so it *cannot* drift from the part you are going to print. The
 depth is no longer a round number: it tracks the ribbon relief (`rib_y1 + 1.4`), because a
 fixed 5.65 left a 0.2 mm membrane across the relief floor — a slot that printed closed.
 
 **It is the whole front bezel, not a band of it.** A bottom-34 mm slice was tried and it is
 the wrong test: it shows two of the four pocket corners and no top edge, so the module has
 nothing to seat against and flush-fit is exactly what you cannot judge. Full height costs
-~21 g and ~45 minutes and lets you drop the real module in.
+~20 g and ~40 minutes and lets you drop the real module in.
 
 What it shows: all four glass-pocket corners with their relief, all four cavity corners with
 theirs, all four bezels, the complete window lip and chamfer, and the full ribbon cutout.

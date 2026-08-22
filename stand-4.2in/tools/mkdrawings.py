@@ -249,7 +249,8 @@ def sheet1():
     s.bal(gx(P["disc_d"]/2*0.71), fz(hub_z+P["disc_d"]/2*0.71), 9, gx(P["disc_d"]/2*0.71)+7, fz(hub_z+P["disc_d"]/2*0.71)-7)
 
     y = s.notes(22, 143, [
-        (1, f"panel white border {n(P['white_show'])} visible all round the ink"),
+        (1, f"panel white border {n(P['white_show_short'])} visible on the short axis, "
+            f"{n(P['white_show_long'])} on the long axis"),
         (2, f"outer corners R{n(P['corner_r'])}"),
         (3, f"{n(rc)} x 45 deg chamfer on all four back edges. It moves the contact edge forward - see sheet 7"),
         (4, f"{n(ch)} x 45 deg chamfer on the front face"),

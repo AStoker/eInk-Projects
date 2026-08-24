@@ -4,7 +4,7 @@
 Reads /tmp/params.txt (produced by `openscad -D 'part="params"'`) so the drawings
 can never drift from the STLs.  Emits one SVG fragment per sheet.
 """
-import math, os, json
+import math, os, json, re
 
 P = {}
 for line in open(os.environ.get("PARAMS", "/tmp/params.txt")):
@@ -130,8 +130,13 @@ class SVG:
         self.add('</g>')
 
     def titleblock(self, x, y, w, h, name, sheet, of, scale, rev="E"):
-        self.txt(x, y - 2.4, "STLs export flat-face-down and MIRRORED IN X "
-                             "(print_mirror = true)", "note", "start", 2.35)
+        # the sheets are always drawn in the as-designed hand; this says whether
+        # the exported STLs come out that way or mirrored
+        self.txt(x, y - 2.4,
+                 "STLs export flat-face-down and MIRRORED IN X (print_mirror = true)"
+                 if MIRRORED else
+                 "STLs export flat-face-down, as drawn (print_mirror = false)",
+                 "note", "start", 2.35)
         self.rect(x, y, w, h, "tbframe")
         self.line(x, y + h * 0.5, x + w, y + h * 0.5, "tbrule")
         self.line(x + w * 0.55, y + h * 0.5, x + w * 0.55, y + h, "tbrule")
@@ -168,8 +173,97 @@ class SVG:
                 + "".join(self.b) + "</svg>")
 
 
+# ------------------------------------------------------- standalone sheet CSS
+# The sheets are written twice: as fragments in _sheets.json (styled by the page
+# in tools/mkpage.py) and as standalone .svg files.  A standalone file has no
+# page around it, so it carries its own copy of the drawing classes - that is
+# what lets the README embed a sheet directly, and what makes a sheet readable
+# when the file is opened on its own.
+#
+# The colours are written out literally, once per theme, rather than as CSS
+# custom properties: an SVG loaded through <img> (which is how a README embeds
+# one) is rendered by whatever engine the viewer has, and var() is the first
+# thing a lightweight renderer drops - it takes the whole drawing to black.
+LIGHT = dict(paper="#F1F3F0", surface="#FAFBF9", ink="#171B18", ink2="#59635C",
+             rule="#D3D8D2", accent="#0E6B57", verify="#A8631A", partf="#E4E8E3",
+             glass="#D9E4E6", pcbf="#CBDCCF", cellf="#D2D6D8", chgf="#C7D8E4",
+             platf="#EDEFEA", bossf="#DCE2DA", padf="#D8DED6", voidf="#E7EAE5")
+DARK  = dict(paper="#0F1211", surface="#171B18", ink="#E8ECE7", ink2="#93A099",
+             rule="#2C332E", accent="#57CFA9", verify="#E0A64B", partf="#232A26",
+             glass="#243233", pcbf="#1F3327", cellf="#2A3033", chgf="#1E2E3A",
+             platf="#1C221E", bossf="#28302B", padf="#2A322C", voidf="#101413")
+
+RULES = """
+svg{{font-family:"IBM Plex Mono",ui-monospace,monospace}}
+.bg{{fill:{paper};stroke:none}}
+.part{{fill:{partf};stroke:{ink};stroke-width:.55}}
+.edge{{fill:none;stroke:{ink};stroke-width:.5}}
+.inkline{{fill:none;stroke:{ink};stroke-width:1.1}}
+.ghost{{fill:none;stroke:{rule};stroke-width:.45}}
+.hid{{fill:none;stroke:{ink2};stroke-width:.35;stroke-dasharray:2.2 1.4}}
+.cl{{fill:none;stroke:{ink2};stroke-width:.28;stroke-dasharray:6 1.6 1 1.6;opacity:.75}}
+.cut{{fill:{paper};stroke:{ink};stroke-width:.45}}
+.ink{{fill:{ink};opacity:.86;stroke:none}}
+.glass{{fill:{glass};stroke:{ink};stroke-width:.4}}
+.pcb{{fill:{pcbf};stroke:{ink};stroke-width:.45}}
+.cell{{fill:{cellf};stroke:{ink};stroke-width:.45}}
+.chg{{fill:{chgf};stroke:{ink};stroke-width:.4}}
+.plat{{fill:{platf};stroke:{ink2};stroke-width:.35}}
+.boss{{fill:{bossf};stroke:{ink2};stroke-width:.35}}
+.pad{{fill:{padf};stroke:{ink2};stroke-width:.35}}
+.voidfill{{fill:{voidf};stroke:{ink2};stroke-width:.35}}
+.warn{{fill:none;stroke:{verify};stroke-width:.6;stroke-dasharray:2 1.2}}
+.wire{{fill:none;stroke:{ink};stroke-width:.62;stroke-linejoin:round}}
+.wire.ntc{{stroke:{verify}}}
+.clash{{fill:{verify};fill-opacity:.30;stroke:{verify};stroke-width:.7}}
+.clashtxt{{fill:{verify};font-weight:600;letter-spacing:.02em}}
+.res{{fill:{surface};stroke:{ink};stroke-width:.5}}
+.leg{{stroke:{ink};stroke-width:2.6;stroke-linecap:round;fill:none}}
+.table{{stroke:{ink2};stroke-width:.6}}
+.com{{fill:{verify};stroke:{ink};stroke-width:.3}}
+.hl{{stroke:{rule};stroke-width:.3;fill:none}}
+.hatch{{opacity:.9}}
+.dim{{fill:none;stroke:{accent};stroke-width:.32}}
+.ext{{fill:none;stroke:{accent};stroke-width:.22;opacity:.55}}
+.arrow{{fill:{accent};stroke:none}}
+.dimtxt{{fill:{accent};letter-spacing:.02em}}
+.note{{fill:{ink2}}}
+.val{{fill:{ink};font-weight:600}}
+.val.warn{{fill:{verify};stroke:none}}
+.balloon{{fill:{surface};stroke:{accent};stroke-width:.45}}
+.baltxt{{fill:{accent};font-weight:600;text-anchor:middle}}
+.vlabel{{fill:{ink};font-weight:600;letter-spacing:.09em}}
+.cmp{{fill:{ink};font-weight:600}}
+.cmpsub{{fill:{ink2}}}
+.tbframe{{fill:none;stroke:{ink};stroke-width:.5}}
+.tbrule{{stroke:{rule};stroke-width:.35;fill:none}}
+.tbname{{fill:{ink};font-weight:700;letter-spacing:.03em}}
+.tbmeta{{fill:{ink2};letter-spacing:.09em}}
+"""
+
+SVG_CSS = (RULES.format(**LIGHT)
+           + "@media (prefers-color-scheme:dark){" + RULES.format(**DARK) + "}")
+
+
+def standalone(sv):
+    """Wrap a sheet fragment as a file that renders on its own.
+
+    Size and background come from the fragment's own viewBox - sheet 8 is a
+    taller sheet than the rest, and a hard-coded background left it striped.
+    """
+    w, h = (float(v) for v in re.search(r'viewBox="0 0 ([\d.]+) ([\d.]+)"', sv).groups())
+    return ('<?xml version="1.0" encoding="UTF-8"?>\n'
+            + sv.replace('class="dwg"', f'class="dwg" width="{w*4:.0f}" height="{h*4:.0f}"')
+                .replace('role="img">',
+                         f'role="img"><style>{SVG_CSS}</style>'
+                         f'<rect class="bg" x="0" y="0" width="{w:.0f}" height="{h:.0f}"/>', 1))
+
+
 # ------------------------------------------------------------------ geometry
 W, H, D = P["W"], P["H"], P["depth"]
+FLASH = bool(P.get("flash_port", 0))          # is the driver board's USB-C cut through?
+MIRRORED = bool(P.get("print_mirror", 0))     # do the STLs come out the opposite hand?
+P["flash_skin"] = P["flash_wall"]             # material left outboard of a closed jack
 cav_x0, cav_x1 = P["cav_x0"], P["cav_x1"]
 cav_z0, cav_z1 = P["cav_z0"], P["cav_z1"]
 cav_w, cav_h = P["cav_w"], P["cav_h"]
@@ -218,7 +312,10 @@ def sheet1():
     s.line(yx(0), fz(0)-ch, yx(ch), fz(0), "edge")
     s.line(yx(D-rc), fz(H), yx(D), fz(H)+rc, "edge")
     s.line(yx(D-rc), fz(0), yx(D), fz(0)-rc, "edge")
-    s.rect(yx(P["flash_y0"]), fz(H), P["flash_y1"]-P["flash_y0"], 1.6, "cut")
+    # the flash opening only exists if the model cuts it; otherwise the wall is
+    # solid and all that is behind it is a blind pocket, drawn hidden
+    s.rect(yx(P["flash_y0"]), fz(H), P["flash_y1"]-P["flash_y0"], 1.6,
+           "cut" if FLASH else "hid")
     s.rect(yx(D-1.0), fz(P["ucb_z"]+P["port_h"]/2), 1.0, P["port_h"], "cut")
     s.txt(yx(D/2), fz(H)-8, "RIGHT", "vlabel")
     s.dimh(yx(0), yx(D), fz(0)+16, n(D), ext_from=fz(0))
@@ -256,13 +353,17 @@ def sheet1():
         (4, f"{n(ch)} x 45 deg chamfer on the front face"),
     ], cw=44)
     s.notes(108, 143, [
-        (5, f"USB-C flash port, {n(P['usb_w'])} wide, top wall (driver board)"),
+        (5, f"USB-C flash port, {n(P['usb_w'])} wide, top wall (driver board)"
+            if FLASH else
+            f"driver-board USB-C, {n(P['usb_w'])} wide - blind pocket, the top wall "
+            f"is solid ({n(P['wall'])} thick, {n(P['flash_skin'])} of skin left). "
+            f"The charge port is the only opening"),
         (6, f"USB-C charge port {n(P['port_w'])} x {n(P['port_h'])}, back face"),
         (7, "frame / cover seam"),
     ], cw=44, title=" ")
     s.notes(190, 143, [
         (8, f"3 x M2.5 cover screws, {n(P['scr_x'])} from the centreline"),
-        (9, f"kickstand disc, dia {n(P['disc_d'])}, hub {n(hub_z)} up from the bottom"),
+        (9, f"kickstand disc dia {n(P['disc_d'])}, hub {n(hub_z)} up"),
     ], cw=40, title=" ")
     s.titleblock(TBX, TBY, 96, 18, "ASSEMBLY / ENVELOPE", 1, 8, "1:1")
     return s.render("s1")
@@ -304,7 +405,8 @@ def sheet2():
     s.txt(fx(P["drv_cx"]), fz(P["drv_cz"])-3.4, "WAVESHARE", "cmp", size=2.9)
     s.txt(fx(P["drv_cx"]), fz(P["drv_cz"])+0.2, "ESP32 DRIVER", "cmp", size=2.9)
     s.txt(fx(P["drv_cx"]), fz(P["drv_cz"])+3.8, f"{n(P['drv_w'])} x {n(P['drv_h'])}", "cmpsub", size=2.6)
-    s.rect(fx(P["flash_x"]-4.5), fz(P["drv_z1"]+2.6), 9, 1.4, "cut")   # flash port, top wall
+    s.rect(fx(P["flash_x"]-4.5), fz(P["drv_z1"]+2.6), 9, 1.4,
+           "cut" if FLASH else "hid")   # driver USB-C at the top wall
     for sx in (-1, 1):   # driver rails
         rc = P["drv_cx"] + sx*(P["drv_w"]/2 + P["drv_clr"] + P["drv_rail"]/2 - 1.0)
         s.rect(fx(rc-P["drv_rail"]/2), fz(P["drv_cz"]+(P["drv_h"]-1)/2),
@@ -348,10 +450,11 @@ def sheet2():
 
     clash = P["conn_h"] - (P["cov_in_pk"] - P["bat_t"] - P["mod_back"])
     y = s.notes(150, 20, [
-        (1, "USB-C charge breakout, on edge in printed rails, receptacle flush with the back cover. Two wires up the -X wall to the bq24074"),
+        (1, "USB-C charge breakout, on edge in printed rails, receptacle flush with the back cover. Two wires up the -X wall to the "
+            f"{P['chg_part']}"),
         (2, f"module retention pads {n(P['pad_w'])} x {n(P['pad_h'])}, one each side of the cell. Foam tape on the faces takes up the tolerance stack"),
         (3, f"stand puck, dia {n(P['pk_d']+2*P['lug_out']+6)}, bulges {n(P['depth']-P['cov_in_pk'])} into the interior behind everything on this sheet"),
-        (4, f"2 x M2.5 posts, {n(P['proto_hole_sp'])} apart, behind the Perma-Proto; the bq24074 rides on its front face"),
+        (4, f"2 x M2.5 posts, {n(P['proto_hole_sp'])} apart, behind the Perma-Proto; the {P['chg_part']} rides on its front face"),
         (5, f"{P['chg_part']} charger breakout {n(P['chg_w'])} x {n(P['chg_h'])} x {n(P['chg_t'])}, low end of the Perma-Proto, nearest the charge port"),
         (6, f"driver-board rails {n(P['drv_rail'])} wide, overlapping the PCB {n(P['drv_rail']-1)} each side"),
         (7, f"MODULE 8-PIN HEADER KEEP-OUT {n(P['conn_w'])} x {n(P['conn_l'])} x {n(P['conn_h'])} deep, position ASSUMED. Clashes with the cell by {n(clash)} - DO NOT PRINT, see below"),
@@ -456,13 +559,13 @@ def sheet3():
     for num, lines in [
         ("1", ["put the boards in whichever band the header",
                "lands in, cell in the other. No thickness cost,",
-               "but it moves the flash port to the far wall and",
+               "but it moves the driver USB-C to the far wall and",
                "the charge port out of the board band."]),
         ("2", ["right-angle PH2.0 housing, or desolder the",
                f"header and lay the eight wires flat. Keeps",
                f"depth {n(D)}; needs conn_h <= {n(clr-0.5)}."]),
-        ("3", [f"set depth = {n(need)} and re-export. Everything",
-               f"downstream follows, at +{n(need-D)} mm thickness."]),
+        ("3", [f"set depth = {n(need)} and re-export, which costs",
+               f"+{n(need-D)} mm of thickness."]),
     ]:
         s.txt(cx, oy2, num, "val", "start", 2.65)
         for j, ln in enumerate(lines):
@@ -495,7 +598,8 @@ def sheet4():
     s.dimv(fz(Zc+ph/2), fz(P["rib_cz"]+P["rib_w"]/2), fx(px0)-6, n(P["rib_far"]), ext_from=fx(px0))
     for z in (P["scr_z0"], P["scr_z1"], P["scr_z2"]):
         s.circ(fx(P["scr_x"]), fz(z), P["scr_pilot"], "cut")
-    s.rect(fx(P["flash_x"]-P["usb_w"]/2), fz(H), P["usb_w"], H-cav_z1, "cut")
+    s.rect(fx(P["flash_x"]-P["usb_w"]/2), fz(H), P["usb_w"], H-cav_z1,
+           "cut" if FLASH else "hid")
     s.txt(fx(0), fz(H)-14, "FRAME  ·  view on the open back", "vlabel")
     s.dimh(fx(-W/2), fx(W/2), fz(0)+15, n(W), ext_from=fz(0))
     s.dimv(fz(H), fz(0), fx(-W/2)-12, n(H), ext_from=fx(-W/2))
@@ -531,32 +635,37 @@ def sheet4():
 
     s.notes(192, 24, [
         (1, f"3 x dia {n(P['scr_pilot'])} pilot holes, 8 deep, drilled from the back face"),
-        (2, f"flash port, {n(P['usb_w'])} wide, through the {n(P['wall'])} top wall"),
-        (3, f"cavity {n(cav_w)} x {n(cav_h)}, corners R{n(P['cav_r'])} with R{n(P['cav_rel'])} relief. Without it the fillet fouls the PCB's sharp corner by ~0.33 and the module cannot seat square"),
+        (2, f"flash port, {n(P['usb_w'])} wide, through the {n(P['wall'])} top wall"
+            if FLASH else
+            f"blind pocket {n(P['usb_w'])} wide for the driver board's own USB-C; the "
+            f"top wall stays solid, {n(P['flash_skin'])} of skin outboard of the jack"),
+        (3, f"cavity {n(cav_w)} x {n(cav_h)}, corners R{n(P['cav_r'])} - inside the 1.707 limit for a sharp PCB corner in a {n(P['mod_clr']/2)} clearance pocket, so no corner relief is needed here"),
         (4, "panel recess - the glass stands 1.05 proud of the PCB, so the seat is stepped"),
         (5, "PCB pocket"),
-        (6, f"ribbon relief {n(P['rib_clr'])} x {n(P['rib_w'])} on the thick-bezel edge, {n(P['rib_off'])} from one end and {n(P['rib_far'])} from the other, through the pocket depth only. Sets the frame width - see below"),
-        (7, f"corner relief R{n(P['pan_rel'])} at all four GLASS pocket corners, and R{n(P['cav_rel'])} at all four PCB cavity corners. Both parts have sharp corners"),
-    ], cw=38)
-    s.notes(192, 134, [], title="LIP OVERLAP ON THE GLASS")
+        (6, f"ribbon relief {n(P['rib_clr'])} out x {n(P['rib_w'])} along the thick-bezel edge - a LONG-AXIS edge - {n(P['rib_off'])} from one end, {n(P['rib_far'])} from the other, {n(P['rib_dep'])} past the glass back face. A slot rather than a local pocket because the ribbon runs ALONG this edge; it also sets the frame width"),
+        (7, f"corner relief R{n(P['pan_rel'])} at all four GLASS pocket corners, so the glass's sharp corners seat"),
+    ], cw=36)
+    s.notes(192, 145, [], title="LIP OVERLAP ON THE GLASS")
     for i, t in enumerate([
         f"top / bottom   {n((P['pan_h']-win_h)/2)}",
         f"ribbon side    {n(P['pan_w']/2-P['pan_px']-win_w/2)}",
         f"opposite side  {n(P['pan_w']/2+P['pan_px']-win_w/2)}",
     ]):
-        s.txt(192, 141 + i*4.0, t, "note", "start", 2.7)
+        s.txt(192, 152 + i*3.8, t, "note", "start", 2.7)
 
-    s.notes(16, 150, [], title="MEASURED ON THE MODULE")
+    s.notes(16, 149, [], title="THE MODULE, AND THE RIBBON ROUTE")
     for i, t in enumerate([
-        f"glass {n(P['pan_w'])} x {n(P['pan_h'])}, sharp corners.",
-        f"Dead border {n(P['bez_thin'])} on three sides,",
-        f"{n(P['bez_thick'])} on the ribbon side. Ribbon",
-        f"{n(P['rib_w'])} wide, {n(P['rib_off'])} from one end,",
-        f"needing {n(P['rib_clr'])} to bend back around.",
-        f"Pocket margin {n(2*P['pan_clr_w'])} on the width,",
-        f"{n(2*P['pan_clr_h'])} on the height.",
+        f"glass {n(P['pan_w'])} x {n(P['pan_h'])}, sharp corners. Dead border",
+        f"{n(P['bez_thin'])} on three sides, {n(P['bez_thick'])} on the ribbon side.",
+        f"Pocket margin {n(2*P['pan_clr_w'])} on the width, {n(2*P['pan_clr_h'])} on the height.",
+        "Seen from the rear, the ribbon leaves",
+        "the thick-bezel edge - a LONG-AXIS edge",
+        "- folds back behind the glass, turns 90",
+        "deg to run ALONG that edge, then 90 deg",
+        "back out to the header. That run is why",
+        f"the relief is a {n(P['rib_w'])} slot, not a pocket.",
     ]):
-        s.txt(16, 157 + i*4.0, t, "note", "start", 2.7)
+        s.txt(16, 155 + i*3.6, t, "note", "start", 2.7)
 
     # ---- DETAIL C : one pocket corner, 6:1
     DC = 6.0
@@ -839,7 +948,7 @@ def sheet8():
     s.notes(14, 164, [
         (1, "USB-C breakout needs 5.1k from CC1 and CC2 to GND or a USB-C source will never turn its 5 V on. VBUS and GND only, no data"),
         (2, "charge current: Adafruit's pinout page says it ships at 500 mA, the product page says 1 A - CHECK THE BOARD. 1 A is 0.5C for this cell and is what you want. Solar capability is input voltage regulation and is inert on USB"),
-        (6, "THREE WIRES = the pack has an NTC. Cut the TH jumper before wiring yellow here (THERM on the 4755). Verify first: red positive to black at 3.0-4.2 V, and yellow-to-black ~10k falling as you warm it. If it does not move it is not a thermistor: leave the jumper intact. Check for a protection PCB at the tab end; without one there is no short or overdischarge protection"),
+        (6, "THREE WIRES, all three verified on this pack: red positive to black, and yellow-to-black 10k at room temperature - an NTC. Cut the TH jumper and wire yellow to TH; the charger then refuses to charge outside roughly 0-45 C. The pack carries its own protection PCB at the tab end"),
     ], cw=62)
     s.notes(142, 164, [
         (3, "LOAD is 4.5 V max - from the input when plugged in, from the cell otherwise. The 5V pin takes 3.6-5.5 V and browns out near 3.6 V"),
@@ -854,7 +963,6 @@ if __name__ == "__main__":
     sheets = [sheet1(), sheet2(), sheet3(), sheet4(), sheet5(), sheet6(), sheet7(), sheet8()]
     os.makedirs("drawings", exist_ok=True)
     for i, sv in enumerate(sheets, 1):
-        open(f"drawings/sheet{i}.svg", "w").write(
-            '<?xml version="1.0" encoding="UTF-8"?>\n'+sv.replace('class="dwg"', 'class="dwg" width="1072" height="760"'))
+        open(f"drawings/sheet{i}.svg", "w").write(standalone(sv))
     open("drawings/_sheets.json", "w").write(json.dumps(sheets))
     print("wrote", len(sheets), "sheets")

@@ -33,7 +33,7 @@ VERIFY = [
      "Assumed height of the module&rsquo;s mated 8-pin header off its back. Sheet 3 shows " +
      n(P["cov_in_pk"] - P["bat_t"] - P["mod_back"]) + " mm available over the cell. A stock vertical "
      "PH2.0 plug plus a wire bend is 8&ndash;9 mm &mdash; right-angle housing, direct-solder, or "
-     "<code>depth = 25</code>."),
+     "<code>depth = 26.6</code>."),
     ("pan_off_x / pan_off_z", "0",
      "Glass assumed centred on the PCB, leaving 6 mm of bare PCB at each end of the long axis. "
      "Worth a caliper check &mdash; it moves the panel recess on sheet 4."),
@@ -58,8 +58,8 @@ BOM = [
     ("Waveshare 4.2inch e-Paper Module (B)", f'{n(P["pcb_w"])} &times; {n(P["pcb_h"])} &times; {n(P["pcb_t"])} PCB, panel {n(P["pan_w"])} &times; {n(P["pan_h"])} &times; {n(P["pan_t"])}'),
     ("Waveshare e-Paper ESP32 Driver Board", f'{n(P["drv_w"])} &times; {n(P["drv_h"])} &mdash; runs from the cell via its 5V pin, but has no charger on it'),
     ("Adafruit Perma-Proto, quarter-size", f'{n(P["proto_w"])} &times; {n(P["proto_h"])}, holes {n(P["proto_hole_sp"])} apart'),
-    ("Adafruit bq24074 charger (#4755)", f'{n(P["chg_w"])} &times; {n(P["chg_h"])}'),
-    ("1S LiPo, 1200 mAh", f'{n(P["bat_w"])} &times; {n(P["bat_h"])} &times; {n(P["bat_t"])}'),
+    ("Adafruit " + P["chg_part"] + " charger (#6091)", f'{n(P["chg_w"])} &times; {n(P["chg_h"])}'),
+    ("1S LiPo, 2000 mAh, salvaged", f'{n(P["bat_w"])} &times; {n(P["bat_h"])} &times; {n(P["bat_t"])} &mdash; red +, black &minus;, yellow 10k NTC'),
     ("USB-C breakout, 5.1 k&Omega; CC pulldowns", f'~{n(P["ucb_w"])} &times; {n(P["ucb_l"])}'),
     ("M2.5 &times; 8 self-tapping screws", "3 off &mdash; back cover"),
     ("M2.5 &times; 6 screws", "2 off &mdash; Perma-Proto"),

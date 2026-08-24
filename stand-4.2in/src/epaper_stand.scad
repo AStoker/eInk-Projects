@@ -14,9 +14,11 @@
 //  the display.  Width and height swap over when the frame is turned, so a
 //  measurement called "width" is ambiguous unless the orientation is also
 //  stated - which is how 91 and 77.5 both got read as the wrong dimension once.
-//    short axis  glass 76, PCB 78.5.  The ribbon leaves the glass on this axis.
-//                Model X.  Horizontal in portrait (the default).
-//    long  axis  glass 90, PCB 103.  Model Z.  Vertical in portrait.
+//    short axis  glass 76, PCB 78.5.  Model X.  Horizontal in portrait (the
+//                default).
+//    long  axis  glass 90, PCB 103.  Model Z.  Vertical in portrait.  THE RIBBON
+//                LEAVES THE GLASS ON A LONG-AXIS EDGE and runs ALONG the long
+//                axis before it turns back out - see RIBBON RELIEF below.
 //    depth       normal to the glass, 0 at the outer front face.  Model Y.
 //                This is the axis that points UP off the print bed, so "taller"
 //                or "more room on top" in slicer terms means DEEPER here.
@@ -40,8 +42,12 @@
 //             and they are different things:
 //               pocket relief  pan_rel, at the glass pocket corners
 //               cavity relief  cav_rel, at the PCB cavity corners
-//  RIBBON RELIEF  the notch in the short-axis edge for the ribbon's 180 deg
-//             fold.  Three independent sizes, deliberately not called w/h/d:
+//  RIBBON RELIEF  the notch outboard of the glass pocket's thick-bezel edge -
+//             a LONG-AXIS edge - that carries the ribbon.  Seen from the rear,
+//             the ribbon leaves that edge, turns 90 deg to run ALONG the long
+//             axis, then turns 90 deg back out to the header, which is why the
+//             notch is a 40 mm slot along the edge and not a local pocket.
+//             Three independent sizes, deliberately not called w/h/d:
 //               OUT   rib_clr, outboard from the pocket edge (short axis)
 //               DEEP  rib_dep, past the glass back face (depth)
 //               LONG  rib_w,  along the pocket edge (long axis)
@@ -698,7 +704,7 @@ if (part=="params") {
    ["front_chf",front_chf],["rear_chf",rear_chf],["win_chf",win_chf],
    ["pcb_w",pcb_w],["pcb_h",pcb_h],["pcb_t",pcb_t],["pan_w",pan_w],["pan_h",pan_h],
    ["pan_t",pan_t],["pan_clr_w",pan_clr_w],["pan_clr_h",pan_clr_h],["rib_off",rib_off],["rib_cz",rib_cz],["rib_far",rib_far],["pan_r",pan_r],["pan_rel",pan_rel],
-   ["rib_w",rib_w],["rib_clr",rib_clr],["wall_rib",wall_rib],
+   ["rib_w",rib_w],["rib_clr",rib_clr],["rib_dep",rib_dep],["wall_rib",wall_rib],
    ["bez_thin",bez_thin],["bez_thick",bez_thick],["half_cav",half_cav],["half_rib",half_rib],["act_w",act_w],["act_h",act_h],["act_off_x",act_off_x],["act_off_z",act_off_z],["pan_off_z",pan_off_z],
    ["mod_clr",mod_clr],["pcb_px",pcb_px],["pan_px",pan_px],
    ["cav_w",cav_w],["cav_h",cav_h],["cav_x0",cav_x0],["cav_x1",cav_x1],
@@ -727,7 +733,7 @@ if (part=="params") {
    ["ucb_x",ucb_x],["ucb_z",ucb_z],["ucb_w",ucb_w],["ucb_l",ucb_l],["ucb_t",ucb_t],
    ["port_w",port_w],["port_h",port_h],
    ["chg_part",chg_part],["chg_w",chg_w],["chg_h",chg_h],["chg_t",chg_t],["chg_z",chg_z],["chg_x",proto_x0+chg_w/2+1],
-   ["flash_x",flash_x],["flash_y0",flash_y0],["flash_y1",flash_y1],["usb_w",usb_w],
+   ["print_mirror",print_mirror?1:0],["flash_port",flash_port?1:0],["flash_wall",flash_wall],["flash_x",flash_x],["flash_y0",flash_y0],["flash_y1",flash_y1],["usb_w",usb_w],
    ["scr_x",scr_x],["scr_z0",scr_z[0]],["scr_z1",scr_z[1]],["scr_z2",scr_z[2]],
    ["scr_pilot",scr_pilot],["scr_free",scr_free],["scr_head",scr_head],
    ["rib_t",rib_t],["rib_inset",rib_inset],["rib_pad",rib_pad],["rib_gap",rib_gap],

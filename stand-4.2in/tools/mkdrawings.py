@@ -263,6 +263,19 @@ def standalone(sv):
 W, H, D = P["W"], P["H"], P["depth"]
 FLASH = bool(P.get("flash_port", 0))          # is the driver board's USB-C cut through?
 MIRRORED = bool(P.get("print_mirror", 0))     # do the STLs come out the opposite hand?
+HEADER = bool(P.get("mod_header", 0))         # is a mated module header being allowed for?
+BARE   = bool(P.get("bare_panel", 0))         # panel with no PCB behind it?
+INSERT = bool(P.get("insert_fit", 0))         # heat-set inserts, or self-tapping?
+PERF   = bool(P.get("perf_fit", 0))           # is a separate divider board fitted?
+CARRIER= bool(P.get("carrier_fit", 0))        # driver on a carrier perfboard?
+SNAP   = bool(P.get("port_snap", 0))          # rear port is a snap-in pigtail?
+FAST   = (f"M3 heat-set inserts (bore dia {P['ins_d']:g} x {P['ins_l']+1:g} deep) with countersunk screws"
+          if INSERT else "self-tapping screws")
+# screw positions, [x, z].  Bare panel: one near each corner, through the end
+# walls.  Module: the old single spine of three, all on the +X side.
+SCR = ([(-P["scr_cx"], P["scr_cz"]), (P["scr_cx"], P["scr_cz"]),
+        (-P["scr_cx"], P["H"]-P["scr_cz"]), (P["scr_cx"], P["H"]-P["scr_cz"])] if BARE
+       else [(P["scr_x"], P["scr_z0"]), (P["scr_x"], P["scr_z1"]), (P["scr_x"], P["scr_z2"])])
 P["flash_skin"] = P["flash_wall"]             # material left outboard of a closed jack
 cav_x0, cav_x1 = P["cav_x0"], P["cav_x1"]
 cav_z0, cav_z1 = P["cav_z0"], P["cav_z1"]
@@ -332,17 +345,17 @@ def sheet1():
     s.circ(gx(0), fz(hub_z), P["disc_d"], "edge")
     s.circ(gx(0), fz(hub_z), P["pk_d"]+2*P["lug_out"], "hid")
     s.rect(gx(P["ucb_x"]-P["port_w"]/2), fz(P["ucb_z"]+P["port_h"]/2), P["port_w"], P["port_h"], "cut", 1.2)
-    for z in (P["scr_z0"], P["scr_z1"], P["scr_z2"]):
-        s.circ(gx(P["scr_x"]), fz(z), P["scr_head"], "cut")
+    for (sx, sz) in SCR:
+        s.circ(gx(sx), fz(sz), P["scr_head"], "cut")
     s.line(gx(0), fz(H)-4, gx(0), fz(0)+4, "cl")
     s.line(gx(-W/2)-4, fz(hub_z), gx(W/2)+4, fz(hub_z), "cl")
     s.txt(gx(0), fz(H)-8, "BACK", "vlabel")
     s.dimv(fz(hub_z), fz(0), gx(-W/2)-8, n(hub_z), ext_from=gx(-W/2))
     s.dimh(gx(0), gx(P["ucb_x"]), fz(0)+8, n(abs(P["ucb_x"])), ext_from=fz(P["ucb_z"]))
     s.dimv(fz(P["ucb_z"]), fz(0), gx(P["ucb_x"])-8, n(P["ucb_z"]), ext_from=gx(P["ucb_x"]))
-    s.dimh(gx(P["scr_x"]), gx(W/2), fz(H)-5, n(W/2-P["scr_x"]), ext_from=fz(P["scr_z2"]))
+    s.dimh(gx(SCR[-1][0]), gx(W/2), fz(H)-5, n(W/2-SCR[-1][0]), ext_from=fz(SCR[-1][1]))
     s.bal(gx(P["ucb_x"]+P["port_w"]/2), fz(P["ucb_z"]), 6, gx(P["ucb_x"]+16), fz(P["ucb_z"])-8)
-    s.bal(gx(P["scr_x"]), fz(P["scr_z1"]), 8, gx(P["scr_x"])-11, fz(P["scr_z1"])+8)
+    s.bal(gx(SCR[0][0]), fz(SCR[0][1]), 8, gx(SCR[0][0])-11, fz(SCR[0][1])+8)
     s.bal(gx(P["disc_d"]/2*0.71), fz(hub_z+P["disc_d"]/2*0.71), 9, gx(P["disc_d"]/2*0.71)+7, fz(hub_z+P["disc_d"]/2*0.71)-7)
 
     y = s.notes(22, 143, [
@@ -362,7 +375,9 @@ def sheet1():
         (7, "frame / cover seam"),
     ], cw=44, title=" ")
     s.notes(190, 143, [
-        (8, f"3 x M2.5 cover screws, {n(P['scr_x'])} from the centreline"),
+        (8, f"4 x cover screws, one near each corner: {n(P['scr_cx'])} from the centreline, {n(P['scr_cz'])} from each end. {FAST}"
+            if BARE else
+            f"3 x M2.5 cover screws, {n(P['scr_x'])} from the centreline"),
         (9, f"kickstand disc dia {n(P['disc_d'])}, hub {n(hub_z)} up"),
     ], cw=40, title=" ")
     s.titleblock(TBX, TBY, 96, 18, "ASSEMBLY / ENVELOPE", 1, 8, "1:1")
@@ -389,18 +404,36 @@ def sheet2():
         s.rect(fx(P["bat_cx"]+sx*(P["bat_w"]/2+P["bat_clr"]) - (0 if sx>0 else P["bat_fence"])),
                fz(bz0+P["bat_h"]), P["bat_fence"], P["bat_h"], "boss")
 
-    # ---- top band: Perma-Proto (-X) then driver board (+X)
+    # ---- the charger.  On a Perma-Proto when there is one, on its own
+    #      standoffs when there is not.
     px0, pz0 = P["proto_x0"], P["proto_z0"]
-    s.rect(fx(px0), fz(P["proto_z1"]), P["proto_w"], P["proto_h"], "pcb", 1.5)
-    s.txt(fx(P["proto_cx"]), fz(P["proto_z1"]-13.5), "PERMA-PROTO", "cmp", size=3.0)
-    s.txt(fx(P["proto_cx"]), fz(P["proto_z1"]-17.5),
-          f"quarter {n(P['proto_w'])} x {n(P['proto_h'])}", "cmpsub", size=2.6)
-    s.rect(fx(P["chg_x"]-P["chg_w"]/2), fz(P["chg_z"]+P["chg_h"]/2), P["chg_w"], P["chg_h"], "chg", 1)
-    s.txt(fx(P["chg_x"]), fz(P["chg_z"])-0.6, P["chg_part"], "cmp", size=2.8)
-    s.txt(fx(P["chg_x"]), fz(P["chg_z"])+3.0, f"{n(P['chg_w'])} x {n(P['chg_h'])}", "cmpsub", size=2.5)
-    for sz in (-1, 1):
-        s.circ(fx(P["proto_cx"]), fz(P["proto_cz"]+sz*P["proto_hole_sp"]/2), 3.2, "cut")
+    if not BARE:
+        s.rect(fx(px0), fz(P["proto_z1"]), P["proto_w"], P["proto_h"], "pcb", 1.5)
+        s.txt(fx(P["proto_cx"]), fz(P["proto_z1"]-13.5), "PERMA-PROTO", "cmp", size=3.0)
+        s.txt(fx(P["proto_cx"]), fz(P["proto_z1"]-17.5),
+              f"quarter {n(P['proto_w'])} x {n(P['proto_h'])}", "cmpsub", size=2.6)
+        for sz in (-1, 1):
+            s.circ(fx(P["proto_cx"]), fz(P["proto_cz"]+sz*P["proto_hole_sp"]/2), 3.2, "cut")
+    cgx = P["chg_x_c"] if BARE else P["chg_x"]
+    s.rect(fx(cgx-P["chg_w"]/2), fz(P["chg_z"]+P["chg_h"]/2), P["chg_w"], P["chg_h"], "chg", 1)
+    s.txt(fx(cgx), fz(P["chg_z"])-0.6, P["chg_part"], "cmp", size=2.8)
+    s.txt(fx(cgx), fz(P["chg_z"])+3.0, f"{n(P['chg_w'])} x {n(P['chg_h'])}", "cmpsub", size=2.5)
+    if BARE:
+        for sx in (-1, 1):
+            for sz in (-1, 1):
+                s.circ(fx(cgx+sx*(P["chg_w"]/2-3.5)), fz(P["chg_z"]+sz*(P["chg_h"]/2-3.5)), 6.0, "boss")
 
+    if CARRIER:
+        s.rect(fx(P["carrier_cx"]-P["carrier_w"]/2), fz(P["carrier_cz"]+P["carrier_h"]/2),
+               P["carrier_w"], P["carrier_h"], "plat", 1.0)
+        s.txt(fx(P["carrier_cx"]), fz(P["carrier_z0"]+9.0),
+              f"CARRIER {n(P['carrier_w'])} x {n(P['carrier_h'])}", "cmp", size=2.6)
+        s.txt(fx(P["carrier_cx"]), fz(P["carrier_z0"]+5.2),
+              "divider on the spare", "cmpsub", size=2.3)
+        for sx_ in (-1, 1):
+            for sz in (-1, 1):
+                s.circ(fx(P["carrier_cx"]+sx_*(P["carrier_w"]/2-3.5)),
+                       fz(P["carrier_cz"]+sz*(P["carrier_h"]/2-3.5)), 6.5, "boss")
     s.rect(fx(P["drv_x0"]), fz(P["drv_z1"]), P["drv_w"], P["drv_h"], "pcb", 1.5)
     s.txt(fx(P["drv_cx"]), fz(P["drv_cz"])-3.4, "WAVESHARE", "cmp", size=2.9)
     s.txt(fx(P["drv_cx"]), fz(P["drv_cz"])+0.2, "ESP32 DRIVER", "cmp", size=2.9)
@@ -411,28 +444,63 @@ def sheet2():
         rc = P["drv_cx"] + sx*(P["drv_w"]/2 + P["drv_clr"] + P["drv_rail"]/2 - 1.0)
         s.rect(fx(rc-P["drv_rail"]/2), fz(P["drv_cz"]+(P["drv_h"]-1)/2),
                P["drv_rail"], P["drv_h"]-1, "boss")
+    if BARE:
+        # the 24-pin socket on the board's -X edge, and the slot the ribbon
+        # arrives through.  The two line up: that is what the board's position
+        # along Z is for.
+        s.rect(fx(P["drv_x0"]-1.2), fz(P["fpc_z"]+P["fpc_w"]/2), 2.4, P["fpc_w"], "com", 0.4)
+        s.txt(fx(P["drv_x0"])-14, fz(P["fpc_z"])-3.0, "24-pin FPC", "cmp", size=2.5)
+        s.txt(fx(P["drv_x0"])-14, fz(P["fpc_z"])+0.6, "the panel plugs", "cmpsub", size=2.3)
+        s.txt(fx(P["drv_x0"])-14, fz(P["fpc_z"])+3.8, "straight in here", "cmpsub", size=2.3)
+        rz0 = P["rib_cz"] - P["rib_w"]/2
+        s.rect(fx(-W/2+P["wall_rib"]), fz(rz0+P["rib_w"]), P["rib_clr"], P["rib_w"], "warn")
+        s.dimv(fz(P["fpc_z"]+P["fpc_w"]/2), fz(P["fpc_z"]-P["fpc_w"]/2), fx(P["drv_x0"])-30,
+               n(P["fpc_w"]), ext_from=fx(P["drv_x0"]))
 
-    # ---- module retention pads, in the strips either side of the cell
-    for (px, pz) in ((P["pad_x0"], P["pad_z0"]), (P["pad_x1"], P["pad_z1"])):
-        s.rect(fx(px-P["pad_w"]/2), fz(pz+P["pad_h"]/2), P["pad_w"], P["pad_h"], "pad", 0.8)
-    s.rect(fx(P["ucb_x"]-P["ucb_w"]/2), fz(P["ucb_z"]+2.6), P["ucb_w"], 5.2, "chg", 0.8)
-    # module 8-pin header keep-out - assumed position, MEASURE IT
-    s.rect(fx(P["conn_x"]-P["conn_w"]/2), fz(P["conn_z"]+P["conn_l"]/2),
-           P["conn_w"], P["conn_l"], "warn")
-    s.hatch(fx(P["conn_x"]-P["conn_w"]/2), fz(P["conn_z"]+P["conn_l"]/2),
-            P["conn_w"], P["conn_l"], step=2.0)
+    # ---- module retention pads: only when there is a module PCB to hold
+    if not BARE:
+        for (px, pz) in ((P["pad_x0"], P["pad_z0"]), (P["pad_x1"], P["pad_z1"])):
+            s.rect(fx(px-P["pad_w"]/2), fz(pz+P["pad_h"]/2), P["pad_w"], P["pad_h"], "pad", 0.8)
+    else:
+        for (sx, sz) in SCR:            # the four corner posts and their screws
+            s.rect(fx(sx-P["post_s"]/2), fz(sz+P["post_s"]/2),
+                   P["post_s"], P["post_s"], "boss", 1.0)
+            s.circ(fx(sx), fz(sz), P["scr_head"], "cut")
+    if SNAP:
+        s.rect(fx(P["ucb_x"]-P["snap_w"]/2), fz(P["ucb_z"]+P["snap_h"]/2),
+               P["snap_w"], P["snap_h"], "cut", 0.6)
+    else:
+        s.rect(fx(P["ucb_x"]-P["ucb_w"]/2), fz(P["ucb_z"]+2.6), P["ucb_w"], 5.2, "chg", 0.8)
+    # module header keep-out - only when one is actually fitted.  On this build
+    # the panel's 24-pin FPC goes straight into the driver board, so there is
+    # nothing standing off the back of the module and nothing to draw.
+    if HEADER:
+        s.rect(fx(P["conn_x"]-P["conn_w"]/2), fz(P["conn_z"]+P["conn_l"]/2),
+               P["conn_w"], P["conn_l"], "warn")
+        s.hatch(fx(P["conn_x"]-P["conn_w"]/2), fz(P["conn_z"]+P["conn_l"]/2),
+                P["conn_w"], P["conn_l"], step=2.0)
 
     # ---- dimensions ------------------------------------------------------
     y1, y2, y3 = 128, 136.5, 145
     s.dimh(fx(cav_x0), fx(bx0), y1, n(bx0-cav_x0), ext_from=fz(bz0))
     s.dimh(fx(bx0), fx(bx0+P["bat_w"]), y1, n(P["bat_w"]), ext_from=fz(bz0))
     s.dimh(fx(bx0+P["bat_w"]), fx(cav_x1), y1, n(cav_x1-bx0-P["bat_w"]), ext_from=fz(bz0))
-    s.dimh(fx(px0), fx(P["proto_x1"]), y2, n(P["proto_w"]), ext_from=fz(pz0))
-    s.dimh(fx(P["proto_x1"]), fx(P["drv_x0"]), y2, n(P["drv_x0"]-P["proto_x1"]), ext_from=fz(pz0))
-    s.dimh(fx(P["drv_x0"]), fx(P["drv_x1"]), y2, n(P["drv_w"]), ext_from=fz(P["drv_z0"]))
+    if BARE:
+        s.dimh(fx(P["drv_x0"]), fx(P["drv_x1"]), y2, n(P["drv_w"]), ext_from=fz(P["drv_z0"]))
+        s.dimh(fx(P["drv_x1"]), fx(P["bat_x0"]), y2, n(P["bat_x0"]-P["drv_x1"]), ext_from=fz(P["drv_z0"]))
+        s.dimh(fx(P["chg_x_c"]-P["chg_w"]/2), fx(P["chg_x_c"]+P["chg_w"]/2), y2, n(P["chg_w"]),
+               ext_from=fz(P["chg_z"]+P["chg_h"]/2))
+    else:
+        s.dimh(fx(px0), fx(P["proto_x1"]), y2, n(P["proto_w"]), ext_from=fz(pz0))
+        s.dimh(fx(P["proto_x1"]), fx(P["drv_x0"]), y2, n(P["drv_x0"]-P["proto_x1"]), ext_from=fz(pz0))
+        s.dimh(fx(P["drv_x0"]), fx(P["drv_x1"]), y2, n(P["drv_w"]), ext_from=fz(P["drv_z0"]))
     s.dimh(fx(cav_x0), fx(cav_x1), y3, n(cav_w), ext_from=fz(cav_z0))
 
-    s.dimv(fz(P["proto_z1"]), fz(pz0), 22, n(P["proto_h"]), ext_from=fx(px0))
+    if BARE:
+        s.dimv(fz(P["chg_z"]+P["chg_h"]/2), fz(P["chg_z"]-P["chg_h"]/2), 22, n(P["chg_h"]),
+               ext_from=fx(P["chg_x_c"]-P["chg_w"]/2))
+    else:
+        s.dimv(fz(P["proto_z1"]), fz(pz0), 22, n(P["proto_h"]), ext_from=fx(px0))
     s.dimv(fz(P["ucb_z"]), fz(0), 22, n(P["ucb_z"]), ext_from=fx(P["ucb_x"]))
     s.dimv(fz(P["drv_z1"]), fz(P["drv_z0"]), 114, n(P["drv_h"]), ext_from=fx(P["drv_x1"]))
     s.dimv(fz(bz0+P["bat_h"]), fz(bz0), 114, n(P["bat_h"]), ext_from=fx(bx0+P["bat_w"]))
@@ -442,43 +510,72 @@ def sheet2():
     s.bal(fx(P["ucb_x"]), fz(P["ucb_z"]), 1, 9, fz(P["ucb_z"])+9)
     s.bal(fx(P["pad_x1"]), fz(P["pad_z1"]), 2, 133, 100)
     s.bal(fx(0)+(P["pk_d"]/2)*0.60, fz(hub_z)+(P["pk_d"]/2)*0.80, 3, 132, 119)
-    s.bal(fx(P["proto_cx"]), fz(P["proto_cz"]+P["proto_hole_sp"]/2), 4, 12, fz(P["proto_cz"]+P["proto_hole_sp"]/2)+3)
-    s.bal(fx(P["chg_x"]-P["chg_w"]/2+2), fz(P["chg_z"]+P["chg_h"]/2-2), 5, 10, 46)
+    if BARE:
+        s.bal(fx(SCR[2][0]), fz(SCR[2][1]), 4, 12, 30)
+        s.bal(fx(P["chg_x_c"]-P["chg_w"]/2+2), fz(P["chg_z"]+P["chg_h"]/2-2), 5, 10, 46)
+    else:
+        s.bal(fx(P["proto_cx"]), fz(P["proto_cz"]+P["proto_hole_sp"]/2), 4, 12, fz(P["proto_cz"]+P["proto_hole_sp"]/2)+3)
+        s.bal(fx(P["chg_x"]-P["chg_w"]/2+2), fz(P["chg_z"]+P["chg_h"]/2-2), 5, 10, 46)
     s.bal(fx(P["drv_x1"]-P["drv_rail"]/2), fz(P["drv_cz"]+16), 6, 132, 40)
-    s.bal(fx(P["conn_x"]+P["conn_w"]/2), fz(P["conn_z"]), 7, 133, 113)
+    if HEADER:
+        s.bal(fx(P["conn_x"]+P["conn_w"]/2), fz(P["conn_z"]), 7, 133, 113)
     s.txt(fx(0), 9, "LOOKING INTO THE OPEN BACK", "vlabel")
 
     clash = P["conn_h"] - (P["cov_in_pk"] - P["bat_t"] - P["mod_back"])
-    y = s.notes(150, 20, [
-        (1, "USB-C charge breakout, on edge in printed rails, receptacle flush with the back cover. Two wires up the -X wall to the "
+    notes = [
+        (1, f"USB-C pigtail, snapped into a {n(P['snap_w']+2*P['snap_c'])} x {n(P['snap_h']+2*P['snap_c'])} opening in the back cover - its own catch holds it, so there is nothing printed around it. Two wires to the {P['chg_part']}"
+            if SNAP else
+            "USB-C charge breakout, on edge in printed rails, receptacle flush with the back cover. Two wires up the -X wall to the "
             f"{P['chg_part']}"),
-        (2, f"module retention pads {n(P['pad_w'])} x {n(P['pad_h'])}, one each side of the cell. Foam tape on the faces takes up the tolerance stack"),
+        (2, f"glass retention ribs on the cover, {n(P['pad_w0'])} and {n(P['pad_w1'])} wide x {n(P['pad_h'])}: the interior is open behind the glass - it has to be, or the glass could not get in - so these press it against the front lip"
+            if BARE else
+            f"module retention pads {n(P['pad_w'])} x {n(P['pad_h'])}, one each side of the cell. Foam tape on the faces takes up the tolerance stack"),
         (3, f"stand puck, dia {n(P['pk_d']+2*P['lug_out']+6)}, bulges {n(P['depth']-P['cov_in_pk'])} into the interior behind everything on this sheet"),
-        (4, f"2 x M2.5 posts, {n(P['proto_hole_sp'])} apart, behind the Perma-Proto; the {P['chg_part']} rides on its front face"),
-        (5, f"{P['chg_part']} charger breakout {n(P['chg_w'])} x {n(P['chg_h'])} x {n(P['chg_t'])}, low end of the Perma-Proto, nearest the charge port"),
-        (6, f"driver-board rails {n(P['drv_rail'])} wide, overlapping the PCB {n(P['drv_rail']-1)} each side"),
-        (7, f"MODULE 8-PIN HEADER KEEP-OUT {n(P['conn_w'])} x {n(P['conn_l'])} x {n(P['conn_h'])} deep, position ASSUMED. Clashes with the cell by {n(clash)} - DO NOT PRINT, see below"),
-    ], cw=56)
+        (4, f"4 x cover screws into {n(P['post_s'])} x {n(P['post_s'])} corner posts, which start at depth {n(P['post_y0'])} so the glass still passes them on its way into its pocket. {FAST}"
+            if BARE else
+            f"2 x M2.5 posts, {n(P['proto_hole_sp'])} apart, behind the Perma-Proto; the {P['chg_part']} rides on its front face"),
+        (5, f"{P['chg_part']} charger breakout {n(P['chg_w'])} x {n(P['chg_h'])} x {n(P['chg_t'])}, on four standoff pads above the cell"
+            if BARE else
+            f"{P['chg_part']} charger breakout {n(P['chg_w'])} x {n(P['chg_h'])} x {n(P['chg_t'])}, low end of the Perma-Proto, nearest the charge port"),
+        (6, f"driver board plugs into female headers on the carrier - the case holds the carrier, not the board. Stood on its long edge so the 24-pin FPC socket faces the ribbon slot, and slid along until the two line up"
+            if CARRIER else
+            f"driver board stood on its long edge so the 24-pin FPC socket faces the ribbon slot, and slid along until the two line up. Rails {n(P['drv_rail'])} wide, overlapping the PCB {n(P['drv_rail']-1)} each side"
+            if BARE else
+            f"driver-board rails {n(P['drv_rail'])} wide, overlapping the PCB {n(P['drv_rail']-1)} each side"),
+    ]
+    if HEADER:
+        notes.append(
+            (7, f"MODULE 8-PIN HEADER KEEP-OUT {n(P['conn_w'])} x {n(P['conn_l'])} x {n(P['conn_h'])} deep, position ASSUMED. Clashes with the cell by {n(clash)} - DO NOT PRINT, see below"))
+    y = s.notes(150, 20, notes, cw=56)
 
     s.notes(150, y+2, [], title="MEASURE BEFORE YOU PRINT")
     ty = y + 8
     need = P["conn_h"] + P["bat_t"] + P["mod_back"] + 5.95 + 0.5
-    s.txt(150, ty, "Three numbers on the module settle this sheet:", "note", "start", 2.65)
-    for i, (lab, par) in enumerate([
-        ("a   header edge, and where across X", "conn_dz, conn_dx"),
-        ("b   header stand-off, mated, with the bend", f"conn_h  (assumed {n(P['conn_h'])})"),
-        ("c   is the glass centred on the PCB in Z?", "pan_off_z, act_off_z"),
-    ]):
+    if HEADER:
+        s.txt(150, ty, "Three numbers on the module settle this sheet:", "note", "start", 2.65)
+        items = [("a   header edge, and where across X", "conn_dz, conn_dx"),
+                 ("b   header stand-off, mated, with the bend", f"conn_h  (assumed {n(P['conn_h'])})"),
+                 ("c   is the glass centred on the PCB in Z?", "pan_off_z, act_off_z")]
+        tail = [f"The board band clears a {n(P['conn_h'])} mm header ({n(P['proto_face']-P['mod_back'])} available);",
+                f"the cell band does not ({n(P['cov_in_pk']-P['bat_t']-P['mod_back'])}). If the header is on",
+                "the cell's edge the two bands swap, which also",
+                "moves the flash port to the opposite wall. Or",
+                f"keep this layout and set depth = {n(need)}."]
+    else:
+        s.txt(150, ty, "Three numbers still settle this sheet:", "note", "start", 2.65)
+        items = [("a   driver stack: board, parts and headers", f"drv_env {n(P['drv_env'])} + hdr_h {n(P['hdr_h'])}"),
+                 ("b   panel ribbon, glass edge to the plug", "sets where the driver can sit"),
+                 ("c   the rear pigtail's actual body size", f"snap_w / snap_h ({n(P['snap_w'])} x {n(P['snap_h'])})")]
+        tail = ["The panel's 24-pin FPC plugs straight into the",
+                "driver - no adapter if the board sits where the",
+                f"ribbon reaches. The {n(P['fpc_w'])} socket is on one long",
+                f"edge, {n(P['fpc_off'])} from the near end.",
+                f"Driver face to glass: {n(P['drv_back']-P['drv_t']-P['mod_back'])} for parts {n(P['drv_env']-P['drv_t'])} proud."]
+    for i, (lab, par) in enumerate(items):
         yy = ty + 6.5 + i*7.4
         s.txt(150, yy, lab, "note", "start", 2.65)
         s.txt(157, yy + 3.7, par, "val", "start", 2.65)
-    for i, t in enumerate([
-        f"The board band clears a {n(P['conn_h'])} mm header ({n(P['proto_face']-P['mod_back'])} available);",
-        f"the cell band does not ({n(P['cov_in_pk']-P['bat_t']-P['mod_back'])}). If the header is on",
-        "the cell's edge the two bands swap, which also",
-        "moves the flash port to the opposite wall. Or",
-        f"keep this layout and set depth = {n(need)}.",
-    ]):
+    for i, t in enumerate(tail):
         s.txt(150, ty + 30 + i*3.8, t, "note", "start", 2.65)
     s.titleblock(TBX, TBY, 96, 18, "INTERNAL LAYOUT", 2, 8, "1:1")
     return s.render("s2")
@@ -504,14 +601,18 @@ def sheet3():
     s.rect(ys(P["front_t"]), zs(96), P["pan_t"]*SC, zs(14)-zs(96), "glass")
     s.rect(ys(P["pcb_face_y"]), zs(98), P["pcb_t"]*SC, zs(12)-zs(98), "pcb")
     clr = P["cov_in_pk"] - P["bat_t"] - P["mod_back"]
-    s.rect(ys(P["mod_back"]), zs(62), P["conn_h"]*SC, zs(44)-zs(62), "warn")
-    s.txt(ys(P["mod_back"]+clr/2), zs(51.5), "8-pin", "cmp", size=2.6)
-    s.txt(ys(P["mod_back"]+clr/2), zs(48), "header", "cmp", size=2.6)
+    if HEADER:
+        s.rect(ys(P["mod_back"]), zs(62), P["conn_h"]*SC, zs(44)-zs(62), "warn")
+        s.txt(ys(P["mod_back"]+clr/2), zs(51.5), "8-pin", "cmp", size=2.6)
+        s.txt(ys(P["mod_back"]+clr/2), zs(48), "header", "cmp", size=2.6)
 
     s.rect(ys(P["cov_in_pk"]-P["bat_t"]), zs(74), P["bat_t"]*SC, zs(38)-zs(74), "cell")
     s.txt(ys(P["cov_in_pk"]-P["bat_t"]/2), zs(55), "cell", "cmp", size=2.6, rot=-90)
-    s.rect(ys(P["cov_in_pk"]-P["bat_t"]), zs(62), (P["conn_h"]-clr)*SC, zs(44)-zs(62), "clash")
-    s.txt(ys(P["mod_back"]+P["conn_h"]/2), zs(66.5), f"CLASH {n(P['conn_h']-clr)}", "clashtxt", size=2.8)
+    if HEADER:
+        s.rect(ys(P["cov_in_pk"]-P["bat_t"]), zs(62), (P["conn_h"]-clr)*SC, zs(44)-zs(62), "clash")
+        s.txt(ys(P["mod_back"]+P["conn_h"]/2), zs(66.5), f"CLASH {n(P['conn_h']-clr)}", "clashtxt", size=2.8)
+    s.rect(ys(P["drv_back"]-P["drv_env"]), zs(96), P["drv_env"]*SC, zs(80)-zs(96), "pcb")
+    s.txt(ys(P["drv_back"]-P["drv_env"]/2), zs(88), f"driver {n(P['drv_env'])}", "cmp", size=2.5)
     s.rect(ys(P["proto_face"]), zs(32), P["proto_t"]*SC, zs(10)-zs(32), "pcb")
     s.rect(ys(P["proto_face"]-P["chg_t"]+P["proto_t"]), zs(28), (P["chg_t"]-P["proto_t"])*SC, zs(14)-zs(28), "chg")
     s.txt(ys(P["proto_face"]-P["chg_t"]/2), zs(20), f"{P['chg_part']} stack {n(P['chg_t'])}", "cmp", size=2.6)
@@ -542,31 +643,50 @@ def sheet3():
         s.txt(cx+86, y, n(v), "val"+(" warn" if warn else ""), "end", 3.3)
         s.line(cx, y+2.4, cx+86, y+2.4, "tbrule")
     y0 = 30+len(rows)*6.9+6
-    s.txt(cx, y0, "THE TIGHT ONE", "vlabel", "start", 3.2)
     clr = P["cov_in_pk"] - P["bat_t"] - P["mod_back"]
     need = P["conn_h"] + P["bat_t"] + P["mod_back"] + 5.95 + 0.5
-    for i, t in enumerate([
-        f"A mated vertical PH2.0 plug plus a wire bend is",
-        f"8-9 mm. Over the boards there is {n(P['proto_face']-P['mod_back'])} and it fits.",
-        f"Over the cell there is {n(clr)} and it does not - the",
-        f"keep-out overruns the cell face by {n(P['conn_h']-clr)}.",
-        "",
-        "Three ways out. Which is right depends on where",
-        "the header actually is - measure it, see sheet 2:",
-    ]):
+    if HEADER:
+        s.txt(cx, y0, "THE TIGHT ONE", "vlabel", "start", 3.2)
+        body = [f"A mated vertical PH2.0 plug plus a wire bend is",
+                f"8-9 mm. Over the boards there is {n(P['proto_face']-P['mod_back'])} and it fits.",
+                f"Over the cell there is {n(clr)} and it does not - the",
+                f"keep-out overruns the cell face by {n(P['conn_h']-clr)}.",
+                "",
+                "Three ways out. Which is right depends on where",
+                "the header actually is - measure it, see sheet 2:"]
+        opts = [
+            ("1", ["put the boards in whichever band the header",
+                   "lands in, cell in the other. No thickness cost,",
+                   "but it moves the driver USB-C to the far wall and",
+                   "the charge port out of the board band."]),
+            ("2", ["right-angle PH2.0 housing, or desolder the",
+                   f"header and lay the eight wires flat. Keeps",
+                   f"depth {n(D)}; needs conn_h <= {n(clr-0.5)}."]),
+            ("3", [f"set depth = {n(need)} and re-export, which costs",
+                   f"+{n(need-D)} mm of thickness."]),
+        ]
+    else:
+        s.txt(cx, y0, "WHERE THE DEPTH GOES", "vlabel", "start", 3.2)
+        body = [f"Nothing is plugged into the back of the module:",
+                f"the panel's ribbon goes to the driver board's own",
+                f"24-pin socket, so the {n(clr)} over the cell is clear.",
+                "",
+                "The tight one is now the driver board itself,",
+                f"assumed {n(P['drv_env'])} deep over a {n(P['cov_in_pk']-P['mod_back'])} interior where it",
+                "crosses the stand pocket:"]
+        opts = [
+            ("1", [f"board + tallest part, assumed {n(P['drv_env'])}. Measure it;",
+                   "it is the only number holding this sheet up."]),
+            ("2", [f"over the pocket there is {n(P['cov_in_pk']-P['mod_back'])}, off it {n(P['cov_in']-P['mod_back'])}.",
+                   "Keeping the board clear of the puck buys",
+                   f"{n(P['cov_in']-P['cov_in_pk'])} mm of headroom for free."]),
+            ("3", [f"the cell needs {n(P['bat_t'])} of the {n(clr)} over it, and the",
+                   f"{P['chg_part']} stack {n(P['chg_t'])} of the {n(P['proto_face']-P['mod_back'])} over the proto."]),
+        ]
+    for i, t in enumerate(body):
         s.txt(cx, y0+7+i*3.9, t, "note", "start", 2.65)
-    oy2 = y0 + 7 + 7*3.9 + 3
-    for num, lines in [
-        ("1", ["put the boards in whichever band the header",
-               "lands in, cell in the other. No thickness cost,",
-               "but it moves the driver USB-C to the far wall and",
-               "the charge port out of the board band."]),
-        ("2", ["right-angle PH2.0 housing, or desolder the",
-               f"header and lay the eight wires flat. Keeps",
-               f"depth {n(D)}; needs conn_h <= {n(clr-0.5)}."]),
-        ("3", [f"set depth = {n(need)} and re-export, which costs",
-               f"+{n(need-D)} mm of thickness."]),
-    ]:
+    oy2 = y0 + 7 + len(body)*3.9 + 3
+    for num, lines in opts:
         s.txt(cx, oy2, num, "val", "start", 2.65)
         for j, ln in enumerate(lines):
             s.txt(cx+5, oy2 + j*3.9, ln, "note", "start", 2.65)
@@ -596,8 +716,8 @@ def sheet4():
     s.dimv(fz(Zc-ph/2), fz(P["rib_cz"]-P["rib_w"]/2), fx(px0)-6, n(P["rib_off"]), ext_from=fx(px0))
     s.dimv(fz(P["rib_cz"]+P["rib_w"]/2), fz(P["rib_cz"]-P["rib_w"]/2), fx(px0)-14, n(P["rib_w"]), ext_from=fx(px0-P["rib_clr"]))
     s.dimv(fz(Zc+ph/2), fz(P["rib_cz"]+P["rib_w"]/2), fx(px0)-6, n(P["rib_far"]), ext_from=fx(px0))
-    for z in (P["scr_z0"], P["scr_z1"], P["scr_z2"]):
-        s.circ(fx(P["scr_x"]), fz(z), P["scr_pilot"], "cut")
+    for (sx, sz) in SCR:
+        s.circ(fx(sx), fz(sz), P["scr_pilot"], "cut")
     s.rect(fx(P["flash_x"]-P["usb_w"]/2), fz(H), P["usb_w"], H-cav_z1,
            "cut" if FLASH else "hid")
     s.txt(fx(0), fz(H)-14, "FRAME  ·  view on the open back", "vlabel")
@@ -607,10 +727,14 @@ def sheet4():
     s.dimv(fz(cav_z1), fz(cav_z0), fx(cav_x1)+13, n(cav_h), ext_from=fx(cav_x1))
     s.dimh(fx(-W/2), fx(cav_x0), fz(0)+7, n(cav_x0+W/2), ext_from=fz(cav_z0))
     s.dimh(fx(cav_x1), fx(W/2), fz(0)+7, n(W/2-cav_x1), ext_from=fz(cav_z0))
-    s.dimv(fz(P["scr_z2"]), fz(P["scr_z1"]), fx(W/2)+13, n(P["scr_z2"]-P["scr_z1"]), ext_from=fx(P["scr_x"]))
-    s.dimv(fz(P["scr_z1"]), fz(P["scr_z0"]), fx(W/2)+13, n(P["scr_z1"]-P["scr_z0"]), ext_from=fx(P["scr_x"]))
-    s.dimv(fz(P["scr_z0"]), fz(0), fx(W/2)+13, n(P["scr_z0"]), ext_from=fx(P["scr_x"]))
-    s.bal(fx(P["scr_x"]), fz(P["scr_z2"]), 1, fx(P["scr_x"])-9, fz(P["scr_z2"])-7)
+    if BARE:
+        s.dimv(fz(P["scr_cz"]), fz(0), fx(W/2)+13, n(P["scr_cz"]), ext_from=fx(P["scr_cx"]))
+        s.dimh(fx(P["scr_cx"]), fx(W/2), fz(0)+22, n(W/2-P["scr_cx"]), ext_from=fz(P["scr_cz"]))
+    else:
+        s.dimv(fz(P["scr_z2"]), fz(P["scr_z1"]), fx(W/2)+13, n(P["scr_z2"]-P["scr_z1"]), ext_from=fx(P["scr_x"]))
+        s.dimv(fz(P["scr_z1"]), fz(P["scr_z0"]), fx(W/2)+13, n(P["scr_z1"]-P["scr_z0"]), ext_from=fx(P["scr_x"]))
+        s.dimv(fz(P["scr_z0"]), fz(0), fx(W/2)+13, n(P["scr_z0"]), ext_from=fx(P["scr_x"]))
+    s.bal(fx(SCR[-1][0]), fz(SCR[-1][1]), 1, fx(SCR[-1][0])-9, fz(SCR[-1][1])-7)
     s.bal(fx(P["flash_x"]), fz(H-1), 2, fx(P["flash_x"])+18, fz(H)-6)
     s.bal(fx(cav_x0-1.1), fz(Zc+30), 3, fx(cav_x0)-9, fz(Zc+38))
 
@@ -634,7 +758,9 @@ def sheet4():
           fx(-W/2)-9, fz(Zc+(P["pan_h"]+2*P["pan_clr_h"])/2)+8)
 
     s.notes(192, 24, [
-        (1, f"3 x dia {n(P['scr_pilot'])} pilot holes, 8 deep, drilled from the back face"),
+        (1, f"4 x dia {n(P['ins_d'])} bores, {n(P['ins_l']+1)} deep from the back face, for {n(P['ins_d'])}-bore heat-set inserts. Melt them in flush; the screws come down through the cover into them"
+            if INSERT else
+            f"3 x dia {n(P['scr_pilot'])} pilot holes, 8 deep, drilled from the back face"),
         (2, f"flash port, {n(P['usb_w'])} wide, through the {n(P['wall'])} top wall"
             if FLASH else
             f"blind pocket {n(P['usb_w'])} wide for the driver board's own USB-C; the "
@@ -710,44 +836,67 @@ def sheet5():
     s.circ(fx(0), fz(hub_z), P["pk_d"]+2*P["lug_out"]+6, "edge")
     s.circ(fx(0), fz(hub_z), P["pk_d"], "cut")
     s.circ(fx(0), fz(hub_z), P["pk_d"]+2*P["lug_out"], "hid")
-    for z in (P["scr_z0"], P["scr_z1"], P["scr_z2"]):
-        s.circ(fx(P["scr_x"]), fz(z), P["scr_head"], "cut")
+    for (sx, sz) in SCR:
+        s.circ(fx(sx), fz(sz), P["scr_head"], "cut")
     s.rect(fx(cav_x0+0.3), fz(P["bat_cz"]+P["bat_h"]/2+P["bat_clr"]+P["bat_fence"]),
            P["bat_cx"]+P["bat_w"]/2+P["bat_clr"]+P["bat_fence"]-(cav_x0+0.3),
            P["bat_h"]+2*P["bat_clr"]+2*P["bat_fence"], "plat", 1)
-    for sz in (-1, 1):
-        s.circ(fx(P["proto_cx"]), fz(P["proto_cz"]+sz*P["proto_hole_sp"]/2), 6.5, "boss")
-    for sx_ in (-1, 1):
+    if BARE:
+        for sx_ in (-1, 1):
+            for sz in (-1, 1):
+                s.circ(fx(P["chg_x_c"]+sx_*(P["chg_w"]/2-3.5)),
+                       fz(P["chg_z"]+sz*(P["chg_h"]/2-3.5)), 6.0, "boss")
+        if PERF:
+            s.rect(fx(P["perf_cx"]-P["perf_w"]/2), fz(P["perf_cz"]+P["perf_h"]/2),
+                   P["perf_w"], P["perf_h"], "pcb", 1)
+            for sx_ in (-1, 1):
+                for sz in (-1, 1):
+                    s.circ(fx(P["perf_cx"]+sx_*(P["perf_w"]/2-2.5)),
+                           fz(P["perf_cz"]+sz*(P["perf_h"]/2-2.5)), 4.0, "boss")
+        s.rect(fx(P["chg_x_c"]-P["chg_w"]/2), fz(P["chg_z"]+P["chg_h"]/2),
+               P["chg_w"], P["chg_h"], "chg", 1)
+    else:
         for sz in (-1, 1):
-            s.circ(fx(P["proto_cx"]+sx_*(P["proto_w"]/2-4)), fz(P["proto_cz"]+sz*(P["proto_h"]/2-4)), 6.0, "boss")
+            s.circ(fx(P["proto_cx"]), fz(P["proto_cz"]+sz*P["proto_hole_sp"]/2), 6.5, "boss")
+        for sx_ in (-1, 1):
+            for sz in (-1, 1):
+                s.circ(fx(P["proto_cx"]+sx_*(P["proto_w"]/2-4)), fz(P["proto_cz"]+sz*(P["proto_h"]/2-4)), 6.0, "boss")
     for sx_ in (-1, 1):
         s.rect(fx(P["drv_cx"]+sx_*(P["drv_w"]/2+P["drv_clr"]+0.3)-1.5), fz(P["drv_cz"]+(P["drv_h"]-1)/2), 3.0, P["drv_h"]-1, "boss")
     for sz in (-1, 1):
         s.rect(fx(P["ucb_x"]-(P["ucb_w"]+4)/2), fz(P["ucb_z"]+sz*(P["ucb_t"]/2+0.15+1.0)+1.0), P["ucb_w"]+4, 2.0, "boss")
     s.rect(fx(P["ucb_x"]-P["port_w"]/2), fz(P["ucb_z"]+P["port_h"]/2), P["port_w"], P["port_h"], "cut", 1.2)
-    for sz in (-1, 1):
-        z = Zc+sz*(cav_h/2-P["rib_inset"]-P["rib_pad"]/2)
-        s.rect(fx(P["bat_cx"]-(P["bat_w"]-2)/2), fz(z+P["rib_pad"]/2), P["bat_w"]-2, P["rib_pad"], "pad", 0.8)
+    if not BARE:
+        for sz in (-1, 1):
+            z = Zc+sz*(cav_h/2-P["rib_inset"]-P["rib_pad"]/2)
+            s.rect(fx(P["bat_cx"]-(P["bat_w"]-2)/2), fz(z+P["rib_pad"]/2), P["bat_w"]-2, P["rib_pad"], "pad", 0.8)
 
     s.txt(fx(0), fz(H)-8, "BACK COVER  ·  inner face", "vlabel")
     s.dimv(fz(hub_z), fz(0), fx(-W/2)-12, n(hub_z), ext_from=fx(-W/2))
     s.dimh(fx(-W/2), fx(W/2), fz(0)+15, n(W), ext_from=fz(0))
-    s.dimh(fx(P["proto_cx"]), fx(W/2), fz(0)+8, n(W/2-P["proto_cx"]), ext_from=fz(P["proto_cz"]))
-    s.dimv(fz(P["proto_cz"]), fz(0), fx(W/2)+7, n(P["proto_cz"]), ext_from=fx(P["proto_cx"]))
+    s.dimh(fx(P["chg_x_c"]), fx(W/2), fz(0)+8, n(W/2-P["chg_x_c"]), ext_from=fz(P["chg_z"]))
+    s.dimv(fz(P["chg_z"]), fz(0), fx(W/2)+7, n(P["chg_z"]), ext_from=fx(P["chg_x_c"]))
     s.bal(fx(P["pk_d"]/2*0.71), fz(hub_z+P["pk_d"]/2*0.71), 1, fx(P["pk_d"]/2*0.71)+8, fz(hub_z+P["pk_d"]/2*0.71)-7)
-    s.bal(fx(P["proto_cx"]), fz(P["proto_cz"]+P["proto_hole_sp"]/2), 2, fx(P["proto_cx"])+12, fz(P["proto_cz"]+P["proto_hole_sp"]/2)+6)
+    s.bal(fx(P["chg_x_c"]), fz(P["chg_z"]+P["chg_h"]/2-3.5), 2, fx(P["chg_x_c"])+12, fz(P["chg_z"])+6)
     s.bal(fx(P["drv_cx"]+P["drv_w"]/2+2), fz(P["drv_cz"]), 3, fx(P["drv_cx"]+P["drv_w"]/2+2)+9, fz(P["drv_cz"])-6)
     s.bal(fx(P["ucb_x"]), fz(P["ucb_z"]+3), 4, fx(P["ucb_x"])-11, fz(P["ucb_z"])-7)
     s.bal(fx(P["bat_cx"]-8), fz(P["bat_cz"]+P["bat_h"]/2+1), 5, fx(P["bat_cx"]-8)-9, fz(P["bat_cz"]+P["bat_h"]/2+9))
-    s.bal(fx(P["bat_cx"]), fz(cav_z0+4), 6, fx(P["bat_cx"])+13, fz(cav_z0+4)-6)
+    if BARE and PERF:
+        s.bal(fx(P["perf_cx"]), fz(P["perf_cz"]), 7, fx(P["perf_cx"])-14, fz(P["perf_cz"])-8)
+    s.bal(fx(SCR[1][0]), fz(SCR[1][1]), 6, fx(SCR[1][0])-14, fz(SCR[1][1])-6) if BARE else \
+        s.bal(fx(P["bat_cx"]), fz(cav_z0+4), 6, fx(P["bat_cx"])+13, fz(cav_z0+4)-6)
 
     s.notes(150, 22, [
         (1, f"pocket bore dia {n(P['pk_d'])} x {n(P['pk_dep'])} deep. Bayonet groove dia {n(P['pk_d']+2*P['lug_out'])} with three {n(P['gap_ang'])} deg entry gaps at 45 / 165 / 285 deg"),
-        (2, f"2 x M2.5 posts, {n(P['proto_hole_sp'])} apart, plus four corner pads"),
+        (2, f"four standoff pads under the {P['chg_part']} charger, {n(P['chg_w'])} x {n(P['chg_h'])}. Foam tape or a strap holds it - no screw posts, its hole spacing is not a measured number"
+            if BARE else
+            f"2 x M2.5 posts, {n(P['proto_hole_sp'])} apart, plus four corner pads"),
         (3, "driver-board rails - the board slides down from the top, stop at the bottom"),
         (4, "USB-C breakout rails; the port opening is through the skin below them"),
         (5, f"cell platform, level with the puck face so the cell does not straddle the step, with a {n(P['bat_fence'])} fence"),
-        (6, "module retention pad"),
+        (7, f"divider / wiring perfboard {n(P['perf_w'])} x {n(P['perf_h'])} - 11 x 4 holes of 0.1 inch strip - on four standoff pads. The band above the driver board is {n(P['cav_z1']-P['drv_z1'])} tall"
+            if (BARE and PERF) else "not fitted"),
+        (6, "the four corner screw holes, counterbored" if BARE else "module retention pad"),
     ], cw=44)
     s.titleblock(TBX, TBY, 96, 18, "BACK COVER", 5, 8, "1:1")
     return s.render("s5")

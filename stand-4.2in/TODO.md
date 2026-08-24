@@ -21,19 +21,21 @@ will show the previous revision.
 
 ---
 
-## 1. Measure four numbers on the actual module — blocks every print
+## 1. Measure these on the real hardware — blocks every print
 
-The model assumes these. Each one is a caliper measurement on the real
-Waveshare 4.2" (B) module, and each one moves geometry.
+The model assumes these. Each is a caliper measurement on the real hardware, and each
+one moves geometry.
 
-- [ ] **Which long-axis edge the 8-pin header is on, and where it sits across the short
-      axis** → sets `conn_dz` (assumed −44.5) and `conn_dx` (assumed 0, centred).
-      This also settles which physical end `rib_off = 15` is measured from: the model's
-      −Z edge is the same edge the header is on, because the ribbon folds back to it.
-      If the header turns out to be on the other edge, `rib_off` becomes 35 **and** the
-      cell/board bands swap — do not change one without the other.
-- [ ] **How far the mated 8-pin header stands off the PCB back, including the wire bend**
-      → sets `conn_h` (assumed 9.0). See item 2.
+- [ ] **The driver board's stack: PCB plus its tallest part** → sets `drv_env`
+      (**assumed 6.0**: 1.6 of PCB plus ~3.2 for the USB-C shell / WROOM module, plus
+      margin). This is the single number the whole depth budget now rests on. There is
+      14.8 mm where the board crosses the stand pocket and 19.35 mm off it.
+- [ ] **The panel ribbon: length from the glass edge to the end of the tail, and how much
+      of it the 180° fold at the pocket edge eats** → decides where the driver board can
+      sit for the FPC to plug straight in with no adapter.
+- [ ] **Which physical end of the panel `rib_off = 15` is measured from.** The model's −Z
+      glass edge is one specific end; if it is the other, `rib_off` becomes 35 and the
+      internal bands move with it.
 - [ ] **Whether the glass is centred on the PCB along the 103 mm axis** → sets `pan_off_z`
       and `act_off_z` (both assumed 0, i.e. 6.5 mm of bare PCB at each end). Waveshare
       publish 103 × 78.5 for the PCB and 91 × 77 for the glass but no datum between them.
@@ -57,44 +59,33 @@ question the ribbon route just settled.
 - [ ] If the model's hand was right all along, set `print_mirror = false`, re-export and
       re-render. Getting this wrong is a whole frame of wasted filament.
 
-## 2. Resolve the 8-pin header vs cell clash — real interference, 1 of 2
+## 2. Relayout — done, but the numbers under it are still assumptions
 
-```
-HEADER vs CELL: needs 9, has 7.9 -> CLASH by 1.1 mm      (conn_cell, 154 mm³)
-```
+Built on 2026-08-24. The panel is bare glass and an FPC tail, so the 78.5 × 103 PCB the
+model used to size everything around is gone (`bare_panel = true`), and with it the 2.2 mm
+end walls that left nowhere to put a screw.
 
-There is 7.9 mm clear over the cell and 12.7 mm over the boards, so the header has to end
-up in the *board* band. Pick one, cheapest first:
+| | Before | Now |
+|---|---|---|
+| Interior | 79.5 × 104, sized by a phantom PCB | 82.1 × 80.9, sized by the electronics |
+| End walls | 2.2 mm | 13.75 mm |
+| Screws | 3, all down the +X side | **4, one near each corner** |
+| Driver board | +X side, socket 46 mm from the ribbon | −X wall, socket at z 44.2, opposite the middle of the ribbon slot |
+| Charger | on a quarter Perma-Proto | four standoff pads of its own |
+| Perma-Proto | quarter-size, 43.2 × 50.8 | gone — divider on a scrap of perfboard |
+| Real interferences | 2 | **0**, all 14 checks clear |
 
-- [ ] **Swap the bands** — boards into whichever band the header lands in, cell into the
-      other. No thickness cost. Moves the driver board's USB-C to the opposite wall and
-      pushes the charge port out of the board band, so `bat_cz` / `proto_z1` / `drv_z1`
-      and `flash` all move together.
-- [ ] **Right-angle PH2.0 housing**, or desolder the header and lay the eight wires flat
-      off the pads. Keeps `depth = 25`; needs `conn_h ≤ 7.4`.
-- [ ] **`depth = 26.6`** and re-export. Everything downstream follows, at +1.6 mm of
-      thickness.
+- [ ] Confirm the ribbon actually reaches with the socket at z 44.2 — that is item 1's tail
+      measurement. If the tail is shorter than the route needs, the board slides along Z and
+      the columns move with it.
+- [ ] Confirm the charger's four standoff pads land on board, not on components. Its hole
+      spacing is deliberately not modelled.
+- [ ] Cut the divider perfboard: **11 × 4 holes of 0.1″ strip, 27.9 × 10.2 mm**, for the
+      band above the driver board. Four standoff pads are waiting for it.
+- [ ] Check your heat-set inserts against the model's assumption (M3, 4.6 OD × 5.7 long,
+      Ø4.0 bore). Brands differ; set `ins_d` / `ins_l` and re-export if yours do.
 
-Whichever it is, re-run the checks and confirm `conn_cell` comes back empty.
-
-## 3. Resolve the driver board's depth — real interference, 2 of 2
-
-```
-drv_module 1050 mm³   (30 × 50 footprint × 0.7 mm deep)
-DRIVER BOARD envelope 30 x 50 x 15 | clear depth over the puck 14.8 -> SHORT by 0.2 mm
-```
-
-The board's assumed envelope is 15 mm deep — PCB plus its tallest component and the mated
-display header — and it does not fit where it currently sits.
-
-- [ ] **Measure the driver board's real envelope depth**, mated, including the ribbon
-      header and the DIP switch. `drv_env` is an assumption; if the real number is 14 the
-      whole thing goes away.
-- [ ] If it is genuinely 15, move the board off the puck (19.35 mm clear there) or take the
-      same `depth = 26.6` that would fix item 2 — one depth change can settle both. Re-run and
-      confirm `drv_module` comes back empty.
-
-## 4. Print and check the bezel test tile before the frame
+## 3. Print and check the bezel test tile before the frame
 
 - [ ] Print `stl/bezel_test.stl`, front face down (~40 min, ~20 g).
 - [ ] Drop the real module in. Check: glass seats in the 77.5 × 91.5 pocket, all four
@@ -103,10 +94,10 @@ display header — and it does not fit where it currently sits.
       pocket edge and 3 mm past the glass back face.
 - [ ] Check the white border shows evenly: 0.7 mm on the short axis, 1.3 mm on the long.
       Lopsided means `act_off_x` (3.2, derived from the measured 3.0 / 9.4 borders) is off.
-- [ ] Check the Perma-Proto's mounting-hole spacing against the model's 35.6 mm before
-      printing the cover.
+- [ ] Melt four M3 inserts into the frame's corner bores, flush with the mating face, and
+      check the countersunk heads finish level with the back face.
 
-## 5. Electrical assembly
+## 4. Electrical assembly
 
 - [ ] Set the bq25185's charge current to **1 A** with the solder jumper. Adafruit's
       product page and pinout guide disagree on the default (1 A vs 500 mA) — read the
@@ -124,17 +115,21 @@ display header — and it does not fit where it currently sits.
 - [ ] **Flash the ESP32 and confirm OTA works before the cover goes on.** The flash port
       is closed (`flash_port = false`) and the charge port is deliberately two wires, no
       data — after assembly there is no wired route in.
-- [ ] Set **DIP switch 2 off** for running (on only to program). Left on, the CP2102 stays
-      powered and idle draw goes from ~2 mA to 10–13 mA.
+- [ ] Set the **DIP switch so the USB-UART is unpowered** when running (on only to
+      program). Left powered, idle draw goes from ~2 mA to 10–13 mA. On the Rev 3 board
+      that chip is a CH343, not the CP2102 the older product page quotes.
+- [ ] Use **GPIO 4's panel-rail gate**: the schematic has it driving an S8050 that switches
+      VDD5V → VDD5V′, so firmware can drop the panel supply in sleep. Keep GPIO 4 off the
+      button list.
 
-## 6. Firmware
+## 5. Firmware
 
 - [ ] Read the divider on **every** wake. Below ~3.6 V, call `esp_deep_sleep_start()` with
       no timer and stay there. The board browns out at 3.6 V on its own, but a brownout
       loop drags the cell to its protection cut, and deep discharge is what kills cells.
 - [ ] Show state of charge from the same reading, and stop refreshing when the cell is low.
 
-## 7. Measurements worth taking once it runs
+## 6. Measurements worth taking once it runs
 
 - [ ] Put a multimeter **in series with the battery lead** and read the real sleep current.
       Waveshare's `<2 mA` is a spec, not this board, and a USB meter won't resolve single
@@ -142,13 +137,13 @@ display header — and it does not fit where it currently sits.
 - [ ] If there's a power LED on the driver board, measure what cutting it saves — often
       1–2 mA.
 
-## 8. Optional, not started
+## 7. Optional, not started
 
 - [ ] Slide switch in the charger's LOAD line, so the thing can be parked without draining.
       `btn_n` already cuts holes in the +X wall if you want it there.
 - [ ] Three side buttons: `btn_n = 3`, then `btn_d` / `btn_sp`, and re-export the frame.
 
-## 9. Housekeeping
+## 8. Housekeeping
 
 - [ ] `drawings/4.2in-frame-drawings.pdf` is stale — it predates the current sheets. It was
       printed from `drawings/index.html`, so regenerate it the same way (or drop it and

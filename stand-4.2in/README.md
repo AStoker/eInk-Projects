@@ -1,9 +1,13 @@
 # 4.2" e-Paper desk frame — minimal bezel, rotating kickstand, battery inside
 
-A slim desk frame for the **Waveshare 4.2inch e-Paper Module (B)** driven by the
-**Waveshare e-Paper ESP32 Driver Board**, with a LiPo, a power-path charger and a
-quarter-size Perma-Proto inside, and a single rotating kickstand on the back that folds
-flush and turns 90° for portrait or landscape.
+A slim desk frame for the **Waveshare 4.2inch e-Paper panel (B)** driven by the
+**Waveshare e-Paper ESP32 Driver Board (Rev 3)**, with a LiPo and a power-path charger
+inside, and a single rotating kickstand on the back that folds flush and turns 90° for
+portrait or landscape.
+
+The panel is **bare glass and an FPC tail** — no PCB behind it. The tail plugs straight
+into the driver board's 24-pin socket, and the board is positioned so it does that with no
+adapter and no extension.
 
 One parametric OpenSCAD file: `src/epaper_stand.scad`. Every dimension quoted here comes
 out of it, and so does every drawing — `tools/mkdrawings.py` reads the model's own
@@ -17,7 +21,9 @@ gets.
 | Bezel | 13.45 mm short-axis sides, 10.5 mm long-axis ends |
 | Panel white showing | 0.7 mm short axis, 1.3 mm long axis |
 | Lean | 20.5°, 31.9 mm footprint — the same in both orientations |
-| Print | 4 parts, ~111 g of filament, no supports |
+| Interior | 82.1 × 80.9 × 21.0 mm, with 13.75 mm end walls |
+| Fasteners | 4 × M3 countersunk into heat-set inserts, one near each corner |
+| Print | 4 parts, ~107 g of filament, no supports |
 
 <img src="renders/01-iso-portrait.png" width="46%" alt="Portrait"> <img src="renders/02-iso-landscape.png" width="46%" alt="Landscape">
 
@@ -34,11 +40,11 @@ Two dimensions got read as the wrong axis while this was being built, both times
 "width" and "height" swap over when the frame is turned. So: **never width/height for
 anything belonging to the display.**
 
-| Axis | Glass | PCB | Model | In portrait (the default) |
+| Axis | Glass | Interior | Model | In portrait (the default) |
 |---|---|---|---|---|
-| **short axis** | 76 | 78.5 | X | horizontal |
-| **long axis** | 90 | 103 | Z | vertical. **The ribbon leaves the glass on a long-axis edge, and runs along the long axis.** |
-| **depth** | 1.05 | 1.6 | Y | 0 at the outer front face |
+| **short axis** | 76 | 82.1 | X | horizontal |
+| **long axis** | 90 | 80.9 | Z | vertical. **The ribbon leaves the glass on a long-axis edge, and runs along the long axis.** |
+| **depth** | 1.05 | 21.0 | Y | 0 at the outer front face |
 
 Depth is the axis that points *up* off the print bed, so "taller", "more room on top" and
 "height off the glass" in slicer terms all mean **deeper** here.
@@ -50,7 +56,8 @@ leaves the glass on the **long-axis edge** — the one with the 9.4 mm dead bord
 back behind the glass, then:
 
 1. turns **90° to the left, running along the long axis**, and
-2. turns **90° back to the right, away from the long axis**, to reach the 8-pin header.
+2. turns **90° back to the right, away from the long axis**, to reach the driver board's
+   24-pin FPC socket.
 
 That middle leg is the whole reason for the shape of the cutout. The relief is a **40 mm
 slot running along the long-axis edge**, not a local pocket where the ribbon exits: the
@@ -67,9 +74,14 @@ The three sizes are deliberately *not* called width/height/depth:
 
 The three long-axis numbers close exactly: **15 from one glass end, 40 of slot, 35 from the
 other — 15 + 40 + 35 = 90** against a 90 mm glass, with `rib_far` reporting 35 rather than
-absorbing an error. `rib_off = 15` is measured from the model's −Z glass edge. Which
-physical end of the module that is depends on which edge the 8-pin header sits on, and
-that is still to be confirmed — see [TODO.md](TODO.md).
+absorbing an error. `rib_off = 15` is measured from the model's −Z glass edge; which
+physical end of the panel that is has still to be pinned down — see [TODO.md](TODO.md).
+
+**The ribbon's destination is the driver board itself.** The Waveshare e-Paper ESP32 Driver
+Board (Rev 3, 48.25 × 29.46 mm) carries the panel's own DC-DC and a **24-pin FPC socket**
+on one long edge — 16 mm of socket, centred 12.5 mm from one end. The panel plugs straight
+in. There is no 8-pin header, no adapter board and no intermediate cable in this build, so
+nothing stands off the back of the module: `mod_header = false`.
 
 ### The three nested recesses
 
@@ -79,7 +91,13 @@ Front to back. Not interchangeable, and each has its own clearances:
 |---|---|---|---|
 | **window** | nothing — it's the through-opening the ink is seen through | 65.0 × 87.4 | `win_*` |
 | **glass pocket** | the glass, in a shallow step | 77.5 × 91.5 × 1.26 | `pan_*` |
-| **PCB cavity** | the module PCB, behind the glass | 79.5 × 104 | `cav_*` |
+| **interior** | the electronics — driver board, cell, charger | 82.1 × 80.9 | `cav_*` |
+
+**The interior is sized by the electronics, not by the panel.** That is the whole
+difference a bare panel makes: it used to be 79.5 × 104, sized around a module PCB that
+this build does not have, and that left 2.2 mm end walls with nowhere to put a screw. At
+80.9 long it leaves **13.75 mm of solid frame at each end** — which is where the four
+corner screws go, and what traps the glass.
 
 ### Vocabulary
 
@@ -103,34 +121,23 @@ Front to back. Not interchangeable, and each has its own clearances:
   the glass down from the rear. Two of them, one at each long-axis end. Not visible from the
   front.
 
-### The glass is taped from behind, not press-fitted
+### The glass is trapped, and taped
 
 A printed 91.0 pocket measured short on the long axis, so the pocket is **77.5 × 91.5** —
 1.5 mm of total margin on *both* axes, sized for print variance rather than for a press fit.
-Loose enough to rattle, so the glass is taped: tape runs across the glass **back** face, over
-the pocket edge, and onto the ledge at `pcb_face_y`.
+Loose enough to rattle on its own.
 
-That ledge — the step between the glass pocket and the larger PCB cavity — is the only frame
-surface behind the glass, and it is the reason the pads go where they do:
+What stops it moving is the frame itself. The interior is **shorter than the glass pocket**,
+so at each long-axis end there is **5.3 mm of solid frame directly behind the glass**: the
+glass is captured between the front lip and that shelf, and it cannot go anywhere without
+the frame coming apart. On the −X side there is another 1.5 mm of the same. Only the +X
+edge is open behind, and the pocket walls locate it there.
 
-| Edge | Ledge width | Usable |
-|---|---|---|
-| each long-axis end | **6.25 mm** | yes |
-| short-axis sides | 1.00 mm | no — too narrow to stick to |
-
-So two pads, one at each long-axis end, each **40 mm along the short axis × 5 mm into the
-ledge × 0.3 mm deep**, starting at the pocket edge so tape runs off the glass without a step
-to climb. Pad face lands at depth 2.35 against a glass back face at 2.45, so the tape dips
-0.1 mm rather than standing proud.
-
-**They are recessed because the PCB front face lands on that same ledge** (depth 2.65). Tape
-lying on top of it would push the whole module back by its own thickness. Recessed, tape
-thickness stops mattering.
-
-The cost is PCB seat: 5 mm of the 6.25 mm ledge is recessed over 40 mm of the 79.5 mm width,
-leaving 1.25 mm of full-height seat at each end plus the full ledge outboard of that 40 mm,
-and the 1.00 mm short-axis ledges untouched down both full sides. `frame_module` is clear.
-`tape_pad = false` removes them.
+Tape is still worth using, and each shelf carries a recess for it: **40 mm along the short
+axis × 4.5 mm into the shelf × 0.3 mm deep**, starting at the pocket edge so tape runs off
+the glass without a step to climb. Pad face lands at depth 2.35 against a glass back face
+at 2.45, so the tape dips 0.1 mm rather than standing proud. `tape_pad = false` removes
+them.
 
 ---
 
@@ -162,11 +169,11 @@ input** — a 1S cell drives it directly.
 
 ### One opening in the whole assembly
 
-`flash_port = false`, so the **charge port in the back plate is the only hole in the
-finished case.** The driver board's own USB-C — which is for *flashing*, not power — sits
-behind a **blind** pocket in the long-axis top end, so the jack has somewhere to sit (it
-stands 0.2 mm past the cavity wall, so the pocket is not optional), leaving 1.5 mm of skin.
-`frame_board` is clear.
+The **charge port in the back plate is the only hole in the finished case.** The driver
+board's own USB-C — which is for *flashing*, not power — used to sit against the top wall
+behind a blind pocket. Now that the board is stood on the −X side to meet the ribbon, its
+jack ends up in the middle of the interior instead, so there is nothing to cut and nothing
+to seal: the pocket is skipped entirely and the top wall is solid material.
 
 ⚠ **Flash the ESP32 before final assembly**, and leave OTA working. With the port closed
 there is no wired access to the driver board once the cover is on. Set `flash_port = true`
@@ -174,9 +181,15 @@ to cut the opening back through.
 
 ### Runtime
 
-The driver board sets it: Waveshare rate it at `<2 mA` idle, and only with **DIP switch 2
-off** so the CP2102 is unpowered — left on, a reviewer measured 10–13 mA in "deep sleep".
-So: **switch 2 on to program, off to run.**
+The driver board sets it: Waveshare rate it at `<2 mA` idle, and only with the **DIP switch
+set so the USB-UART is unpowered** — left powered, a reviewer measured 10–13 mA in "deep
+sleep". So: **switch on to program, off to run.** (On the Rev 3 schematic that chip is a
+**CH343**, not the CP2102 quoted on the older product page; SW1 gates its supply from
+VBUS.)
+
+The same schematic shows **GPIO 4 driving an S8050 that gates the panel's supply rail**
+(VDD5V → VDD5V′, feeding the EPD 3.3 V regulator). That is a real power saving — the panel
+rail can be switched off in sleep — and it means **GPIO 4 is not free for anything else.**
 
 At 2 mA and ~49 mAh/day, against the 3.6 V floor (which leaves about 85% of the cell's
 2000 mAh usable), runtime is **roughly five weeks** — about 35 days on battery, ~41 days
@@ -210,8 +223,9 @@ overcurrent, overdischarge and short protection independent of the charger.
 Not fitted, but the frame is ready. The display uses **GPIO 13 (CLK), 14 (DIN), 15 (CS),
 25 (BUSY), 26 (RST), 27 (DC)**; everything else on the headers is yours. For buttons that
 also wake the ESP32 from deep sleep you need RTC-capable pins — **GPIO 32/33 are the
-cleanest** if the headers bring them out, otherwise **GPIO 4**. Keep off 0, 2, 12 and 15:
-they are strapping pins, and a button held at reset changes boot behaviour.
+cleanest** if the headers bring them out. **Not GPIO 4** — on this board it gates the
+panel's supply rail. Keep off 0, 2, 12 and 15 as well: they are strapping pins, and a
+button held at reset changes boot behaviour.
 
 To add them later: set `btn_n = 3` in the SCAD file and re-export the frame. That cuts
 three Ø4.2 plunger holes in the +X wall (9.4 mm thick, the only wall with real meat in
@@ -222,26 +236,66 @@ buttons — the bezel is 10.5 mm and the module's PCB is directly behind it.
 
 ## What goes where
 
-Cavity is 79.5 × 104 mm, split into two bands across the long axis: the boards share one,
-the cell takes the other.
+Interior is 82.1 × 80.9 mm in two columns: the driver board against the −X wall — the wall
+the ribbon arrives at — and the cell with the charger above it on the +X side.
 
 ![Sheet 2 — internal layout](drawings/sheet2.svg)
 
 <img src="renders/08-internal-layout.png" width="46%" alt="Boards and cell in the cover"> <img src="renders/07-cover-inside.png" width="46%" alt="Cover inner face">
 
-The two boards fit side by side across one band — 43.2 + 2.7 + 29.46 = **75.36 mm in a
-79.5 mm cavity** — and the 2000 mAh cell (44 × 49) takes the other. No other split works:
-rotate the cell, or put one board beside it, and some board always ends up short of width.
-The half-size Perma-Proto doesn't fit at all — at 50.8 mm wide it leaves 28.9 mm beside it,
-narrower than any sensible cell, and forces the driver board onto a second layer.
+| | Size | Where |
+|---|---|---|
+| Driver board | 29.46 × 48.25 × ~6 | −X column, x −39.0…−9.6, z 31.7…80.0 |
+| 24-pin FPC socket | 16 wide, 12.5 from the board's near end | on the board's −X edge, centred at **z 44.2** |
+| Cell | 44 × 49 × 6.9 | +X column, low, centred x 16.2 / z 40.1 |
+| bq25185 charger | 32 × 26.3 × 7.2 | +X column, above the cell, centred z 80.5 |
+| USB-C breakout | 13 × 13 | below the driver, centred x −27 / z 21 |
+| Divider perfboard | 27.9 × 10.2 | above the driver, centred x −25.1 / z 87.3 |
+
+**The board's position along Z is the whole point of it.** The ribbon slot runs z 24.2 to
+64.2 and its centre is 44.2; the socket is 12.5 from the board's near end, so the board
+starts at 31.7 and the socket lands at 44.2 — opposite the middle of the slot. The ribbon
+comes around the glass edge, turns along the long axis, turns back out, and plugs in. No
+adapter, no extension.
+
+The −X rail is **split either side of the socket** so nothing stands in front of it, and
+the board sits 2 mm off the wall because the rail has to fit between the two.
+
+### Why not the half-size Perma-Proto
+
+It fits the interior (81.3 × 50.8) and both boards do fit on it — the driver turned 90° is
+50 along its length, the charger 26.3, against 81.3 available. What it leaves for the cell
+is a 28.7 mm-wide column and a 79.5 × 22.7 strip, and the cell is 44 × 49. So it only works
+with a much narrower cell (roughly 28 × 90 × 7, ~1500–1800 mAh) or a bigger frame.
+
+The quarter-size board is gone too, for the same reason the corners needed: it was the
+widest thing in the box. The charger now sits on four standoff pads of its own.
+
+### The divider perfboard: 27.9 × 10.2 mm
+
+**Cut 11 × 4 holes off a strip of 0.1″ perfboard** — 27.9 × 10.2 mm. It goes in the band
+between the top of the driver board and the +Z wall, which is **14.7 mm tall and 41.3 mm
+wide**, on four standoff pads, clear of the stand pocket so it has the full 20.95 mm of
+depth behind it.
+
+Forty-four holes is far more than the job needs — two 100 kΩ resistors and the wire to the
+ADC pin use about four between them — but the spare holes are somewhere to land the JST
+junctions, and four rows leaves **2.25 mm of slack top and bottom**. That slack is the
+point: perfboard cut by scoring and snapping does not come out to the millimetre. Five rows
+(12.7 mm) also fits the band if you cut accurately, at 1 mm of slack.
+
+`perf_fit = false` deletes it and its pads; `perf_w` / `perf_h` resize it.
+
+If you would rather screw it down than tape it, two of its holes open out to 2.7 mm and it
+takes M2.5 inserts in a pair of posts — the same trick as the cover screws.
 
 ### The ribbon relief sets the frame width
 
-The ribbon slot reaches **1.80 mm further out than the PCB cavity does**, so the frame's
-short axis is set by the notch, not by the electronics:
+The ribbon slot still reaches further out than the interior does, so the frame's short axis
+is set by the notch rather than by the electronics:
 
 ```
-SHORT AXIS driven by: THE RIBBON RELIEF  (cavity needs 45.15, ribbon needs 45.95)
+SHORT AXIS driven by: THE RIBBON RELIEF  (cavity needs 44.03, ribbon needs 45.95)
 OUTER: short axis 91.9 | long axis 108.4 | depth 25
 ```
 
@@ -270,39 +324,39 @@ ribbon axis, set `pan_off_x` to half the difference, and re-export. It is on the
 
 ![Sheet 3 — depth stack-up](drawings/sheet3.svg)
 
-The budget is set **over the cell**, not over the boards: **7.9 mm** clear there against
-**12.7 mm** over the PCBs. So whichever band the module's 8-pin header lands in has to be
-the *board* band — the boards clear a 9 mm mated PH2.0 plug, the cell does not. The model
-carries that header as real geometry (`mod_conn()`) and checks it; with the **assumed**
-position it reports
+With no PCB in front of it, the interior starts right behind the glass and the budget got
+easier: **20.95 mm** deep off the stand pocket, **16.4 mm** over it, and **9.5 mm** clear in
+front of the cell. The cell needs 6.9 of that 9.5.
 
-```
-HEADER vs CELL: needs 9, has 7.9 -> CLASH by 1.1 mm
-```
+Nothing is plugged into the back of the module — the panel's ribbon goes to the driver
+board's own socket — so the only stack that has to be watched is the **driver board**
+itself: PCB 1.6 plus its tallest part (the USB-C shell and the WROOM module are both about
+3.2), which the model carries as `drv_env = 6.0`. There is 16.4 mm of interior where the
+board crosses the stand pocket and 20.95 mm off it, so 6 fits either way.
 
-The driver board is tight on the same axis: its envelope is 30 × 50 × **15 mm**, there is
-14.8 mm clear over the stand puck (0.2 mm short), and `drv_module` reports 1050 mm³ against
-the module PCB — 0.7 mm through the board's whole footprint. Both are open, and both are
-in [TODO.md](TODO.md).
+**`drv_env` is an estimate, not a measurement**, and it is the number holding the depth
+budget up — it is the first item in [TODO.md](TODO.md). It used to be 15, which is about
+what a mated 8-pin cable would have added; with no such cable, both of the model's real
+interferences went away.
 
 ### Mounting
 
-- **Perma-Proto** — two M2.5 screw posts on the board's 1.4″ hole spacing plus four
-  corner pads.
-- **Driver board** — slides down into two printed rails, no holes needed, with a stop at
-  the bottom and its USB-C facing the top end.
+- **Charger** — four standoff pads. No screw posts: the breakout's hole spacing is not a
+  number this model has measured. Foam tape or a strap holds it.
+- **Driver board** — slides into printed rails, no holes needed, with a stop at the bottom.
+  The −X rail is split so it clears the FPC socket.
 - **Cell** — drops into a fenced pocket on a flat platform (the platform exists so the
   cell doesn't straddle the step where the stand pocket bulges into the interior).
   Foam tape holds it.
-- **Module** — bezel lip in front, two printed pads above and below the cell behind. Foam
-  tape on the pads takes up the tolerance stack.
+- **Panel** — bezel lip in front, 5.3 mm of solid frame behind each end. Tape in the
+  recesses if you want it; nothing else is needed.
 
 ### Ports
 
 | Port | Where | Purpose |
 |---|---|---|
-| USB-C breakout | **back face**, 25 mm left of centre, 15.5 mm up | Charging and running from the wall. Wired to the charger's VBUS + GND |
-| USB-C (Waveshare) | top wall, **blind** | Flashing, before assembly. DIP switch 2 on to program, **off** to run |
+| USB-C breakout | **back face**, 27 mm left of centre, 21 mm up | Charging and running from the wall. Wired to the charger's VBUS + GND |
+| USB-C (Waveshare) | on the driver board, mid-interior | Flashing, **before assembly**. Switch on to program, off to run |
 
 The rear port sits below the stand pocket and off the leg's centreline, and the back edge
 carries a 2 mm chamfer, so a plug clears the desk with the frame leaning back. A
@@ -355,16 +409,19 @@ printed parts exactly as the exporter leaves them, which is how they land on the
 
 | Part | STL | On the bed | Why | Filament |
 |---|---|---|---|---|
-| Frame | `stl/frame.stl` | front face down | 3835 mm² of first layer, and the cavity opens upward. The other way up, the 1.4 mm front plate has to bridge the whole 79.5 × 104 cavity | ~54 g |
-| Back cover | `stl/cover.stl` | outer back face down | 6802 mm² of first layer, posts and rails build upward | ~47 g |
+| Frame | `stl/frame.stl` | front face down | big flat first layer, and the interior opens upward. The other way up, the 1.4 mm front plate has to bridge the whole interior | ~66 g |
+| Back cover | `stl/cover.stl` | outer back face down | big flat first layer, standoffs and rails build upward | ~31 g |
 | Disc | `stl/disc.stl` | outer face down | symmetric | ~8 g |
 | Leg | `stl/leg.stl` | flat | symmetric | ~2 g |
-| Bezel test tile | `stl/bezel_test.stl` | front face down — **print this first** | same as the frame | ~20 g |
+| Bezel test tile | `stl/bezel_test.stl` | front face down — **print this first** | same as the frame | ~25 g |
 
 PLA or PETG, 0.2 mm layers, 4 perimeters, 15–20% infill. The bayonet groove and window
-chamfer are both cut at 45°, the only bridge is the 1.9 mm ceiling over the closed flash
-pocket, and only the 0.8 mm front chamfer overhangs — at 45°, on the first layer. Put the
-visible face on the bed; that surface finish is most of the look.
+chamfer are both cut at 45°, and only the 0.8 mm front chamfer overhangs — at 45°, on the
+first layer. Put the visible face on the bed; that surface finish is most of the look.
+
+The end walls are hollowed from the cover side (`lightening()`), leaving 2 mm of floor
+behind the glass shelf, a rim, and the screw bosses. Without it the two ends are solid
+frame and the part is 24 cm³ heavier for nothing.
 
 ### ⚠ The STLs are mirrored in X
 
@@ -385,8 +442,8 @@ The interference checks run on un-mirrored geometry and are unaffected either wa
 
 ### Hardware
 
-- 3 × M2.5 × 8 mm self-tapping screws (cover)
-- 2 × M2.5 × 6 mm (Perma-Proto)
+- 4 × **M3 heat-set inserts**, 4.6 OD × 5.7 long (frame, one near each corner)
+- 4 × **M3 countersunk screws**, 8 mm (cover)
 - Ø2 × 43 mm rod or filament offcut (kickstand pin)
 - Adafruit **bq25185 (#6091)**; 1S LiPo **2000 mAh, 694449, 44 × 49 × 6.9 mm** (the
   salvaged cell above)
@@ -413,7 +470,8 @@ bottom-band tile if you only want the corners.
 | Bodies per part | 1 each, all five |
 | Watertight | yes, all five |
 | `frame_module` at `cav_rel = 0`, `cav_r = 1.5`, `pan_rel = 1.4` | clear, 0.086 mm to spare on the sharp PCB corner |
-| Interference set (14) | 10 empty, 2 zero-volume (coincident faces), **2 real** |
+| Interference set (14) | 12 empty, 2 zero-volume (coincident faces), **0 real** |
+| Screws | 4, one near each corner, each in 13.75 mm of end wall |
 
 The two zero-volume results are `frame_cover` (the frame's rear face and the cover's front
 face are both at `y = body_d`) and `cover_board` (the board sits exactly on its standoffs);
@@ -422,18 +480,20 @@ emptiness. The other trap: when an intersection *is* empty, OpenSCAD writes no f
 so a script that reuses output paths silently re-reads the previous check's result — delete
 the output before every run.
 
-The two real ones both live on the depth axis, and both are open — see [TODO.md](TODO.md):
+Both of the interferences this model used to carry are gone, and both went for the same
+reason — they were consequences of hardware this build does not have:
 
-| Check | Volume | What it is |
+| Check | Was | Now |
 |---|---|---|
-| `conn_cell` | 154 mm³ | the module's mated 8-pin header against the cell, 1.1 mm too deep |
-| `drv_module` | 1050 mm³ | the driver board's 15 mm envelope against the module PCB — 0.7 mm through the board's whole 30 × 50 footprint |
+| `conn_cell` | 154 mm³ — a mated header against the cell | empty; `mod_header = false`, nothing stands off the panel |
+| `drv_module` | 1050 mm³ — a 15 mm driver stack against a module PCB | empty at `drv_env = 6.0`, the board with no cable mated to it, and no PCB to hit |
 
-`mock_module()` draws the PCB and the glass as **sharp-cornered squares**, matching the real
-parts, which is what makes `frame_module` able to catch a corner-fillet problem at all. The
-cavity corner radius carries the condition `cav_r ≤ 0.5·√2/(√2−1) = 1.707`; at `cav_r = 1.5`
-a sharp PCB corner sits 0.086 mm inside the arc, so **no cavity relief is needed** and the
-wall at a cavity corner is 2.2 mm instead of 1.0.
+One found during the relayout and fixed: the cover's −X driver rail sat 1.4 mm outside the
+interior wall and buried itself in the frame — 459 mm³ of `frame_cover`. The board now sits
+one rail-width off that wall, and the rail is split either side of the FPC socket.
+
+`mock_module()` draws the glass as a **sharp-cornered square**, matching the real part,
+which is what makes `frame_module` able to catch a corner-fillet problem at all.
 
 ### Thin, but deliberate: the −X wall
 
@@ -443,17 +503,39 @@ there are cavity-referenced:
 | | Wall left |
 |---|---|
 | outboard of the ribbon relief | 1.00 mm |
-| outboard of the register slot | 1.50 mm |
-| −X wall generally | 3.00 mm |
+| −X and +X walls generally | 4.92 mm |
+| each long-axis end wall | 13.75 mm — this is where the screws go |
 
 All printable at a 0.4 mm nozzle. The register slot is the one to watch if `W` ever comes
 down further — it thins 1:1 with the outer face.
 
-The screw spine is referenced to the **chamfered** back face, not to `W/2`:
-`scr_x = (cavity edge + (W/2 − rear_chf))/2`, which centres it in the material actually
-there — 1.00 mm to the cavity and 1.00 mm to the back-face edge, self-correcting at any
-width. Referenced to `W/2`, the counterbore edge lands tangent to the chamfer at
-`W = 91.9`, leaving 0.05 mm of material and breaking out onto the back face.
+**The screws are in the end walls, not the side walls.** 38.03 mm from the centreline and
+7 mm from each end, so each is near a corner and each sits in 13.75 mm of material — about
+4 mm clear of the outer edge and 4 mm clear of the interior. The side walls are 4.92 mm and
+could not have taken them, which is exactly the trap the old design was in: a single spine
+of three screws down the +X side, and the whole −X edge unfastened.
+
+### Heat-set inserts, and why the screws are countersunk
+
+The frame takes **M3 heat-set inserts**: a Ø4.0 bore, 6.7 mm deep, with a 0.4 mm lead-in
+chamfer so the insert starts square. There is 21 mm of solid frame behind each one, so
+depth is not a constraint — melt them in flush with the mating face.
+
+The screws are **countersunk, not socket cap**, because the cover is 1.4 mm thick. A 90°
+head sinks `(head Ø − clearance Ø) / 2` deep, which for M3 is **1.3 mm** — it disappears
+into a 1.4 mm plate. An M3 socket cap head is 3 mm tall and would stand 1.6 mm proud of the
+back face, and there is nowhere to put a boss to swallow it: the cover meets solid frame at
+that point, not open interior.
+
+| Size | Insert OD × L | Bore | Screw head, 90° | Cone depth |
+|---|---|---|---|---|
+| M2 | 3.2 × 4.0 | Ø2.9 × 5.0 | 4.0 | 0.8 |
+| M2.5 | 4.0 × 4.0 | Ø3.6 × 5.0 | 5.0 | 1.05 |
+| **M3** | **4.6 × 5.7** | **Ø4.0 × 6.7** | **6.0** | **1.3** |
+
+Insert dimensions vary by brand — measure yours and set `ins_d` / `ins_l`. Everything
+downstream follows, including the cover's clearance hole and countersink.
+`insert_fit = false` goes back to self-tapping screws into a Ø2.1 pilot.
 
 ### One known cosmetic defect
 
@@ -496,8 +578,14 @@ sh tools/mkrenders.sh           # renders/*.png, all of it from stl/
 
 | Want | Change |
 |---|---|
-| Keep the stock PH2.0 cable over the cell | `depth = 26.6` |
-| Header turns out to be on the other Z edge | swap the `bat_cz` / `proto_z1` / `drv_z1` bands, and move `flash` to the other wall |
+| A panel with a PCB behind it is used after all | `bare_panel = false` — the interior goes back to being sized by `pcb_w` / `pcb_h` |
+| A module with a mated header is used after all | `mod_header = true`, then `conn_h` / `conn_dx` / `conn_dz` |
+| Screws further from / closer to the corners | `scr_cx` / `scr_cz` |
+| A different insert size | `insert_size` = `"M2"` / `"M2.5"` / `"M3"`, or `ins_d` / `ins_l` directly |
+| Self-tapping screws instead of inserts | `insert_fit = false` |
+| A different perfboard | `perf_w` / `perf_h`, or `perf_fit = false` |
+| The electronics box needs to grow | `elec_clr`, `col_gap`; the interior follows, and so does the frame if it has to |
+| The driver board measures deeper than 6 mm | `drv_env`, and re-run `chk="drv_module"` |
 | Bigger cell | `bat_w` / `bat_h` / `bat_t` — the band is 79.5 wide × ~51 tall |
 | Three side buttons | `btn_n = 3`, then `btn_d` / `btn_sp` |
 | More/less white line | `white_show_short` / `white_show_long` |
@@ -525,6 +613,7 @@ openscad -o /tmp/chk.stl -D 'part="none"' -D 'chk="cover_board"' src/epaper_stan
 - [e-Paper ESP32 Driver Board pinout and "5V pin supports 3.6V to 5.5V… can be powered by a lithium battery"](https://spotpear.com/index/study/detail/id/375.html)
 - [e-Paper ESP32 Driver Board product page — `<2mA` low-power current with the CP2102 unpowered](https://www.waveshare.com/e-paper-esp32-driver-board.htm)
 - [Fasani — measured 10–13 mA "deep sleep" on this board](https://fasani.de/2020/04/19/waveshare-eink-esp32-driver-board/)
+- [e-Paper ESP32 Driver Board V3 schematic](https://files.waveshare.com/wiki/E-Paper-ESP32-Driver-Board/E-Paper_ESP32_Driver_Board_V3.pdf) — 24-pin FPC panel interface with the panel DC-DC on board, CH343 USB-UART behind SW1, GPIO 4 gating the panel rail
 - [Adafruit bq25185 charger, #6091](https://www.adafruit.com/product/6091) · [pinouts](https://learn.adafruit.com/adafruit-bq25185-usb-dc-solar-lithium-ion-polymer-charger/pinouts) · [TI BQ25185](https://www.ti.com/product/BQ25185)
 - [Perma-Proto quarter-size — 1.7″ × 2.0″, holes 1.4″ apart](https://www.pololu.com/product/2765)
 </content>

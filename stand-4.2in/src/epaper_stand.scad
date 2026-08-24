@@ -64,6 +64,18 @@
 part = "standing_p";
 
 /* [Display module] */
+// BARE PANEL: glass plus its FPC tail, and nothing else.  The tail plugs
+// straight into the 24-pin socket on the driver board, which carries the
+// panel's own DC-DC (VCOM / VSH / VSL / PREVGH / PREVGL) - that socket is the
+// bare-panel interface, which is why there is no PCB behind the glass and no
+// 8-pin header anywhere in the build.
+//
+// The 78.5 x 103 PCB below belongs to the *module* version of this panel.  It
+// is not fitted here.  It used to set the cavity, and through it the frame's
+// long axis and its 2.2 mm end walls - which is why there was nowhere to put a
+// corner screw.  With bare_panel the interior is sized by the electronics
+// instead, and the walls come back.
+bare_panel = true;
 pcb_w = 78.5; pcb_h = 103.0; pcb_t = 1.6;
 // glass and ink, MEASURED on the actual module (Andy, rev E):
 //   glass 76 x 90, sharp corners.  Dead border 3.0 on three sides,
@@ -110,12 +122,20 @@ rib_dep = 3.0;                      // ... and how far BEHIND the glass back fac
 wall_rib = 1.0;                     // minimum wall left outboard of the ribbon notch
 
 /* [Internal layout] */
-// Waveshare driver board, USB-C to +Z.  MEASURED ENVELOPE 30 x 50 x 15 - drv_env
-// is the one that matters for fit; drv_t is just the bare PCB, used by the rails
-// that grip its edge.  The model used to carry only drv_t, which made the board
-// look 1.6 mm thick and hid the depth problem completely.
-drv_w = 30.0; drv_h = 50.0; drv_t = 1.6;
-drv_env = 15.0;                               // total depth, board + tallest part
+// Waveshare e-Paper ESP32 Driver Board Rev 3.  Outline 48.25 x 29.46, off the
+// vendor's mechanical drawing.  drv_t is just the bare PCB, used by the rails
+// that grip its edge; drv_env is the whole stack and is what decides fit.
+//
+// drv_env was 15, which is about what an 8-pin cable mated onto the board would
+// have added.  There is no such cable: the panel plugs into the board's own
+// 24-pin FPC socket.  6.0 is PCB 1.6 + the tallest part on it (USB-C shell and
+// the WROOM module are both ~3.2) + margin.  STILL AN ESTIMATE - put a caliper
+// on it, because it sets the whole depth budget.
+drv_w = 29.46; drv_h = 48.25; drv_t = 1.6;
+drv_env = 6.0;                                // total depth, board + tallest part
+// the 24-pin FPC socket sits on one long edge - the panel ribbon has to reach it
+fpc_w = 16.0;                                 // socket body, along the board edge
+fpc_off = 12.5;                               // socket centre, from the near end
 drv_stand = 2.0; drv_clr = 0.4;
 proto_w = 43.2; proto_h = 50.8; proto_t = 1.6; // Perma-Proto quarter-size
 proto_hole_sp = 35.6; proto_stand = 3.0;
@@ -126,7 +146,14 @@ chg_part = "bq25185";
 chg_w = (chg_part == "bq25185") ? 32.0 : 25.4;
 chg_h = (chg_part == "bq25185") ? 26.3 : 20.3;
 chg_t = 7.2;                                   // board + USB-C jack, off the proto face
-// ---- module 8-pin header keep-out.  MEASURE ALL FOUR ON YOUR BOARD.
+// ---- module 8-pin header keep-out.  NOT FITTED on this build (confirmed by
+// Andy and by the Rev 3 schematic): the panel's own 24-pin FPC goes straight
+// into the socket on the driver board, so nothing stands off the back of the
+// module waiting to be plugged into.  The keep-out that used to live here was
+// an assumption, and it was the only thing producing the cell clash and the
+// depth = 26.6 recommendation.  Set true and fill in the numbers if a module
+// with a mated header is ever used instead.
+mod_header = false;
 conn_h  = 9.0;   // how far it stands off the PCB back, mated, incl. wire bend
 conn_w  = 20.0;  // envelope across X
 conn_l  = 7.0;   // envelope across Z
@@ -158,7 +185,28 @@ white_show_long  = 1.3;             // -> win_h = 84.8 + 2.6 = 87.4
 corner_r = 5.0; cav_r = 1.5; front_chf = 0.8; win_chf = 0.9; rear_chf = 2.0;
 
 /* [Fixings] */
-scr_pilot = 2.1; scr_free = 2.8; scr_head = 5.4; scr_cb = 1.6; scr_depth = 8.0;
+// FASTENERS.  Heat-set inserts melted into the frame, countersunk screws down
+// through the cover.  Countersunk because the cover is only 1.4 mm thick: a
+// 90 deg head sinks (head_d - free_d)/2 deep, which for M3 is 1.3 mm and fits;
+// a socket cap head is 3 mm tall and would stand proud of the back face.
+//
+// Insert dimensions vary by brand - these are the common "CNC Kitchen" sizes.
+// MEASURE YOURS and set ins_d / ins_l to suit; the bore is deliberately a touch
+// under the insert's outside diameter, which is what the knurl bites into.
+//
+//   size   insert OD x L    bore        screw head (90 deg csk)
+//   M2     3.2 x 4.0        2.9 x 5.0   4.0
+//   M2.5   4.0 x 4.0        3.6 x 5.0   5.0
+//   M3     4.6 x 5.7        4.0 x 6.7   6.0     <- default
+insert_size = "M3";
+insert_fit  = true;             // false = self-tapping screws into a pilot hole
+ins_d = (insert_size == "M2") ? 2.9 : (insert_size == "M2.5") ? 3.6 : 4.0;
+ins_l = (insert_size == "M3") ? 5.7 : 4.0;
+ins_relief = 1.0;               // extra bore past the insert for displaced plastic
+scr_free = (insert_size == "M2") ? 2.4 : (insert_size == "M2.5") ? 2.9 : 3.4;
+scr_head = (insert_size == "M2") ? 4.0 : (insert_size == "M2.5") ? 5.0 : 6.0;
+scr_csk  = (scr_head - scr_free)/2;              // 90 deg head, so cone depth = radius step
+scr_pilot = 2.1; scr_cb = 1.6; scr_depth = 8.0;  // the self-tapping alternative
 
 /* [Glass retention] */
 // The pocket is deliberately loose, so the glass is taped rather than press-
@@ -183,66 +231,199 @@ disc_d = 54.0; disc_t = 4.0; pocket_c = 0.35;
 lug_out = 1.3; lug_t = 1.3; lug_ang = 26; gap_ang = 34;
 groove_y0 = 1.4;                 // groove position, from the pocket floor
 pivot_r = 16.0; pin_d = 2.0;
+// Hinge pin fit.  0.1 total is a push fit for a ground 2 mm steel rod and a
+// firm turn for a 1.75 mm filament offcut once its ends are flared.  Open it up
+// if the hinge is too stiff to move; close it if the leg flops.
+pin_fit = 0.10;
 leg_len = 35.4; leg_w = 12.0; leg_t = 3.4; leg_slot_c = 0.5;
 foot_r = 5.0; stop_ang = 58;     // deployed leg angle from straight down
+// HOLDING THE LEG.  Two different jobs, and they do not want the same mechanism.
+//
+// FOLDED, the leg has to resist being knocked open while the frame is carried.
+// A catch lip at the far end of the slot does that: the foot snaps under it, and
+// the leg flexes the 0.35 mm needed because the foot is 30 mm from the pivot and
+// has all the leverage in the world.
+//
+// DEPLOYED, the frame's own weight already holds the leg into its hard stop -
+// it cannot fold while it is carrying anything.  What it needs is enough hinge
+// friction not to swing shut while the frame is picked up, which is a pin fit,
+// not a detent.
+//
+// A detent on the hub was tried and does not work at this size: the heel flat -
+// the surface that makes the hard stop - eats exactly the part of the hub that
+// would have to carry it.
+catch_snap = true;
+catch_p = 0.65;    // how far the lip overhangs the slot -> ~0.3 mm of flex,
+                   //   about 5 N at the foot, which is a firm but easy click
+catch_t = 1.2;     // lip thickness
+catch_c = 0.35;    // interference the foot has to flex past
 detent_r = 22.0; detent_d = 3.0; // rotation detents
+
+/* [Driver carrier] */
+// The Waveshare board has no mounting holes, but it does have its two 19-pin
+// male headers soldered on.  So it plugs into female headers on a carrier
+// perfboard, and the carrier is what gets held down.  Any double-sided 0.1"
+// prototype board does; this is sized for a 30 x 70 cut, which leaves ~14 mm of
+// spare board below the driver for the battery divider.
+carrier_fit = true;
+carrier_w = 30.0; carrier_h = 70.0; carrier_t = 1.6;
+hdr_h = 8.5;        // female header body: driver's underside to the carrier face
+carrier_pad = 4.5;  // standoff pad diameter under each carrier corner
+
+/* [Rear USB-C pigtail] */
+// Panel-mount pigtail with its own snap-in catch, so the cover just needs a
+// precise rectangular hole and clear space behind it - no printed rails.
+// MEASURE THE ACTUAL PART: snap fits live or die on a tenth of a millimetre.
+port_snap = true;
+snap_w = 15.0; snap_h = 8.0;   // the opening
+snap_d = 10.0;                 // how far the body reaches into the interior
+snap_c = 0.15;                 // per-side clearance on the opening
+
+/* [Perfboard] */
+// The divider and any wiring junctions live on a scrap of 0.1" perfboard in the
+// band above the driver board.  11 x 4 holes: two 100k resistors and the ADC
+// wire need about four holes between them, so 44 is generous, and it leaves
+// 2.25 mm of slack top and bottom - worth having, because perfboard cut by
+// scoring and snapping does not come out to the millimetre.  11 x 5 (12.7)
+// also fits the band if you cut accurately.
+perf_fit = false;    // folded into the driver carrier - see carrier_* above
+perf_w = 27.9;   // 11 holes at 2.54
+perf_h = 10.16;  //  4 holes at 2.54
+perf_t = 1.6;
+
+/* [Interior] */
+elec_clr = 1.0;      // slack around the electronics box, all round
+col_gap  = 2.0;      // between the driver column and the cell column
+end_wall = 7.95;     // frame material beyond the interior, each long-axis end
+side_wall = 3.0;     // minimum material outboard of the interior, each side
 
 /* [Quality] */
 $fa = 2; $fs = 0.4;
 
 // ------------------------------------------------------------- derived
 body_d = depth - cover_t;
-cav_w = pcb_w + 2*mod_clr;  cav_h = pcb_h + 2*mod_clr;
 pcb_px = -act_off_x;  pan_px = pcb_px + pan_off_x;
-half_cav = abs(pcb_px) + pcb_w/2 + mod_clr + wall;          // set by the PCB cavity
+
+// ---- the interior, and what it has to hold ---------------------------------
+// -X column: the driver board, hard against the wall the ribbon arrives at.
+// +X column: the cell, with the charger above it.
+bat_col_w = bat_w + 2*bat_clr + 2*bat_fence;
+// the driver sits one rail-width off the -X wall: the rail has to stand inboard
+// of the board's edge, and it has to stay inside the cavity
+drv_inset = 3.0 - 1.0;                  // = drv_rail - 1.0, spelled out early
+elec_w = (carrier_fit ? carrier_w : drv_inset + drv_w)
+         + col_gap + max(bat_col_w, chg_w);
+elec_h = max(carrier_fit ? carrier_h : drv_h, bat_h + 2*bat_clr + col_gap + chg_h);
+// THE GLASS HAS TO GET IN.  It goes into its pocket from the back, so the
+// interior opening has to be bigger than the glass in both directions - there
+// is no other way in, because the front lip is smaller than the glass.  An
+// interior sized only by the electronics comes out 80.9 on the long axis and
+// walls a 90 mm glass out by 9 mm: a case that cannot be assembled.
+glass_pass_w = pan_w + 2*pan_clr_w + 1.0;
+glass_pass_h = pan_h + 2*pan_clr_h + 1.0;
+cav_w = bare_panel ? max(elec_w + 2*elec_clr, glass_pass_w) : pcb_w + 2*mod_clr;
+cav_h = bare_panel ? max(elec_h + 2*elec_clr, glass_pass_h) : pcb_h + 2*mod_clr;
+
+half_cav = bare_panel ? cav_w/2 + side_wall
+                      : abs(pcb_px) + pcb_w/2 + mod_clr + wall;
 half_rib = abs(pcb_px + pan_off_x - pan_w/2 - pan_clr_w - rib_clr) + wall_rib;
 W = 2*max(half_cav, half_rib);      // whichever the -X side actually needs
-H = pcb_h + 2*(mod_clr + wall);
+// with no PCB the long axis is set by the glass and by leaving enough material
+// at each end to put a screw through
+H = bare_panel ? max(pan_h + 2*pan_clr_h + 2*end_wall, cav_h + 2*end_wall)
+               : pcb_h + 2*(mod_clr + wall);
 Zc = H/2;
 win_w = act_w + 2*white_show_short;  win_h = act_h + 2*white_show_long;
-pcb_face_y = front_t + pan_t + 0.2;
-mod_back   = pcb_face_y + pcb_t;
+pcb_face_y = front_t + pan_t + 0.2;                  // the ledge behind the glass
+mod_back   = pcb_face_y + (bare_panel ? 0 : pcb_t);  // where the interior starts
 pk_d   = disc_d + 2*pocket_c;
 pk_dep = disc_t + 0.15;
 pk_y0  = depth - pk_dep;               // pocket floor
 cov_in_pk = pk_y0 - pk_floor_t;        // cover inner face over the pocket
 cov_in    = depth - cover_t;
-cav_x0 = pcb_px - cav_w/2; cav_x1 = pcb_px + cav_w/2;
+// the interior is centred in the frame; only the GLASS is offset (to centre the
+// ink), and with no PCB the two no longer have to share a datum
+cav_cx = bare_panel ? 0 : pcb_px;
+cav_x0 = cav_cx - cav_w/2; cav_x1 = cav_cx + cav_w/2;
 cav_z0 = Zc - cav_h/2;     cav_z1 = Zc + cav_h/2;
-// -Z band: the cell, centred and low (keeps the centre of mass down)
-bat_cx = pcb_px;
-bat_cz = cav_z0 + 0.7 + (bat_h + 2*bat_clr)/2;
+// ribbon cutout centre, measured from the glass's -Z edge
+rib_cz  = (Zc + pan_off_z) - pan_h/2 + rib_off + rib_w/2;
+rib_far = pan_h - rib_off - rib_w;      // what is left on the other side
+// corner screw posts, sized here because the interior layout works around them
+post_s  = 9.0;                           // post cross-section, square-ish
+post_y0 = front_t + pan_t + 1.0;         // starts clear of the glass, so the
+                                         //   glass can still pass on its way in
+// ---- carrier board: -X column.  The driver plugs into female headers on it,
+// so the carrier is what the case holds and the driver just pushes down into
+// place.  The carrier runs past the driver at the bottom, and that spare board
+// is where the battery divider goes.
+carrier_cx = cav_x0 + elec_clr + carrier_w/2;
+carrier_z0 = cav_z0 + post_s + 1.0;
+carrier_z1 = carrier_z0 + carrier_h;
+carrier_cz = (carrier_z0 + carrier_z1)/2;
+carrier_back = cov_in_pk;                         // sits at the puck face
+carrier_face = carrier_back - carrier_t;
+// ---- driver board, on the carrier, positioned so the 24-pin socket on its -X
+// edge lines up with the middle of the ribbon slot.  Then the tail plugs
+// straight in and no FPC extension is needed.
+drv_rail = 3.0;                                   // only used without a carrier
+drv_cx = carrier_fit ? carrier_cx : cav_x0 + drv_inset + drv_w/2;
+drv_x0 = drv_cx - drv_w/2;  drv_x1 = drv_cx + drv_w/2;
+drv_z0 = bare_panel ? rib_cz - fpc_off : cav_z1 - 1.0 - drv_h;
+drv_z1 = drv_z0 + drv_h;
+drv_cz = (drv_z0 + drv_z1)/2;
+drv_back = carrier_fit ? carrier_face - hdr_h : cov_in_pk - 0.5;
+fpc_z = drv_z0 + fpc_off;                         // socket centre, on the -X edge
+// ---- the perfboard, in the band between the driver board and the +Z wall
+perf_cx = cav_x0 + elec_clr + perf_w/2 + 1.0;
+perf_cz = (drv_z1 + cav_z1)/2;
+perf_back = cov_in_pk - 0.5;
+// ---- +X column: the cell low (keeps the centre of mass down), charger above it
+bat_cx = bare_panel ? (carrier_fit ? carrier_cx + carrier_w/2 : drv_x1)
+                      + col_gap + bat_col_w/2 : pcb_px;
+bat_cz = cav_z0 + post_s + 1.0 + bat_clr + bat_h/2;   // clear of the corner posts
 bat_x0 = bat_cx - bat_w/2;
-// +Z band: Perma-Proto (-X) and Waveshare driver board (+X), side by side
-proto_x0 = cav_x0 + 0.5;  proto_x1 = proto_x0 + proto_w;
-proto_z1 = cav_z1 - 1.0;  proto_z0 = proto_z1 - proto_h;
-proto_cx = proto_x0 + proto_w/2;  proto_cz = (proto_z0 + proto_z1)/2;
-proto_back = cov_in_pk - 0.5;                     // sits on the puck face
+// ---- charger breakout, on its own standoffs.  The quarter Perma-Proto it used
+// to ride on is gone: it was the widest thing in the box and it took a corner
+// the screws needed.  Divider and wiring go on a scrap of perfboard or straight
+// onto the charger's pads.
+// the charger is narrow enough to sit inboard of the corner posts, so it can
+// run past them in Z
+chg_x_c = cav_x1 - post_s - chg_w/2 - 1.0;
+chg_back = cov_in_pk - 0.5;
+proto_x0 = chg_x_c - chg_w/2;  proto_x1 = chg_x_c + chg_w/2;   // kept for the docs
+proto_z0 = bat_cz + bat_h/2 + bat_clr + col_gap;
+proto_z1 = proto_z0 + chg_h;
+proto_cx = chg_x_c;  proto_cz = (proto_z0 + proto_z1)/2;
+proto_back = chg_back;
 proto_face = proto_back - proto_t;
-drv_rail = 3.0;                                   // rail width, overlaps the board 1.0
-drv_x0 = proto_x1 + 0.7 + (drv_rail - 1.0);  drv_x1 = drv_x0 + drv_w;
-drv_z1 = cav_z1 - 1.0;  drv_z0 = drv_z1 - drv_h;
-drv_cx = drv_x0 + drv_w/2;  drv_cz = (drv_z0 + drv_z1)/2;
-drv_back = cov_in_pk - 0.5;                       // PCB back face
 // module retention pads, in the strips either side of the cell
-pad_w = 13.0; pad_h = 22.0;
-pad_x = [bat_cx - bat_w/2 - bat_clr - bat_fence - 1.0 - pad_w/2,
-         bat_cx + bat_w/2 + bat_clr + bat_fence + 1.0 + pad_w/2];
-pad_z = [bat_cz + 12.0, bat_cz - 2.0];
+// Glass retention pads on the cover.  With the interior open behind the glass -
+// which it has to be, or the glass cannot get in - these are what press it
+// against the front lip.  One at each long-axis end, over the glass's dead
+// border, sized and placed to miss the electronics: the top one is short
+// because the charger runs up that side.
+pad_h = 3.5;      // a rib, not a slab: it only has to touch the glass
+pad_w = bare_panel ? [36.0, 20.0] : [13.0, 13.0];
+pad_x = bare_panel
+  ? [pan_px - 2.0, pan_px - 12.0]
+  : [bat_cx - bat_w/2 - bat_clr - bat_fence - 1.0 - 6.5,
+     bat_cx + bat_w/2 + bat_clr + bat_fence + 1.0 + 6.5];
+pad_z = bare_panel
+  ? [cav_z0 + pad_h/2 + 1.0, cav_z1 - pad_h/2 - 1.0]
+  : [bat_cz + 12.0, bat_cz - 2.0];
 // module 8-pin header, absolute
 conn_x = pcb_px + conn_dx;
 conn_z = Zc + conn_dz;
 conn_y0 = mod_back;                 // front face of the keep-out
 conn_y1 = mod_back + conn_h;        // back face
-// ribbon cutout centre, measured from the glass's -Z edge
-rib_cz  = (Zc + pan_off_z) - pan_h/2 + rib_off + rib_w/2;
-rib_far = pan_h - rib_off - rib_w;      // what is left on the other side
 // ports
 // rear-facing USB-C breakout: receptacle flush in the back cover
-ucb_x = -34.4; ucb_z = 11.0;                      // port centre on the back
+ucb_x = bare_panel ?  22.0 : -34.4;               // port centre on the back
+ucb_z = bare_panel ?  12.5 :  11.0;               // low, and off the leg centreline
 ucb_w = 13.0; ucb_l = 13.0; ucb_t = 1.6;          // breakout board
 port_w = 9.5; port_h = 3.7;                       // receptacle opening
-chg_z = proto_z0 + 3.0 + chg_h/2;                 // bq24074, low end of the Perma-Proto
+chg_z = bare_panel ? proto_cz : proto_z0 + 3.0 + chg_h/2;
 flash_x = drv_cx;                                 // Waveshare USB-C, +Z wall
 flash_y0 = 10.6; flash_y1 = 17.4;
 // The driver board's own USB-C is for FLASHING, not power - power comes in at the
@@ -258,8 +439,24 @@ flash_wall = 1.5;                                 // skin left over the jack whe
 // counterbore is deepest.  Referencing W/2 put the counterbore edge at 43.95
 // against a back face that also ends at 43.95 once W came down to 91.9: tangent,
 // 0.05 mm of material.  Referencing (W/2 - rear_chf) keeps it centred at any W.
-scr_x = (pcb_px + pcb_w/2 + mod_clr + (W/2 - rear_chf))/2;
-scr_z = [14.0, Zc, H - 14.0];
+// Screws.  With a bare panel the end walls are ~14 mm of solid material, so a
+// screw goes near each corner THROUGH THE END WALL - no post inside the box,
+// nothing stolen from the electronics, and no corner left unfastened.  The old
+// single spine of three, all on the +X side, left the whole -X edge unscrewed;
+// there was nowhere else for them to go while a phantom PCB set the cavity.
+scr_x = (cav_x1 + (W/2 - rear_chf))/2;   // legacy spine position, kept for reference
+// Corner screws sit on POSTS inside the interior corners, not in the end walls.
+// The walls cannot take them: the interior has to be big enough for the glass
+// to drop through, which leaves about 8 mm at each end - not enough for a M3
+// head once the rear chamfer has taken its 2 mm.  The posts start behind the
+// glass plane so the glass still passes.
+scr_cx = cav_w/2 - post_s/2;
+scr_cz = post_s/2;                       // measured in from the interior edge
+scr_pos = bare_panel
+  ? [[-scr_cx, cav_z0+scr_cz], [scr_cx, cav_z0+scr_cz],
+     [-scr_cx, cav_z1-scr_cz], [scr_cx, cav_z1-scr_cz]]
+  : [[scr_x, 14.0], [scr_x, Zc], [scr_x, H-14.0]];
+scr_z = [14.0, Zc, H - 14.0];            // legacy, still used by the drawings
 hub_z = W/2;                           // = distance to the bottom edge in BOTH orientations
 theta_dep = 180 - stop_ang;            // leg swing angle when deployed
 
@@ -280,7 +477,7 @@ module pie(r,a0,a1){ intersection(){ circle(r=r);
 
 module outer(d,y0=0){ prism(W,H,corner_r,d,0,Zc,y0); }
 module cavity(d,y0){
-    translate([pcb_px,y0,Zc]) xzext(d) relieved(cav_w,cav_h,cav_r,cav_rel); }
+    translate([cav_cx,y0,Zc]) xzext(d) relieved(cav_w,cav_h,cav_r,cav_rel); }
 // glass pocket: snug on all four sides, corner relief so the sharp
 // glass corners seat, and a local notch where the ribbon folds back
 module panel_pocket(d, y0){
@@ -300,15 +497,25 @@ module panel_pocket(d, y0){
 // edge and reaches tape_reach outward into the ledge, so tape can run off the
 // glass back face and onto frame without a step to climb.  Recessed tape_dep
 // into the ledge, which is also the PCB's seat.
+// The ledge behind the glass, at each long-axis end, and the tape pads recessed
+// into it.  Which side of the glass pocket that ledge sits on flips with
+// bare_panel: with a module PCB the cavity is LONGER than the pocket and the
+// ledge is outboard of it; with a bare panel the interior is SHORTER, so the
+// ledge is inboard - solid frame directly behind the ends of the glass, which
+// is also what traps the glass in place.
+ledge_end = bare_panel ? (pan_h + 2*pan_clr_h)/2 - cav_h/2
+                       : cav_h/2 - (pan_h + 2*pan_clr_h)/2;
+tape_r    = min(tape_reach, max(0, ledge_end - 0.8));
+tape_at   = bare_panel ? cav_h/2 + tape_r/2
+                       : (pan_h + 2*pan_clr_h)/2 + tape_r/2;
+
 module tape_pocket(){
-    if (tape_pad) {
-        ph = pan_h + 2*pan_clr_h;
+    if (tape_pad && tape_r > 0.5)
         for (sz=[-1,1])
-            translate([pan_px, pcb_face_y - tape_dep,
-                       (Zc + pan_off_z) + sz*(ph/2 + tape_reach/2)])
+            translate([pan_px, pcb_face_y - tape_dep, (Zc + pan_off_z) + sz*tape_at])
                 xzext(tape_dep + 0.01)
-                    square([tape_len, tape_reach + 0.02], center=true);
-    } }
+                    square([tape_len, tape_r + 0.02], center=true);
+    }
 module window_cut(){
     zw = Zc + act_off_z;
     prism(win_w,win_h,3,front_t+1,0,zw,-0.5);
@@ -318,10 +525,16 @@ module usb_cut(){
     // Waveshare board's USB-C.  Straight through the long-axis +Z wall when
     // flash_port, otherwise a BLIND pocket: same clearance for the jack, but
     // flash_wall of skin left so the outside stays unbroken.
+    //
+    // With the board stood on the -X side to meet the ribbon, its jack ends up
+    // in the middle of the interior instead of against the top wall, so there
+    // is nothing to cut and nothing to seal: the pocket is skipped entirely.
+    // The jack is then reachable only before the cover goes on - flash first.
     fz0 = cav_z1 - 1.2;
     fz1 = flash_port ? H + 2 : H - flash_wall;
-    translate([flash_x-usb_w/2, flash_y0, fz0])
-        cube([usb_w, flash_y1-flash_y0, fz1-fz0]);
+    if (drv_z1 + 1.2 >= cav_z1)
+        translate([flash_x-usb_w/2, flash_y0, fz0])
+            cube([usb_w, flash_y1-flash_y0, fz1-fz0]);
     // optional side buttons through the +X wall
     if (btn_n > 0) for(i=[0:btn_n-1])
         translate([cav_x1-1.0, 9.0, Zc + (i-(btn_n-1)/2)*btn_sp])
@@ -337,10 +550,19 @@ module rear_chamfer(){
                 prism(W-2*rear_chf-2*e, H-2*rear_chf-2*e,
                       max(corner_r-rear_chf-e,0.5), 0.01, 0, Zc, depth+e); } } }
 module rear_port_cut(){
-    // slot for the breakout board through the register lip ...
-    translate([ucb_x, cov_in-2.2, ucb_z]) xzext(2.5) rrect(ucb_w+1.0, port_h+0.8, 0.8);
-    // ... and the receptacle opening through the skin
-    translate([ucb_x, cov_in-0.3, ucb_z]) xzext(cover_t+0.6) rrect(port_w, port_h, 1.2); }
+    if (port_snap) {
+        // the pigtail's own catch holds it; all the case owes it is a precise
+        // hole and snap_d of clear space behind
+        translate([ucb_x, cov_in-0.1, ucb_z]) rotate([-90,0,0])
+            linear_extrude(cover_t+0.2)
+                offset(r=0.6) offset(delta=-0.6)
+                    square([snap_w+2*snap_c, snap_h+2*snap_c], center=true);
+    } else {
+        // slot for the breakout board through the register lip ...
+        translate([ucb_x, cov_in-2.2, ucb_z]) xzext(2.5) rrect(ucb_w+1.0, port_h+0.8, 0.8);
+        // ... and the receptacle opening through the skin
+        translate([ucb_x, cov_in-0.3, ucb_z]) xzext(cover_t+0.6) rrect(port_w, port_h, 1.2);
+    } }
 module front_chamfer(){
     difference(){
         translate([-W,-0.01,-H]) cube([2*W,front_chf+0.01,3*H]);
@@ -350,48 +572,110 @@ module front_chamfer(){
 // ================================================================== frame
 module frame(){
     difference(){
-        outer(body_d);
-        window_cut();
-        front_chamfer();
-        panel_pocket(pcb_face_y-front_t+0.01, front_t);
-        tape_pocket();
-        cavity(body_d, pcb_face_y);
-        usb_cut();
+        // the shell, then the corner posts put back INSIDE the interior the
+        // cavity just carved out - they have to be added after the cut, or the
+        // cavity erases them
+        union(){
+            difference(){
+                outer(body_d);
+                window_cut();
+                front_chamfer();
+                panel_pocket(pcb_face_y-front_t+0.01, front_t);
+                tape_pocket();
+                cavity(body_d, pcb_face_y);
+                usb_cut();
+                rear_chamfer();
+                prism(cav_w+2.0, cav_h+2.0, cav_r+1.0, 1.1, cav_cx, Zc, body_d-1.0);
+                for(sz=[-1,1]) translate([cav_cx-cav_w/2-1.5, body_d-2.5, Zc+sz*32-5])
+                    cube([1.6, 2.1, 10]);
+                lightening();
+            }
+            corner_posts();
+        }
+        // and the fastener holes last, so they go through the posts
+        for(sp=scr_pos) translate([sp[0],body_d+0.1,sp[1]]) rotate([90,0,0])
+            if (insert_fit) {
+                cylinder(d=ins_d, h=ins_l+ins_relief);          // insert bore
+                cylinder(d1=ins_d+0.8, d2=ins_d, h=0.4);        // lead-in, so the
+            } else                                              //   insert starts square
+                cylinder(d=scr_pilot, h=scr_depth);
         rear_chamfer();
-        for(z=scr_z) translate([scr_x,body_d+0.1,z]) rotate([90,0,0])
-            cylinder(d=scr_pilot,h=scr_depth);
-        prism(cav_w+2.0, cav_h+2.0, cav_r+1.0, 1.1, pcb_px, Zc, body_d-1.0);
-        for(sz=[-1,1]) translate([pcb_px-cav_w/2-1.5, body_d-2.5, Zc+sz*32-5])
-            cube([1.6, 2.1, 10]);
     } }
+
+// A post in each interior corner, from behind the glass plane back to the cover
+// face, tied into both walls.  This is what the corner screws thread into.
+module corner_posts(){
+    if (bare_panel)
+        for (sx=[-1,1], sz=[-1,1])
+            translate([sx*(cav_w/2 - post_s/2), post_y0,
+                       Zc + sz*(cav_h/2 - post_s/2)])
+                xzext(body_d - post_y0)
+                    offset(r=1.0) offset(delta=-1.0)
+                        square([post_s, post_s], center=true);
+}
+
+// The end walls carry the corner screws, so they are 13.75 mm of solid frame -
+// about 24 cm3 of filament doing nothing between the screw bosses.  This takes
+// the middle of each one back out from the cover side, leaving 2 mm of floor
+// behind the glass ledge, a rim all round, and the bosses untouched.
+// The two end walls are solid frame doing nothing but joining the sides.  This
+// takes the middle out of each from the cover side, leaving a 2 mm floor and a
+// 2 mm rim.  The corner screws are inboard on their posts now, so nothing here
+// has to dodge them.
+lgt_w  = cav_w - 8.0;
+lgt_y0 = mod_back + 2.0;
+module lightening(){
+    if (bare_panel)
+        for (sz=[-1,1]) {
+            z0 = sz > 0 ? cav_z1 + 2.0 : 2.5;
+            z1 = sz > 0 ? H - 2.5      : cav_z0 - 2.0;
+            if (z1 - z0 > 3.0)
+                translate([cav_cx, lgt_y0, (z0+z1)/2]) xzext(body_d - lgt_y0 + 0.1)
+                    rrect(lgt_w, z1 - z0, 1.5);
+        } }
 
 // ================================================================= cover
 module cover(){
     difference(){
         union(){
-            prism(cav_w+1.7, cav_h+1.7, cav_r+1.0, cover_t+1.0, pcb_px, Zc, body_d-1.0);
+            prism(cav_w+1.7, cav_h+1.7, cav_r+1.0, cover_t+1.0, cav_cx, Zc, body_d-1.0);
             outer(cover_t, body_d);
             // ---- module retention: full ribs top and bottom, two short
             //      segments on +X so the cell can use the middle of that edge
             for(i=[0,1])
                 translate([pad_x[i], mod_back+rib_gap, pad_z[i]])
-                    xzext(cov_in-mod_back-rib_gap) square([pad_w, pad_h],center=true);
+                    xzext(cov_in-mod_back-rib_gap)
+                        square([pad_w[i], bare_panel ? pad_h : 22.0],center=true);
 
             // ---- solid puck the stand pocket is bored into
             cylY(pk_d+2*lug_out+6, depth-cov_in_pk, 0, hub_z, cov_in_pk);
-            // ---- Waveshare driver board: side rails, slides in from +Z
-            for(sx=[-1,1])
-                translate([drv_cx + sx*(drv_w/2+drv_clr+drv_rail/2-1.0), drv_back-2.6, drv_cz])
+            // ---- driver carrier: four standoff pads at its corners.  The
+            // driver itself is not held by the case at all - it plugs into
+            // female headers on the carrier and the carrier is what is held.
+            if (carrier_fit)
+                for(sx=[-1,1],sz=[-1,1])
+                    translate([carrier_cx+sx*(carrier_w/2-3.5), cov_in,
+                               carrier_cz+sz*(carrier_h/2-3.5)])
+                        rotate([90,0,0]) cylinder(d=carrier_pad+2.0, h=cov_in-carrier_back);
+            else {
+                translate([drv_cx + drv_w/2+drv_clr+drv_rail/2-1.0, drv_back-2.6, drv_cz])
                     xzext(cov_in-drv_back+2.6) square([drv_rail, drv_h-1.0],center=true);
-            translate([drv_cx, drv_back-2.6, drv_z0-1.4])
-                xzext(cov_in-drv_back+2.6) square([drv_w-2, 2.0],center=true);
-            // ---- Perma-Proto: two screw posts + four corner pads
-            for(sz=[-1,1])
-                translate([proto_cx, cov_in, proto_cz+sz*proto_hole_sp/2])
-                    rotate([90,0,0]) cylinder(d=6.5, h=cov_in-proto_back);
+                translate([drv_cx - (drv_w/2+drv_clr+drv_rail/2-1.0), drv_back-2.6, drv_cz])
+                    xzext(cov_in-drv_back+2.6) square([drv_rail, drv_h-1.0],center=true);
+                translate([drv_cx, drv_back-2.6, drv_z0-1.4])
+                    xzext(cov_in-drv_back+2.6) square([drv_w-2, 2.0],center=true);
+            }
+            // ---- perfboard: four standoff pads in the band above the driver
+            if (bare_panel && perf_fit)
+                for(sx=[-1,1],sz=[-1,1])
+                    translate([perf_cx+sx*(perf_w/2-2.5), cov_in, perf_cz+sz*(perf_h/2-2.5)])
+                        rotate([90,0,0]) cylinder(d=4.0, h=cov_in-perf_back);
+            // ---- charger breakout: four standoff pads, foam tape or a strap
+            //      holds it.  No screw posts: the board's hole spacing is not
+            //      one of the numbers this model has measured.
             for(sx=[-1,1],sz=[-1,1])
-                translate([proto_cx+sx*(proto_w/2-4), cov_in, proto_cz+sz*(proto_h/2-4)])
-                    rotate([90,0,0]) cylinder(d=6.0, h=cov_in-proto_back);
+                translate([chg_x_c+sx*(chg_w/2-3.5), cov_in, chg_z+sz*(chg_h/2-3.5)])
+                    rotate([90,0,0]) cylinder(d=6.0, h=cov_in-chg_back);
             // ---- battery fence (cell is held by foam tape inside it)
             // flat platform so the cell doesn't straddle the puck's step
             translate([bat_cx, cov_in_pk, bat_cz])
@@ -401,29 +685,35 @@ module cover(){
             for(sx=[-1,1])
                 translate([bat_cx+sx*(bat_w/2+bat_clr+bat_fence/2), cov_in_pk-bat_t, bat_cz])
                     xzext(bat_t) square([bat_fence, bat_h-14],center=true);
-            // ---- guide rails for the rear USB-C breakout board
-            //   full depth to the skin, but split in X so they miss the receptacle
-            for(sz=[-1,1], sx=[-1,1])
-                translate([ucb_x + sx*(ucb_w/2-0.5), cov_in-ucb_l,
-                           ucb_z + sz*(ucb_t/2+0.15+1.0)])
-                    xzext(ucb_l) square([2.0, 2.0],center=true);
+            // ---- guide rails for a bare USB-C breakout board.  Not needed for
+            // a pigtail that snaps into the skin on its own - that just wants a
+            // clean opening and clear air behind it.
+            if (!port_snap)
+                for(sz=[-1,1], sx=[-1,1])
+                    translate([ucb_x + sx*(ucb_w/2-0.5), cov_in-ucb_l,
+                               ucb_z + sz*(ucb_t/2+0.15+1.0)])
+                        xzext(ucb_l) square([2.0, 2.0],center=true);
             // ---- cover tongues that hook under the -X wall
             for(sz=[-1,1]) translate([cav_x0-1.4, body_d-2.4, Zc+sz*32-4.5])
                 cube([1.4,1.6,9]);   // 1.3 left them 0.1 short of the lip, floating
         }
-        // board slot + a lip on each rail
-        translate([drv_cx, drv_back-drv_t-0.15, (drv_z0+cav_z1+6)/2])
-            xzext(drv_t+0.3) square([drv_w+2*drv_clr, cav_z1+6-drv_z0],center=true);
-        // proto screw pilots
-        for(sz=[-1,1])
-            translate([proto_cx, cov_in+0.1, proto_cz+sz*proto_hole_sp/2])
-                rotate([90,0,0]) cylinder(d=scr_pilot, h=cov_in-proto_back+cover_t);
+        // board slot + a lip on each rail - rail mounting only
+        if (!carrier_fit)
+            translate([drv_cx, drv_back-drv_t-0.15, (drv_z0+cav_z1+6)/2])
+                xzext(drv_t+0.3) square([drv_w+2*drv_clr, cav_z1+6-drv_z0],center=true);
+
         pocket_cut();
         rear_port_cut();
         rear_chamfer();
-        for(z=scr_z){
-            translate([scr_x, body_d-0.1, z]) rotate([-90,0,0]) cylinder(d=scr_free,h=cover_t+1.2);
-            translate([scr_x, depth-scr_cb, z]) rotate([-90,0,0]) cylinder(d=scr_head,h=scr_cb+1); }
+        for(sp=scr_pos){
+            translate([sp[0], body_d-0.1, sp[1]]) rotate([-90,0,0])
+                cylinder(d=scr_free, h=cover_t+1.2);
+            if (insert_fit)      // 90 deg countersink, opening at the back face
+                translate([sp[0], depth-scr_csk, sp[1]]) rotate([-90,0,0])
+                    cylinder(d1=scr_free, d2=scr_head, h=scr_csk+0.01);
+            else
+                translate([sp[0], depth-scr_cb, sp[1]]) rotate([-90,0,0])
+                    cylinder(d=scr_head, h=scr_cb+1); }
         usb_cut();
     } }
 
@@ -449,6 +739,13 @@ module disc(){
     slot_w = leg_w + 2*leg_slot_c;
     slot_z0 = -(pivot_r + leg_w/2 + 1.2);
     slot_z1 = leg_len - pivot_r + 3.5;
+    // where the foot sits when the leg is folded, and where the catch lip goes
+    foot_z = leg_len - pivot_r;
+    union(){
+    if (catch_snap)    // catch lip: the foot snaps under it when the leg closes
+        translate([0, disc_t - catch_t, foot_z - catch_p/2 + 0.01])
+            rotate([0,90,0]) rotate([0,0,45])
+                cylinder(d=catch_p*2*sqrt(2), h=slot_w+3.0, center=true, $fn=4);
     difference(){
         union(){
             cylY(disc_d, disc_t, 0,0,0);
@@ -464,12 +761,12 @@ module disc(){
         translate([-slot_w/2, -0.01, slot_z0])
             cube([slot_w, disc_t+0.02, slot_z1-slot_z0]);
         translate([-disc_d, disc_t/2, -pivot_r]) rotate([0,90,0])
-            cylinder(d=pin_d+0.25, h=2*disc_d);
+            cylinder(d=pin_d+pin_fit, h=2*disc_d);
         // soften the outer edge
         translate([0, disc_t-0.6, 0]) rotate([-90,0,0])
             difference(){ cylinder(d=disc_d+2,h=0.7);
                           cylinder(d1=disc_d-1.2,d2=disc_d+0.1,h=0.65); }
-    } }
+    } } }
 
 // =================================================================== leg
 // leg-local: pin at the origin, leg along +Z, thickness in Y centred on 0
@@ -479,8 +776,9 @@ module leg_shape(){
             hull(){ circle(d=leg_w); translate([0,leg_len-foot_r]) circle(r=foot_r); }
         // heel flat: the pocket floor, seen from the leg at the deployed angle
         rotate([theta_dep,0,0]) translate([-50,-60-disc_t/2,-200]) cube([100,60,400]);
-        // axle
-        translate([-leg_w,0,0]) rotate([0,90,0]) cylinder(d=pin_d+0.15,h=2*leg_w);
+        // axle.  Snug on purpose: the hinge friction is what stops a deployed
+        // leg swinging shut when the frame is picked up.
+        translate([-leg_w,0,0]) rotate([0,90,0]) cylinder(d=pin_d+pin_fit,h=2*leg_w);
         // nail chamfer on the tip
         translate([0,leg_t/2,leg_len]) rotate([0,90,0])
             translate([0,0,-leg_w]) cylinder(r=2.2,h=2*leg_w,$fn=4);
@@ -493,11 +791,14 @@ module leg(){ rotate([90,0,0]) leg_shape(); }
 
 // ============================================================== hardware
 module mod_conn(){
-    translate([conn_x, conn_y0, conn_z]) xzext(conn_h)
-        square([conn_w, conn_l], center=true); }
+    if (mod_header)
+        translate([conn_x, conn_y0, conn_z]) xzext(conn_h)
+            square([conn_w, conn_l], center=true); }
 module mock_module(){
-    // SHARP corners, as measured - this is what the relief has to swallow
-    color("#dcdcd4") translate([pcb_px,pcb_face_y,Zc]) xzext(pcb_t) square([pcb_w,pcb_h],center=true);
+    // SHARP corners, as measured - this is what the relief has to swallow.
+    // The PCB only exists on the module version of the panel.
+    if (!bare_panel)
+        color("#dcdcd4") translate([pcb_px,pcb_face_y,Zc]) xzext(pcb_t) square([pcb_w,pcb_h],center=true);
     color("#f6f6f1") translate([pan_px,front_t+0.15,Zc+pan_off_z]) xzext(pan_t) square([pan_w,pan_h],center=true);
     color("#23262b") translate([0,front_t-0.3,Zc+act_off_z]) xzext(pan_t+0.3) rrect(act_w,act_h,0.5);
     color("#b5651d") mod_conn(); }
@@ -509,16 +810,33 @@ module mock_board(){
         xzext(3.1) square([drv_w*0.7, drv_h*0.45],center=true);
     color("#c9ccd1") translate([drv_cx, drv_back-drv_t-3.2, drv_z1+0.6])
         xzext(3.2) square([9, 1.2],center=true);
-    // Perma-Proto quarter + bq24074 riding on it
-    color("#1b5e20") translate([proto_cx, proto_face, proto_cz])
-        xzext(proto_t) square([proto_w, proto_h],center=true);
-    color("#155799") translate([proto_x0+chg_w/2+1, proto_face-chg_t+proto_t, chg_z])
-        xzext(chg_t-proto_t) square([chg_w, chg_h],center=true);
-    // rear USB-C breakout, standing perpendicular in its guide rails
-    color("#155799") translate([ucb_x, cov_in-ucb_l/2, ucb_z])
-        rotate([0,0,0]) translate([-ucb_w/2,-ucb_l/2,-ucb_t/2]) cube([ucb_w,ucb_l,ucb_t]);
-    color("#c9ccd1") translate([ucb_x, cov_in-4.0, ucb_z])
-        xzext(3.9) rrect(port_w-0.4, port_h-0.4, 1.0);
+    // charger breakout: on its own standoffs when the panel is bare (no
+    // Perma-Proto), riding on the proto otherwise
+    if (!bare_panel)
+        color("#1b5e20") translate([proto_cx, proto_face, proto_cz])
+            xzext(proto_t) square([proto_w, proto_h],center=true);
+    color("#155799") translate([bare_panel ? chg_x_c : proto_x0+chg_w/2+1,
+                                bare_panel ? chg_back-chg_t : proto_face-chg_t+proto_t,
+                                chg_z])
+        xzext(bare_panel ? chg_t : chg_t-proto_t) square([chg_w, chg_h],center=true);
+    // driver carrier
+    if (carrier_fit)
+        color("#8a6a3a") translate([carrier_cx, carrier_face, carrier_cz])
+            xzext(carrier_t) square([carrier_w, carrier_h],center=true);
+    // divider / wiring perfboard
+    if (bare_panel && perf_fit)
+        color("#8a6a3a") translate([perf_cx, perf_back-perf_t, perf_cz])
+            xzext(perf_t) square([perf_w, perf_h],center=true);
+    // rear USB-C: a snap-in pigtail body, or a breakout board in rails
+    if (port_snap)
+        color("#2b2b2b") translate([ucb_x, cov_in-snap_d, ucb_z])
+            xzext(snap_d) square([snap_w, snap_h], center=true);
+    else {
+        color("#155799") translate([ucb_x, cov_in-ucb_l/2, ucb_z])
+            translate([-ucb_w/2,-ucb_l/2,-ucb_t/2]) cube([ucb_w,ucb_l,ucb_t]);
+        color("#c9ccd1") translate([ucb_x, cov_in-4.0, ucb_z])
+            xzext(3.9) rrect(port_w-0.4, port_h-0.4, 1.0);
+    }
     mock_cell(); }
 // The driver board's FULL measured envelope (drv_env deep), for clearance checks.
 // Deliberately NOT part of mock_board(): the cover's rails overlap the PCB edge by
@@ -532,9 +850,11 @@ module mock_cell(){
         xzext(bat_t) rrect(bat_w, bat_h, 2); }
 module mock_pcbs(){
     translate([drv_cx, drv_back-drv_t, drv_cz]) xzext(drv_t) square([drv_w,drv_h],center=true);
-    translate([proto_cx, proto_face, proto_cz]) xzext(proto_t) square([proto_w,proto_h],center=true);
-    translate([proto_x0+chg_w/2+1, proto_face-chg_t+proto_t, chg_z])
-        xzext(chg_t-proto_t) square([chg_w,chg_h],center=true); }
+    if (!bare_panel)
+        translate([proto_cx, proto_face, proto_cz]) xzext(proto_t) square([proto_w,proto_h],center=true);
+    translate([bare_panel ? chg_x_c : proto_x0+chg_w/2+1,
+               bare_panel ? chg_back-chg_t : proto_face-chg_t+proto_t, chg_z])
+        xzext(bare_panel ? chg_t : chg_t-proto_t) square([chg_w,chg_h],center=true); }
 
 // ============================================================== assembly
 module stand(rot=0, theta=0){
@@ -612,7 +932,8 @@ else if (part=="guts"){ color("#5a5e67") cover(); mock_board(); }
 echo(str("OUTER: short axis ",W," | long axis ",H," | depth ",depth));
 echo(str("BEZEL: short-axis sides ",W/2-win_w/2,"  long-axis ends ",H/2-win_h/2,
          " | white shown: short ",white_show_short," long ",white_show_long));
-echo(str("walls: +X ",W/2-(pcb_px+pcb_w/2+mod_clr),"  -X ",W/2+(pcb_px-pcb_w/2-mod_clr)));
+echo(str("walls: +X ",W/2-cav_x1,"  -X ",W/2+cav_x0,
+         " | end walls ",cav_z0," / ",H-cav_z1));
 echo(str("interior behind PCB ",cov_in-mod_back,"  over stand pocket ",cov_in_pk-mod_back));
 echo(str("DRIVER BOARD envelope ",drv_w," x ",drv_h," x ",drv_env,
          " | clear depth over the puck ",cov_in_pk-mod_back," -> ",
@@ -621,7 +942,9 @@ echo(str("DRIVER BOARD envelope ",drv_w," x ",drv_h," x ",drv_env,
          " | off the puck ",cov_in-mod_back));
 echo(str("CLEARANCE in front of: cell ",cov_in_pk-bat_t-mod_back,
          " | proto pcb ",proto_face-mod_back," | driver pcb ",drv_back-drv_t-mod_back));
-echo(str("module 8-pin header allowance assumed ",conn_h," mm"));
+echo(str("module 8-pin header: ", mod_header
+         ? str("allowance assumed ",conn_h," mm")
+         : "NOT FITTED - the panel's 24-pin FPC goes straight to the driver board"));
 rib_x = pan_px - (pan_w/2 + pan_clr_w) - rib_clr;   // outermost point of the notch
 echo(str("RIBBON RELIEF reaches x ",rib_x," | frame outer face ",-W/2,
          " | wall left ",rib_x-(-W/2)));
@@ -638,30 +961,61 @@ echo(str("RIBBON RELIEF along the long axis: ",rib_w," long | ",rib_off,
          rib_off+rib_w+rib_far," against a ",pan_h," glass"));
 echo(str("TAPE PADS: ", tape_pad
          ? str("2 (both long-axis ends), ",tape_len," along the short axis x ",
-               tape_reach," into the ledge x ",tape_dep," deep | ledge is ",
-               cav_h/2-(pan_h+2*pan_clr_h)/2," so ",
-               cav_h/2-(pan_h+2*pan_clr_h)/2-tape_reach,
-               " of full-height PCB seat left at each end | pad face at depth ",
+               tape_r," into the ledge x ",tape_dep," deep | ledge is ",ledge_end,
+               " (", bare_panel ? "solid frame behind the ends of the glass"
+                                : "PCB seat", "), ",ledge_end-tape_r,
+               " of it left | pad face at depth ",
                pcb_face_y-tape_dep," vs glass back ",front_t+pan_t)
          : "none"));
-echo(str("FLASH PORT: ", flash_port ? "OPEN through the long-axis +Z wall"
+echo(str("FLASH PORT: ", (drv_z1 + 1.2 < cav_z1)
+         ? str("no wall to cut - the driver's USB-C sits inside the interior, ",
+               "jack end at z ", drv_z1, ". Flash before assembly")
+         : flash_port ? "OPEN through the long-axis +Z wall"
          : str("CLOSED - blind pocket to z ",H-flash_wall,", ",flash_wall,
                " skin left; jack reaches ",drv_z1+1.2)));
 echo(str("RELIEFS: pocket relief R",pan_rel," | cavity relief R",cav_rel,
          " (cav_r ",cav_r,", limit 1.707 for a sharp PCB corner)",
          " | wall left at a cavity corner ",wall-cav_rel));
+echo(str("FASTENERS: ", insert_fit
+         ? str(insert_size," heat-set inserts, bore dia ",ins_d," x ",ins_l+ins_relief,
+               " deep into a ",post_s," mm corner post | ",insert_size,
+               " countersunk screws, head ",scr_head,", cone ",scr_csk,
+               " deep in a ",cover_t," cover")
+         : str("self-tapping into a ",scr_pilot," pilot, ",scr_depth," deep")));
+echo(str("REAR PORT: ", port_snap
+         ? str("snap-in pigtail, opening ",snap_w+2*snap_c," x ",snap_h+2*snap_c,
+               " (part ",snap_w," x ",snap_h,", clearance ",snap_c," a side), centred x ",
+               ucb_x," z ",ucb_z," | needs ",snap_d," clear behind, has ",
+               cov_in - (ucb_z < cav_z0 + 30 ? 0 : 0) - mod_back)
+         : str("breakout board in rails, opening ",port_w," x ",port_h)));
+echo(str("DRIVER MOUNT: ", carrier_fit
+         ? str("carrier ",carrier_w," x ",carrier_h," on four pads, driver plugs into ",
+               hdr_h," female headers | driver face to glass plane ",
+               drv_back - drv_t - mod_back, " for parts standing ",drv_env-drv_t," proud")
+         : "printed side rails"));
+echo(str("CORNER POSTS: ",post_s," x ",post_s," from y ",post_y0," back to ",body_d,
+         " | screws at x +/-",scr_cx,", z ",cav_z0+scr_cz," and ",cav_z1-scr_cz));
+echo(str("GLASS FITS THROUGH: interior ",cav_w," x ",cav_h," vs glass ",
+         pan_w," x ",pan_h," -> ", (cav_w > pan_w && cav_h > pan_h) ? "yes" : "NO"));
+echo(str("PERFBOARD: ", (bare_panel && perf_fit)
+         ? str(perf_w," x ",perf_h," (",round(perf_w/2.54)," x ",round(perf_h/2.54),
+               " holes at 2.54), centred x ",perf_cx,
+               " z ",perf_cz," | band above the driver is ",cav_z1-drv_z1," tall")
+         : "not fitted"));
 echo(str("GLASS POCKET ",pan_w+2*pan_clr_w," x ",pan_h+2*pan_clr_h,
          "  (margin ",2*pan_clr_w," on the short axis, ",2*pan_clr_h,
          " on the long axis) | pocket relief R",pan_rel));
 echo(str("charger ",chg_part," ",chg_w," x ",chg_h," x ",chg_t,
          " | fits proto: ", (chg_w <= proto_w-2 && chg_h <= proto_h-2) ? "yes" : "NO",
          " | clear in front: ", proto_face - chg_t + proto_t - mod_back));
-echo(str("HEADER vs CELL: needs ",conn_h,", has ",cov_in_pk-bat_t-mod_back,
-         " -> ", (conn_h > cov_in_pk-bat_t-mod_back)
-                 ? str("CLASH by ",conn_h-(cov_in_pk-bat_t-mod_back)," mm")
-                 : "clear"));
-echo(str("depth needed for a ",conn_h," mm header over the cell: ",
-         conn_h + bat_t + mod_back + 5.95 + 0.5));
+if (mod_header) {
+  echo(str("HEADER vs CELL: needs ",conn_h,", has ",cov_in_pk-bat_t-mod_back,
+           " -> ", (conn_h > cov_in_pk-bat_t-mod_back)
+                   ? str("CLASH by ",conn_h-(cov_in_pk-bat_t-mod_back)," mm")
+                   : "clear"));
+  echo(str("depth needed for a ",conn_h," mm header over the cell: ",
+           conn_h + bat_t + mod_back + 5.95 + 0.5));
+}
 
 // ---------------------------------------------------------------- checks
 // Render one of these and look for solid geometry.  READ THIS FIRST: the test is
@@ -675,9 +1029,10 @@ echo(str("depth needed for a ",conn_h," mm header over the cell: ",
 // that reuses output paths silently re-reads the PREVIOUS check's result.  Delete
 // the output before every run or you will chase a clash that is not there.
 // Measured state of all 14, by volume:
-//   10 genuinely empty | frame_cover + cover_board zero-volume touches (by design)
-//   conn_cell  154 mm3 REAL - 8-pin header vs cell, wants depth 26.1
-//   drv_module 1050 mm3 REAL - the driver board's 15 mm envelope vs the module PCB
+//   12 genuinely empty | frame_cover + cover_board zero-volume touches (by design)
+//   NO real interference.  The two that used to be real were both consequences of
+//   hardware this build does not have: conn_cell (154 mm3) was a mated 8-pin
+//   header, drv_module (1050 mm3) was that header's cable inflating drv_env to 15.
 chk = "";
 module disc_f(rot=0){ translate([0,pk_y0,hub_z]) rotate([0,rot,0]) disc(); }
 module leg_f(rot=0,th=0){ translate([0,pk_y0,hub_z]) rotate([0,rot,0]) leg_placed(th); }
@@ -704,7 +1059,7 @@ if (part=="params") {
    ["front_chf",front_chf],["rear_chf",rear_chf],["win_chf",win_chf],
    ["pcb_w",pcb_w],["pcb_h",pcb_h],["pcb_t",pcb_t],["pan_w",pan_w],["pan_h",pan_h],
    ["pan_t",pan_t],["pan_clr_w",pan_clr_w],["pan_clr_h",pan_clr_h],["rib_off",rib_off],["rib_cz",rib_cz],["rib_far",rib_far],["pan_r",pan_r],["pan_rel",pan_rel],
-   ["rib_w",rib_w],["rib_clr",rib_clr],["rib_dep",rib_dep],["wall_rib",wall_rib],
+   ["mod_header",mod_header?1:0],["fpc_w",fpc_w],["fpc_off",fpc_off],["rib_w",rib_w],["rib_clr",rib_clr],["rib_dep",rib_dep],["wall_rib",wall_rib],
    ["bez_thin",bez_thin],["bez_thick",bez_thick],["half_cav",half_cav],["half_rib",half_rib],["act_w",act_w],["act_h",act_h],["act_off_x",act_off_x],["act_off_z",act_off_z],["pan_off_z",pan_off_z],
    ["mod_clr",mod_clr],["pcb_px",pcb_px],["pan_px",pan_px],
    ["cav_w",cav_w],["cav_h",cav_h],["cav_x0",cav_x0],["cav_x1",cav_x1],
@@ -721,19 +1076,30 @@ if (part=="params") {
    ["leg_t",leg_t],["foot_r",foot_r],["stop_ang",stop_ang],["theta_dep",theta_dep],
    ["leg_slot_c",leg_slot_c],["detent_d",detent_d],
    ["bat_w",bat_w],["bat_h",bat_h],["bat_t",bat_t],["bat_x0",bat_x0],
-   ["bat_cx",bat_cx],["bat_cz",bat_cz],["bat_clr",bat_clr],["bat_fence",bat_fence],["pad_w",pad_w],["pad_h",pad_h],
+   ["bat_cx",bat_cx],["bat_cz",bat_cz],["bat_clr",bat_clr],["bat_fence",bat_fence],["pad_w0",pad_w[0]],["pad_w1",pad_w[1]],["pad_h",pad_h],
    ["pad_x0",pad_x[0]],["pad_x1",pad_x[1]],["pad_z0",pad_z[0]],["pad_z1",pad_z[1]],
    ["proto_w",proto_w],["proto_h",proto_h],["proto_t",proto_t],["proto_x0",proto_x0],
    ["proto_x1",proto_x1],["proto_cx",proto_cx],["proto_cz",proto_cz],
    ["proto_z0",proto_z0],["proto_z1",proto_z1],["proto_back",proto_back],["proto_face",proto_face],
    ["proto_hole_sp",proto_hole_sp],
-   ["drv_w",drv_w],["drv_h",drv_h],["drv_t",drv_t],["drv_x0",drv_x0],["drv_x1",drv_x1],
+   ["drv_env",drv_env],["drv_w",drv_w],["drv_h",drv_h],["drv_t",drv_t],["drv_x0",drv_x0],["drv_x1",drv_x1],
    ["drv_cx",drv_cx],["drv_cz",drv_cz],["drv_z0",drv_z0],["drv_z1",drv_z1],
    ["drv_back",drv_back],["drv_clr",drv_clr],["drv_rail",drv_rail],
    ["ucb_x",ucb_x],["ucb_z",ucb_z],["ucb_w",ucb_w],["ucb_l",ucb_l],["ucb_t",ucb_t],
    ["port_w",port_w],["port_h",port_h],
    ["chg_part",chg_part],["chg_w",chg_w],["chg_h",chg_h],["chg_t",chg_t],["chg_z",chg_z],["chg_x",proto_x0+chg_w/2+1],
    ["print_mirror",print_mirror?1:0],["flash_port",flash_port?1:0],["flash_wall",flash_wall],["flash_x",flash_x],["flash_y0",flash_y0],["flash_y1",flash_y1],["usb_w",usb_w],
+   ["bare_panel",bare_panel?1:0],["perf_fit",perf_fit?1:0],["perf_w",perf_w],["perf_h",perf_h],
+   ["perf_cx",perf_cx],["perf_cz",perf_cz],["perf_t",perf_t],
+   ["carrier_fit",carrier_fit?1:0],["carrier_w",carrier_w],["carrier_h",carrier_h],
+   ["carrier_cx",carrier_cx],["carrier_cz",carrier_cz],["carrier_z0",carrier_z0],["carrier_z1",carrier_z1],
+   ["catch_p",catch_p],["pin_fit",pin_fit],["snap_c",snap_c],["carrier_t",carrier_t],["hdr_h",hdr_h],
+   ["port_snap",port_snap?1:0],["snap_w",snap_w],["snap_h",snap_h],["snap_d",snap_d],
+   ["post_s",post_s],["post_y0",post_y0],
+   ["insert_fit",insert_fit?1:0],["ins_d",ins_d],["ins_l",ins_l],["scr_csk",scr_csk],["cav_cx",cav_cx],["scr_cx",scr_cx],["scr_cz",scr_cz],
+   ["chg_x_c",chg_x_c],["chg_back",chg_back],["fpc_z",fpc_z],["ledge_end",ledge_end],
+   ["tape_r",tape_r],["tape_at",tape_at],["lgt_w",lgt_w],["lgt_y0",lgt_y0],
+   ["elec_clr",elec_clr],["col_gap",col_gap],["end_wall",end_wall],["side_wall",side_wall],
    ["scr_x",scr_x],["scr_z0",scr_z[0]],["scr_z1",scr_z[1]],["scr_z2",scr_z[2]],
    ["scr_pilot",scr_pilot],["scr_free",scr_free],["scr_head",scr_head],
    ["rib_t",rib_t],["rib_inset",rib_inset],["rib_pad",rib_pad],["rib_gap",rib_gap],

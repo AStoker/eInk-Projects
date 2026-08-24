@@ -87,7 +87,14 @@ pan_rel = 1.4;                      // pocket corner relief, so sharp glass corn
 rib_w   = 40.0;                     // ribbon relief LONG, along the long axis.  rib_off
                                     // pins the bottom end, so raising this extends the
                                     // slot upward (+Z) only - it does not recentre.
-rib_off = 17.0;                     // glass -Z edge to the near edge of that cutout
+rib_off = 15.0;                     // glass -Z edge to the near edge of the slot.
+                                    // Measured 15 from the top edge and 35 from the other,
+                                    // and the model's -Z IS that top edge - do not "fix"
+                                    // this to 35, that was the reversed reading.
+                                    // 15 + 40 + 35 = 90, closing against the 90 glass.
+                                    // Corroborated by conn_dz: the 8-pin header sits on
+                                    // the -Z strip too, which is where the ribbon has to
+                                    // fold back to.
 rib_clr = 3.0;                      // lateral room it needs to bend back around (OUT)
 rib_dep = 3.0;                      // ... and how far BEHIND the glass back face that
                                     // relief runs, so the 180 deg fold has somewhere to
@@ -97,7 +104,12 @@ rib_dep = 3.0;                      // ... and how far BEHIND the glass back fac
 wall_rib = 1.0;                     // minimum wall left outboard of the ribbon notch
 
 /* [Internal layout] */
-drv_w = 29.46; drv_h = 48.25; drv_t = 1.6;    // Waveshare board, USB-C to +Z
+// Waveshare driver board, USB-C to +Z.  MEASURED ENVELOPE 30 x 50 x 15 - drv_env
+// is the one that matters for fit; drv_t is just the bare PCB, used by the rails
+// that grip its edge.  The model used to carry only drv_t, which made the board
+// look 1.6 mm thick and hid the depth problem completely.
+drv_w = 30.0; drv_h = 50.0; drv_t = 1.6;
+drv_env = 15.0;                               // total depth, board + tallest part
 drv_stand = 2.0; drv_clr = 0.4;
 proto_w = 43.2; proto_h = 50.8; proto_t = 1.6; // Perma-Proto quarter-size
 proto_hole_sp = 35.6; proto_stand = 3.0;
@@ -234,7 +246,13 @@ flash_y0 = 10.6; flash_y1 = 17.4;
 // Flash the ESP32 BEFORE final assembly if this is false.
 flash_port = false;
 flash_wall = 1.5;                                 // skin left over the jack when closed
-scr_x = (pcb_px + pcb_w/2 + mod_clr + W/2)/2;
+// Screw spine, centred in the material actually available at the BACK face - not
+// between the cavity and W/2.  The cover's rear chamfer takes rear_chf off each
+// side by the time it reaches y=depth, which is exactly where the screw-head
+// counterbore is deepest.  Referencing W/2 put the counterbore edge at 43.95
+// against a back face that also ends at 43.95 once W came down to 91.9: tangent,
+// 0.05 mm of material.  Referencing (W/2 - rear_chf) keeps it centred at any W.
+scr_x = (pcb_px + pcb_w/2 + mod_clr + (W/2 - rear_chf))/2;
 scr_z = [14.0, Zc, H - 14.0];
 hub_z = W/2;                           // = distance to the bottom edge in BOTH orientations
 theta_dep = 180 - stop_ang;            // leg swing angle when deployed
@@ -496,6 +514,13 @@ module mock_board(){
     color("#c9ccd1") translate([ucb_x, cov_in-4.0, ucb_z])
         xzext(3.9) rrect(port_w-0.4, port_h-0.4, 1.0);
     mock_cell(); }
+// The driver board's FULL measured envelope (drv_env deep), for clearance checks.
+// Deliberately NOT part of mock_board(): the cover's rails overlap the PCB edge by
+// 1.0 mm on purpose to grip it, so an envelope inside mock_board() makes those
+// rails read as clashes while they are doing their job.
+module drv_envelope(){
+    translate([drv_cx, drv_back-drv_env, drv_cz])
+        xzext(drv_env) square([drv_w, drv_h], center=true); }
 module mock_cell(){
     color("#3b3b46") translate([bat_cx, cov_in_pk-bat_t, bat_cz])
         xzext(bat_t) rrect(bat_w, bat_h, 2); }
@@ -583,6 +608,11 @@ echo(str("BEZEL: short-axis sides ",W/2-win_w/2,"  long-axis ends ",H/2-win_h/2,
          " | white shown: short ",white_show_short," long ",white_show_long));
 echo(str("walls: +X ",W/2-(pcb_px+pcb_w/2+mod_clr),"  -X ",W/2+(pcb_px-pcb_w/2-mod_clr)));
 echo(str("interior behind PCB ",cov_in-mod_back,"  over stand pocket ",cov_in_pk-mod_back));
+echo(str("DRIVER BOARD envelope ",drv_w," x ",drv_h," x ",drv_env,
+         " | clear depth over the puck ",cov_in_pk-mod_back," -> ",
+         (drv_env <= cov_in_pk-mod_back) ? "fits"
+           : str("SHORT by ",drv_env-(cov_in_pk-mod_back)," mm"),
+         " | off the puck ",cov_in-mod_back));
 echo(str("CLEARANCE in front of: cell ",cov_in_pk-bat_t-mod_back,
          " | proto pcb ",proto_face-mod_back," | driver pcb ",drv_back-drv_t-mod_back));
 echo(str("module 8-pin header allowance assumed ",conn_h," mm"));
@@ -634,10 +664,14 @@ echo(str("depth needed for a ",conn_h," mm header over the cell: ",
 // real geometry in the STL, real vertices, zero volume, no interference:
 //   frame_cover  - frame rear face and cover front face are both at y = body_d
 //   cover_board  - the board sits exactly on its standoffs
-// Chasing either as a clash is a dead end (it cost a while once).  Measured state
-// of all 13, with volume rather than vertex count:
+// Chasing either as a clash is a dead end (it cost a while once).
+// SECOND TRAP: when an intersection is empty OpenSCAD writes NO FILE, so a script
+// that reuses output paths silently re-reads the PREVIOUS check's result.  Delete
+// the output before every run or you will chase a clash that is not there.
+// Measured state of all 14, by volume:
 //   10 genuinely empty | frame_cover + cover_board zero-volume touches (by design)
-//   conn_cell 154 mm3 REAL - the known 8-pin header vs cell clash, needs depth 26.6
+//   conn_cell  154 mm3 REAL - 8-pin header vs cell, wants depth 26.1
+//   drv_module 1050 mm3 REAL - the driver board's 15 mm envelope vs the module PCB
 chk = "";
 module disc_f(rot=0){ translate([0,pk_y0,hub_z]) rotate([0,rot,0]) disc(); }
 module leg_f(rot=0,th=0){ translate([0,pk_y0,hub_z]) rotate([0,rot,0]) leg_placed(th); }
@@ -646,6 +680,7 @@ if(chk=="frame_module") intersection(){ frame(); mock_module(); }
 if(chk=="cover_module") intersection(){ cover(); mock_module(); }
 if(chk=="cover_board")  intersection(){ cover(); mock_board(); }
 if(chk=="frame_board")  intersection(){ frame(); mock_board(); }
+if(chk=="drv_module")   intersection(){ mock_module(); drv_envelope(); }
 if(chk=="conn_cell")    intersection(){ mod_conn(); mock_cell(); }
 if(chk=="conn_board")   intersection(){ mod_conn(); mock_pcbs(); }
 if(chk=="conn_cover")   intersection(){ mod_conn(); cover(); }

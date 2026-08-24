@@ -345,9 +345,17 @@ need, and the side bezels went 12.05 → 13.45 mm. Note the notch sits just outb
 *pocket*, so widening `pan_clr_w` pushes it out and the frame grows with it — that is why
 the 0.75 mm pocket clearance cost 0.5 mm of overall width.
 
-⚠ **The three ribbon numbers don't close.** The measured far side was 37, and 17 + 40 + 37 =
-94 against a 90 mm glass. The model takes `rib_w` and `rib_off` as given and *derives*
-`rib_far`, so it always sums to 90 — currently **33** on the far side. Worth re-checking which edge the 17 is measured from — `rib_off` is the one number
+✅ **The three ribbon numbers now close.** They used to not: `rib_off` was 17 and the measured
+far side was irreconcilable with it (17 + 41 + 37 = 95 against a 90 mm glass). Measured
+properly the slot is **15 from the top edge, 35 from the other, 40 long** — and 15 + 40 + 35
+= 90 exactly, with `rib_far` reporting 35 rather than being forced to absorb an error.
+
+⚠ **`rib_off` is measured from the model's −Z edge, and that edge is the *top*.** This is the
+one number that has been got wrong twice in a row, in both directions. Two things corroborate
+15: the sum closes, and `conn_dz = −44.5` puts the module's 8-pin header on the same −Z half,
+which is where the ribbon has to fold back to. If a future measurement suggests 35, check the
+header side before changing it — if the module is genuinely the other way up, `conn_dz` has to
+move too, and so do the cell and board bands. Worth re-checking which edge the 17 is measured from — `rib_off` is the one number
 to change if it's the other end.
 
 **One measurement gets most of that back:** how far the glass sits from the PCB edge on the
@@ -583,6 +591,34 @@ in pieces:
    frame's matching slot deepened to suit.
 
 All five parts are now one body each. `bodies=1` is part of the verification.
+
+### The screw spine is referenced to the chamfered back face, not to W/2
+
+`scr_x` used to be the midpoint between the cavity edge and `W/2`. That is wrong in a way
+that only shows up when `W` moves: the cover's rear chamfer takes `rear_chf` off each side by
+the time it reaches `y = depth`, which is precisely where the screw-head counterbore is
+deepest. At `W = 93.9` there was 0.55 mm of margin and nobody noticed. At `W = 91.9` the
+counterbore edge landed at 43.95 against a back face that also ends at 43.95 — **tangent,
+0.05 mm of material**, thinner than one extrusion, so the head recess would have broken out
+onto the chamfer.
+
+It is now `(cavity edge + (W/2 − rear_chf))/2`, which centres the spine in the material
+actually there: 1.00 mm to the cavity and 1.00 mm to the back-face edge, self-correcting at
+any width. The screws moved 1 mm inboard, in the frame and cover together.
+
+### Thin, but deliberate: the −X wall
+
+Because the ribbon relief sets `W`, everything on the −X edge is tight, and the features there
+are cavity-referenced so they did *not* move when `W` came in 2 mm:
+
+| | wall left |
+|---|---|
+| outboard of the ribbon relief | 1.00 mm |
+| outboard of the register slot | 1.50 mm (was 2.50 at `W` 93.9) |
+| −X wall generally | 3.00 mm |
+
+All printable at 0.4 mm nozzle, but the register slot is the one to watch if `W` ever comes
+down further — it thins 1:1 with the outer face.
 
 ### One thing counting bodies does *not* catch
 

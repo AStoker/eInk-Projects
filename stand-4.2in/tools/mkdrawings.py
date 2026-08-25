@@ -911,10 +911,15 @@ def sheet6():
     s.circ(cx, cy, P["disc_d"], "part")
     s.circ(cx, cy, P["disc_d"]-2*P["lug_out"]+0.6, "hid")
     slot_w = P["leg_w"]+2*P["leg_slot_c"]
-    z0 = -(P["pivot_r"]+P["leg_w"]/2+1.2)
+    z0 = -(P["pivot_r"]+P["stop_wall"])
     z1 = P["leg_len"]-P["pivot_r"]+3.5
     s.rect(cx-slot_w/2, cy-z1, slot_w, z1-z0, "cut", 1)
     s.circ(cx, cy+P["pivot_r"], P["pin_d"], "cut")
+    # clamp land, and the relief slot that makes its backing a spring
+    s.rect(cx-slot_w/2, cy+P["pivot_r"]-P["clamp_len"]/2,
+           P["clamp_pr"], P["clamp_len"], "part")
+    s.rect(cx-slot_w/2-P["flex_t"]-P["flex_gap"], cy+P["pivot_r"]-P["flex_z1"],
+           P["flex_gap"], P["flex_len"], "cut", P["flex_gap"]/2)
     s.line(cx-R-4, cy+P["pivot_r"], cx+R+4, cy+P["pivot_r"], "cl")
     s.line(cx, cy-R-6, cx, cy+R+6, "cl")
     s.line(cx-R-6, cy, cx+R+6, cy, "cl")
@@ -942,18 +947,24 @@ def sheet6():
     s.dimh(lx-hub, lx+hub, ly-8, n(P["leg_w"]), ext_from=ly)
     s.bal(lx+P["pin_d"]/2, ly, 4, lx+hub+9, ly-5)
     s.bal(lx, ly+P["leg_len"]-1, 5, lx+hub+9, ly+P["leg_len"]-2)
+    s.bal(cx-slot_w/2+P["clamp_pr"], cy+P["pivot_r"], 6, cx-R-2, cy+R+2)
+    s.bal(lx-hub, ly-hub/2, 7, lx-hub-16, ly-18)
+    s.bal(cx, cy+P["pivot_r"]+P["stop_wall"], 8, cx-R-2, cy-R-4)
     s.txt(lx, ly+P["leg_len"]+14, f"thickness {n(P['leg_t'])}", "note", size=2.8)
 
     s.notes(178, 22, [
         (1, f"hinge: {n(P['scr_free'])} clearance and a countersink through the near slot wall, {n(P['ins_d'])} x {n(P['ins_l']+1)} insert bore in the far one. Tightening the screw closes the walls onto the leg - that friction is what holds the leg open"
             if CLAMP else
             f"dia {n(P['pin_d']+0.25)} pin hole, straight through the disc. Pin is trapped by the pocket wall once the disc is fitted"),
-        (2, f"leg slot {n(slot_w)} wide against a {n(P['leg_w'])} leg - {n(P['leg_slot_c'])} a side, so each wall only has to close that far to clamp. A catch lip {n(P['catch_p'])} proud at the far end snaps over the foot when the leg folds"),
+        (2, f"leg slot {n(slot_w)} wide against a {n(P['leg_w'])} leg, taken to {n(slot_w-P['clamp_pr'])} by a clamp land {n(P['clamp_pr'])} proud over {n(P['clamp_len'])} at the pivot - that {n(P['clamp_pr']-2*P['leg_slot_c'])} of interference is what holds the leg at any angle. A catch lip {n(P['catch_p'])} proud at the far end snaps over the foot when the leg folds"),
+        (6, f"relief slot {n(P['flex_gap'])} wide behind the land, leaving a tongue {n(P['flex_t'])} x {n(P['disc_t'])} x {n(P['flex_len'])} fixed at both ends - {n(P['flex_k'])} N/mm, so print variance moves the clamp force instead of jamming the leg"),
         (3, f"three bayonet lugs, {n(P['lug_ang'])} deg wide x {n(P['lug_out'])} proud, on the inner face"),
         (4, f"dia {n(P['scr_free']+0.2)} axle hole, a bearing fit on the clamp screw's shank"
             if CLAMP else
             f"dia {n(P['pin_d']+0.15)} axle hole. Use a {n(P['pin_d'])} rod or a 1.75 filament offcut"),
-        (5, f"foot R{n(P['foot_r'])}. The heel behind the pin is cut by the pocket floor at the {n(P['stop_ang'])} deg stop, which is what takes the load"),
+        (5, f"foot R{n(P['foot_r'])}"),
+        (8, f"slot rear wall {n(P['stop_wall'])} behind the pivot - the deployed hard stop. The leg reaches this far back only in the last degree or two of the swing (2.48 by 110 deg, {n(3.25)} at {n(P['theta_dep'])}), and past it the interference grows about 0.07 mm/deg"),
+        (7, f"heel: rear of the hub is an arc at R{n(P['hub_r'])} over local {n(P['sweep_a'])} to 270 deg, because the pivot axis is only {n(P['piv_h'])} above the pocket floor and anything further out orbits into it. The flat keeps its short side, which lands on the floor at the {n(P['stop_ang'])} deg stop and takes the load"),
     ], cw=42)
     s.titleblock(TBX, TBY, 96, 18, "DISC & LEG", 6, 8, "1:1")
     return s.render("s6")

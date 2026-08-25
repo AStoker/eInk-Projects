@@ -21,124 +21,97 @@ will show the previous revision.
 
 ---
 
-## 1. Measure these on the real hardware — blocks every print
+## 1. Still to measure — blocks the print
 
-The model assumes these. Each is a caliper measurement on the real hardware, and each
-one moves geometry.
+Answered on 2026-08-25 and now in the model: the driver stack (16.0), the USB-C body
+(14 × 4.5), the ribbon tail (18 flat), and which end the ribbon leaves from (the **ribbon
+end** — the top in portrait, so `rib_off = 35`). What is left:
 
-- [ ] **The driver board's stack: PCB plus its tallest part** → sets `drv_env`
-      (**assumed 6.0**: 1.6 of PCB plus ~3.2 for the USB-C shell / WROOM module, plus
-      margin). This is the single number the whole depth budget now rests on. There is
-      14.8 mm where the board crosses the stand pocket and 19.35 mm off it.
-- [ ] **The panel ribbon: length from the glass edge to the end of the tail, and how much
-      of it the 180° fold at the pocket edge eats** → decides where the driver board can
-      sit for the FPC to plug straight in with no adapter.
-- [ ] **Which physical end of the panel `rib_off = 15` is measured from.** The model's −Z
-      glass edge is one specific end; if it is the other, `rib_off` becomes 35 and the
-      internal bands move with it.
-- [ ] **Whether the glass is centred on the PCB along the 103 mm axis** → sets `pan_off_z`
-      and `act_off_z` (both assumed 0, i.e. 6.5 mm of bare PCB at each end). Waveshare
-      publish 103 × 78.5 for the PCB and 91 × 77 for the glass but no datum between them.
-      If the 12 mm of bare PCB is all at one end, the ink is 6 mm off where the window is
-      cut.
-- [ ] **The gap between the glass edge and the PCB edge on each side of the ribbon axis**
-      → set `pan_off_x` to half the difference (assumed 0). Worth up to 1.6 mm of frame
-      width and 0.8 mm of side bezel, all of it collected by the first 0.8 mm of offset,
-      because the ribbon slot is what currently sets the width.
+- [ ] **The FPC adapter's screw holes** — diameter and inset from each edge. The model
+      assumes Ø2.2 at 2.0 mm, which is a guess, and it decides the mounting bosses.
+- [ ] **The adapter's connector positions** — which edge each FPC socket is on, and how far
+      along. Leg 3 only turns inboard about 4 mm, so a socket on the wrong edge of the
+      adapter moves the whole board.
+- [ ] **The adapter's depth with both FPCs seated** (`adapt_env`, assumed 5.0).
+- [ ] **The second FPC** — the one from the adapter to the driver board. Length and width,
+      and whether it exists in the parts box or needs ordering.
+- [ ] **The female header row spacing** on the driver board. Not modelled, and it decides
+      where the carrier's holes go — everything about the driver's position follows.
+- [ ] **The heat-set inserts you actually have** — the model assumes M2.5, Ø3.6 bore × 5.0
+      deep. Set `ins_d` / `ins_l` and re-export if yours differ.
 
-## 1b. Confirm which hand actually gets printed
+## 2. The adapter is a service loop — decide how to pay for it
 
-`print_mirror = true`, so every exported STL is mirrored in X: the ribbon slot, the screw
-spine and both ports come out on the **opposite side** to the drawing sheets. The flag was
-set because the real module's ribbon is on the mirrored side — the same handedness
-question the ribbon route just settled.
+The tail *does* reach the driver: the board faces down so its socket edge is nearest the
+display, and turned end-for-end (`fpc_end = "top"`) it fits at z 39.5 … 87.75. The problem is
+that the glass is on the frame and the driver is on the cover, so the joint crosses the split,
+and the tail has **3.4 mm** of give against the **~25 mm** a ZIF release needs.
 
-- [ ] With the module in front of you, e-ink face down, check which side the ribbon slot
-      has to be on, and confirm `print_mirror = true` puts it there. The renders show the
-      printed hand (`renders/01`–`06`, `11`); the sheets show the designed hand.
-- [ ] If the model's hand was right all along, set `print_mirror = false`, re-export and
-      re-render. Getting this wrong is a whole frame of wasted filament.
+- [ ] **Try the cheap way first: can you release the tail's ZIF with the cover barely open?**
+      The fold gives about 3.4 mm of lift. If a fingernail or a spudger gets on the lever in
+      that, nothing crosses the split, `adapt_fit = false`, and everything below goes away.
+      This is a hands-on check, not a calculation.
+- [ ] If not, the adapter needs **4.6 mm of depth that does not exist** (16 stack + 5 adapter
+      against 16.4). Pick:
+      - `depth` 25 → 29.6 — the frame gets thicker;
+      - low-profile female headers, `hdr_h` 8.5 → 5.5 — buys 3.0, still 1.6 short;
+      - both — 1.6 mm of depth plus a different header.
+- [ ] And it still needs a home: where leg 3 puts it overlaps the carrier. Shorten the carrier
+      and re-home the battery divider, or move the driver column.
+- [ ] Then four mounting bosses at its hole positions, off the cover or the carrier.
+- [ ] Re-run `adapt_board` and `adapt_cover`; both should be empty once it has a home.
+- [ ] Order the second FPC once the loop length is known — long enough for the cover to come
+      off and the connector to be reached, not just to span the gap.
 
-## 2. Relayout — done, but the numbers under it are still assumptions
+## 2z. The ribbon's two length figures disagree
 
-Built on 2026-08-24. The panel is bare glass and an FPC tail, so the 78.5 × 103 PCB the
-model used to size everything around is gone (`bare_panel = true`), and with it the 2.2 mm
-end walls that left nowhere to put a screw.
+- [ ] The route needs at least **24 mm** of developed tail before leg 3 starts (4 out + 20 up),
+      against the **18 mm** measured flat. Re-measure. Whichever is right decides whether leg 2
+      really runs 20 mm, and `rib_w` / `rib_off` are derived from it, so the slot moves with it.
+- [ ] Leg 1 wants 4 mm out from the glass edge and the relief gives 3.75 — 0.25 short.
+      `rib_clr = 3.25` fixes it but grows the frame 0.5 mm on the short axis, which moves
+      `hub_z = W/2` and the stance with it. Decide whether to spend it.
 
-| | Before | Now |
-|---|---|---|
-| Interior | 79.5 × 104, sized by a phantom PCB | 82.1 × 80.9, sized by the electronics |
-| End walls | 2.2 mm | 13.75 mm |
-| Screws | 3, all down the +X side | **4, one near each corner** |
-| Driver board | +X side, socket 46 mm from the ribbon | −X wall, socket at z 44.2, opposite the middle of the ribbon slot |
-| Charger | on a quarter Perma-Proto | four standoff pads of its own |
-| Perma-Proto | quarter-size, 43.2 × 50.8 | gone — divider on a scrap of perfboard |
-| Real interferences | 2 | **0**, all 14 checks clear |
+## 2a. Still open from the relayout
 
-- [ ] Confirm the ribbon actually reaches with the socket at z 44.2 — that is item 1's tail
-      measurement. If the tail is shorter than the route needs, the board slides along Z and
-      the columns move with it.
 - [ ] Confirm the charger's four standoff pads land on board, not on components. Its hole
       spacing is deliberately not modelled.
-- [ ] Cut the **driver carrier: 30 × 70 mm** of double-sided 0.1″ prototype board, and
-      solder two 19-pin female headers to match the driver's pin rows. **Measure the row
-      spacing** — the model does not know it, and it decides where the holes go. The
-      divider goes on the ~14 × 30 of spare board below the driver.
-- [ ] Measure the **female header height** (`hdr_h`, assumed 8.5) and the **pigtail body**
-      (`snap_w` / `snap_h` / `snap_d`, assumed 15 × 8 × 10). The header height and `drv_env`
-      between them leave only 0.3 mm of margin in front of the driver.
-- [ ] Test-print the **disc and leg** (10 g, ~25 min) and check both ends of the travel:
-      the folded catch should take a firm push to close and a deliberate pull to open
-      (`catch_p` tunes it), and the hinge clamp screw should hold the leg deployed against
-      a shove without being hard to move (tighten to taste; `leg_slot_c` sets how much the
-      walls have to close).
-- [ ] Check your heat-set inserts against the model's assumption (M3, 4.6 OD × 5.7 long,
-      Ø4.0 bore). Brands differ; set `ins_d` / `ins_l` and re-export if yours do.
+- [ ] Cut the **driver carrier** — size depends on §2 — from double-sided 0.1″ prototype
+      board, and solder two 19-pin female headers to match the driver's pin rows.
+- [ ] The stack over the puck has **0.4 mm of margin** (16.0 measured against 16.4). Check
+      it for real before committing to the frame: if the stack is over 16.4, the depth has
+      to grow or the board has to come off the pocket.
 
-## 2c. The glass could not be installed — twice
+## 2b. Test-print the disc and leg (10 g, ~25 min)
 
-Worth recording because both were the same mistake in different clothes, and neither is the
-kind of thing an interference check finds. Nothing intersects; the part simply has no path
-in.
+Walk the **whole** travel, not just the two ends — the heel corner that jammed at 64° was
+clear at both ends.
 
-1. **Long axis.** The interior was sized by the electronics (80.9) and the glass is 90.
-   Fixed by `glass_pass_h`.
-2. **Short axis.** The interior was wide *enough* (81.6 against a 76 glass) but the glass is
-   offset 3.2 mm to centre the ink, so it sat 0.4 mm outside on the −X side. Comparing sizes
-   passes; comparing extents does not. Fixed by `glass_x0` / `glass_x1`, and the echo now
-   prints extents.
+- [ ] The leg should swing 0° → 122° without touching the pocket floor anywhere.
+- [ ] The folded catch should take a firm push to close and a deliberate pull to open
+      (`catch_p` tunes it).
+- [ ] The leg should hold wherever it is put, and take a light thumb push to move — about
+      0.31 N at the foot. **`clamp_pr` is the number to tune** (0.5 now: 0.4 of it removes
+      the slot play, the remaining 0.1 is interference on the clamp tongue). Too loose,
+      raise it 0.05 at a time; won't go in, drop it.
+- [ ] Deployed, it should take a shove without folding, and stop against the slot's rear
+      wall rather than drifting.
+- [ ] **Measure the lean angle with a protractor**, in both orientations, against the drawn
+      20.5° / 31.9 mm footprint. If it reads flat, `stop_wall` is not being reached and
+      wants to come in — not `stop_ang` changed.
+- [ ] Check the wall's contact patch after a few dozen cycles. It is a corner landing near
+      the wall's top edge; if it is visibly rounding over, the wall wants a small radius.
 
-Corner posts inside the interior were tried and abandoned: with 9 mm posts the glass is
-blocked by 5.9–7.0 mm however deep the posts start, and tilting does not help — the interior
-is 20.9 mm deep against a 90 mm glass, so the glass is flat long before its far end is low
-enough to clear anything. The screws are in the end walls, which cost 2.1 mm of frame
-length at M2.5.
+## 2c. Decide whether to build the snap-out detent
 
-## 2b. What this round changed, and what it left open
+The mechanism and its margins are written up in the README. `disc_t = 6` is ruled out by the
+depth budget, so the only version on offer is the thin one at `disc_t = 4`: ~0.7 mm of pivot
+slot travel and a ~0.37 mm locking pocket.
 
-The glass could not be installed at all: the interior had been sized by the electronics
-(80.9 on the long axis) and a 90 mm glass has no way into its pocket except through it.
-The interior is now 81.6 × 92.5, set by `glass_pass_h`, and there is an echo line that says
-so on every run.
-
-| | Was | Now |
-|---|---|---|
-| Glass into the pocket | impossible — walled out by 9 mm | drops in from the back |
-| Glass retention | a shelf that blocked it | two ribs on the cover |
-| Corner screws | in 13.75 mm end walls | in 9 × 9 posts inside the interior, starting behind the glass |
-| Driver mounting | printed side rails | plugs into female headers on a 30 × 70 carrier perfboard |
-| Divider board | a separate 27.9 × 10.2 scrap | the spare ~14 × 30 of the carrier |
-| Rear port | breakout board in printed rails | 15 × 8 snap-in pigtail, opening only |
-| Folded leg | nothing held it | catch lip, ~5 N at the foot |
-| Hinge pin | 0.15 / 0.25 clearance | 0.10 friction fit |
-
-- [ ] **The header row spacing on the driver board** is not modelled — measure it before
-      drilling the carrier. It decides where the female headers go, and everything about
-      the driver's position follows from the carrier.
-- [ ] **The pigtail's actual body size.** 15 × 8 × 10 came from the listing; a snap fit
-      wants a caliper. `snap_w` / `snap_h` / `snap_c`.
-- [ ] **Female header height** (`hdr_h`, assumed 8.5). With `drv_env` it leaves 0.3 mm in
-      front of the driver — the tightest number in the build.
+- [ ] Decide: build it thin, or leave the leg held by the wall stop plus 10.9 N·mm of clamp
+      friction. Building it changes the gesture to *push the leg along its axis, then swing*.
+- [ ] If built: test-print the leg alone first — the printed spring finger inside the pivot
+      slot is the part most likely to be wrong.
 
 ## 3. Print and check the bezel test tile before the frame
 
@@ -146,11 +119,14 @@ so on every run.
 - [ ] Drop the real module in. Check: glass seats in the 77.5 × 91.5 pocket, all four
       pocket corners clear on their R1.4 relief, the window lip sits flush, and the
       **ribbon folds back through the 40 mm slot without strain** — 3 mm out from the
-      pocket edge and 3 mm past the glass back face.
+      pocket edge and 3 mm past the glass back face. The slot straddles the **centre of
+      the RIGHT side** and runs towards the TOP (38.5 up from the BOTTOM, 33 long, 18.5
+      short of the TOP). Check the side and the position before anything else — both were
+      wrong until 2026-08-25.
 - [ ] Check the white border shows evenly: 0.7 mm on the short axis, 1.3 mm on the long.
       Lopsided means `act_off_x` (3.2, derived from the measured 3.0 / 9.4 borders) is off.
-- [ ] Melt four M3 inserts into the frame's corner bores, flush with the mating face, and
-      check the countersunk heads finish level with the back face.
+- [ ] Melt four **M2.5** inserts into the frame's corner bores, flush with the mating face,
+      and check the countersunk heads finish level with the back face.
 
 ## 4. Electrical assembly
 

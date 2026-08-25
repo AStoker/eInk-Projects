@@ -5,9 +5,10 @@ A slim desk frame for the **Waveshare 4.2inch e-Paper panel (B)** driven by the
 inside, and a single rotating kickstand on the back that folds flush and turns 90° for
 portrait or landscape.
 
-The panel is **bare glass and an FPC tail** — no PCB behind it. The tail plugs straight
-into the driver board's 24-pin socket, and the board is positioned so it does that with no
-adapter and no extension.
+The panel is **bare glass and an FPC tail** — no PCB behind it. The tail leaves the centre of
+the **RIGHT** side and makes a shallow S, out and up towards the **TOP**, before turning
+inboard. It reaches the driver board's socket — but it has no slack, so it cannot survive the
+cover being lifted off. A **Waveshare FPC adapter** is fitted as a service loop.
 
 One parametric OpenSCAD file: `src/epaper_stand.scad`. Every dimension quoted here comes
 out of it, and so does every drawing — `tools/mkdrawings.py` reads the model's own
@@ -49,39 +50,155 @@ anything belonging to the display.**
 Depth is the axis that points *up* off the print bed, so "taller", "more room on top" and
 "height off the glass" in slicer terms all mean **deeper** here.
 
+### The four sides have names
+
+Width/height are banned because they swap when the frame turns. So do "top" and "bottom"
+unless you say which way up — so the datum is fixed once, here, and everything uses it:
+
+**Hold the panel with the front face down, in portrait.** You are looking at the **rear
+face**. Put 0,0 at the top-left, X increasing across, Y increasing down. Then:
+
+| Side | Which edge | Length | Runs along |
+|---|---|---|---|
+| **TOP** | Y = 0, X sweeping across | 76 (glass) | the short axis |
+| **BOTTOM** | Y = max, X sweeping across | 76 | the short axis |
+| **LEFT** | X = 0, Y sweeping down | 90 | the long axis |
+| **RIGHT** | X = max, Y sweeping down | 90 | the long axis — **the tail leaves this side** |
+
+And the two faces are **front face** (the ink you look at) and **rear face** (the back, facing
+you during assembly). Never "top face" for either.
+
+### How those map into the model
+
+The model does not use the build frame and is not going to be renamed, so here is the
+mapping. It is worth reading once, because two separate bugs came out of getting it wrong:
+
+| Build frame (front face down, 0,0 top-left) | Model |
+|---|---|
+| **TOP** | `+Z` end — `Z = 100.25` at the glass |
+| **BOTTOM** | `−Z` end — `Z = 10.25` at the glass. **The kickstand hub is here**, at `Z = 45.95` |
+| **LEFT** | `+X` side |
+| **RIGHT** | `−X` side — the ribbon relief reaches `x = −44.95` |
+| **front face** | `Y = 0` |
+| **rear face** | `Y = 25` |
+| X increasing (left → right) | `−X` direction |
+| Y increasing (top → bottom) | `−Z` direction |
+
+Two sign flips to keep hold of:
+
+- **Build-Y and model-Z run opposite ways.** "18 mm down from the top" is `Z = 100.25 − 18`,
+  not `Z = 18`.
+- **Build-X and model-X also run opposite ways**, because looking at the *rear* face reverses
+  the short axis. Derive it if you doubt it: looking along `−Y` with `+Z` up gives a view-right
+  of `cross((0,−1,0),(0,0,1)) = (−1,0,0)`. That is why RIGHT is `−X`, and why the relief being
+  at `x = −44.95` is correct rather than mirrored.
+
+What fixes `−Z` as the BOTTOM, independently, is the kickstand: its hub sits at `Z = 45.95`,
+half the frame's width up from `Z = 0`, and a stand's hub is at the bottom.
+
 ### The ribbon route
 
-Hold the module with the **e-ink face down**, so you are looking at the rear. The ribbon
-leaves the glass on the **long-axis edge** — the one with the 9.4 mm dead border — folds
-back behind the glass, then:
+Front face down, portrait, so you are looking at the **rear face**. The tail leaves the
+**CENTRE of the RIGHT side** — not an end — and makes a shallow S:
 
-1. turns **90° to the left, running along the long axis**, and
-2. turns **90° back to the right, away from the long axis**, to reach the driver board's
-   24-pin FPC socket.
+| Leg | Direction | Size | Parameter |
+|---|---|---|---|
+| 1 | straight out from the glass edge | 4 mm | `rib_out` |
+| 2 | 90° turn towards the **TOP**, running parallel to the RIGHT edge | 9 mm wide × 20 mm long | `rib_band`, `rib_run` |
+| 3 | 90° turn **away from the RIGHT side** — inboard, across the rear face | to the connector | — |
 
-That middle leg is the whole reason for the shape of the cutout. The relief is a **40 mm
-slot running along the long-axis edge**, not a local pocket where the ribbon exits: the
-ribbon spends 40 mm travelling *parallel* to that edge before it turns back out. Sheet 4,
-balloon 6, is the cutout itself.
+Leg 2 is the whole reason the relief is a slot rather than a local pocket at the exit: the
+ribbon spends 20 mm travelling *parallel* to the RIGHT edge before it turns inboard. Leg 2 is
+9 mm wide but only reaches 4 mm outboard of the glass — the other 5 mm of its width lies
+*behind* the glass, which is open interior, so the frame only has to clear 4 mm.
 
-The three sizes are deliberately *not* called width/height/depth:
+The three relief sizes are deliberately *not* called width/height/depth:
 
 | | Parameter | Now | Meaning |
 |---|---|---|---|
-| **out** | `rib_clr` | 3.0 | outboard from the pocket edge, along the short axis — the room the fold back on itself needs |
+| **out** | `rib_clr` | 3.0 | outboard from the pocket edge, along the short axis |
 | **deep** | `rib_dep` | 3.0 | past the glass back face, along depth — so the fold has somewhere to go |
-| **long** | `rib_w` | 40.0 | along the pocket edge, on the long axis — the run described above. `rib_off` pins one end, so raising this extends the slot in one direction only; it does not recentre |
+| **long** | `rib_w` | 33.0 | along the RIGHT edge, on the long axis |
 
-The three long-axis numbers close exactly: **15 from one glass end, 40 of slot, 35 from the
-other — 15 + 40 + 35 = 90** against a 90 mm glass, with `rib_far` reporting 35 rather than
-absorbing an error. `rib_off = 15` is measured from the model's −Z glass edge; which
-physical end of the panel that is has still to be pinned down — see [TODO.md](TODO.md).
+**`rib_w` and `rib_off` are derived from the route now, not typed in.** `rib_w` is
+`rib_run + rib_band + 2 × rib_marg` and `rib_off` puts the slot's near edge half a band below
+the exit, so the slot straddles the exit and covers the run to the TOP. They come out at 33
+long, **38.5 up from the BOTTOM, 18.5 short of the TOP** — and they cannot drift from the
+route any more, which is how they went wrong twice:
 
-**The ribbon's destination is the driver board itself.** The Waveshare e-Paper ESP32 Driver
-Board (Rev 3, 48.25 × 29.46 mm) carries the panel's own DC-DC and a **24-pin FPC socket**
-on one long edge — 16 mm of socket, centred 12.5 mm from one end. The panel plugs straight
-in. There is no 8-pin header, no adapter board and no intermediate cable in this build, so
-nothing stands off the back of the module: `mod_header = false`.
+- `rib_off = 15` put the slot at the **BOTTOM**, under a source comment insisting the model's
+  −Z was the top and warning against "fixing" it. It was the reversed reading it warned about.
+- `rib_off = 35` then put the slot 15 short of the **TOP**, from reading "the ribbon is towards
+  the top" as the exit position. The exit is at the **centre**; it is the *run* that goes
+  towards the top.
+
+**One clearance is 0.25 mm short.** Leg 1 needs 4 mm out from the glass edge; the relief gives
+3.75 (`rib_clr` 3.0 from the pocket edge, plus 0.75 of pocket clearance). `rib_clr = 3.25`
+would fix it and grows the frame 0.5 mm on the short axis — which also moves `hub_z = W/2` and
+with it the stance, so it is not a free change. The echo prints the shortfall on every run.
+
+### The tail reaches the driver — but it cannot cross the split
+
+The driver board faces **down**, so its socket edge is the one nearest the display, and the
+tail can meet it. Leg 3 only has to travel about 4 mm inboard: the board's −X edge sits at
+x −41.18 and the glass's RIGHT edge at −41.20.
+
+Which way round the board is mounted decides whether it fits:
+
+| Socket 12.5 mm from… | Board spans | |
+|---|---|---|
+| the **BOTTOM** end | z 62.75 … 111.0 | overruns the interior top by 9.5 mm |
+| the **TOP** end — hangs downward from the socket | z 39.5 … 87.75 | **fits** (`fpc_end = "top"`) |
+
+So a direct plug-in works geometrically. **The reason it still is not enough is service.**
+
+The glass is on the **frame**. The driver is on the **cover**. Anything joining them crosses
+the split, and the panel's tail cannot:
+
+| | |
+|---|---|
+| Tail length | 18 mm, with no slack designed in |
+| What its 180° fold gives back when it straightens | (π−2) × `rib_dep` = **3.4 mm** |
+| Lift needed to get a fingernail on a ZIF lever | ~25 mm |
+| Shortfall | **21.6 mm** |
+
+Lift the cover and you are pulling on the glass. So the **adapter is a service loop, not a
+reach fix**: the short tail plugs into it on the panel side, and a longer FPC crosses the
+split with enough slack to open the case.
+
+### What the service loop costs
+
+Putting the adapter in front of the driver stacks 5 mm onto 16 mm against 16.4 mm of room —
+**4.6 mm short.** Three ways out, and none is free:
+
+| | Cost |
+|---|---|
+| `depth` 25 → 29.6 | the frame gets 4.6 mm thicker |
+| Low-profile female headers, `hdr_h` 8.5 → 5.5 | buys back 3.0 mm; still 1.6 short |
+| Both | 1.6 mm of depth plus a different header |
+
+The alternative is to **not cross the split at all** — release the tail's ZIF before the cover
+comes off. That needs only enough lift to reach the lever, and the tail's fold gives 3.4 mm of
+it. Whether 3.4 mm is enough to get at the lever is a hands-on question, not a calculable one,
+and it is the cheapest outcome by far if the answer is yes. It is the first item in
+[TODO.md](TODO.md) §2.
+
+Mounting the driver on the **frame** instead, so nothing crosses the split, does not work: the
+glass drops in through the interior and needs the full 90 mm clear, so anything standing off
+the frame's ledge blocks it — the same reason there are no corner posts.
+
+As fitted, the adapter is:
+
+| | |
+|---|---|
+| Outline | 18 × 32 × ~5 mm (depth with both connectors — **assumed**) |
+| Holes | 4 corners, Ø2.2 at 2.0 mm inset — **both assumed, measure them** |
+| Where it sits | at leg 3's turn: x −40.45 … −22.45, centred z 75.25 |
+| Problem | it overlaps the carrier, needs 4.6 mm of depth nobody has, and has no mounting |
+
+**A measurement to re-check:** the route needs at least 4 + 20 = **24 mm** of developed tail
+before leg 3 starts, against the **18 mm** measured flat. Those two do not agree. Whichever is
+right decides whether leg 2 really runs 20 mm, and `rib_w` / `rib_off` are derived from it.
 
 ### The three nested recesses
 
@@ -146,8 +263,13 @@ they are wanted. `insert_size` moves the whole frame with it.
   0.75 a side.
 - **relief** — material taken away at a **corner**, so a sharp-cornered part can seat in a
   printed corner that carries a nozzle fillet. Always centred *on* the corner; that is the
-  function, so it cannot be moved inboard. One is fitted: **pocket relief** (`pan_rel` =
-  1.4, at the glass pocket corners).
+  function, so it cannot be moved inboard. One is fitted: **pocket relief** (`pan_rel` = 1.4,
+  at the glass pocket corners). Because it is centred on the corner it bulges 1.4 mm
+  *outboard* of the pocket — further out than the interior reaches on three sides — so the
+  interior wall used to **overhang it by 0.9 mm**. The same four circles are now carried up
+  through the wall as well (see `cavity()`), so the opening holds at x −43.32 from the pocket
+  right through to the rear face instead of stepping back in. It costs nothing dimensionally:
+  2.63 mm of wall is still left outboard of the worst corner.
 - **ribbon relief** — the slot described above.
 - **white show** — `white_show_short` / `white_show_long`, the strip of the panel's own white
   border left visible inside the window on purpose. **One per axis** (0.7 short, 1.3 long),
@@ -276,19 +398,21 @@ the ribbon arrives at — and the cell with the charger above it on the +X side.
 
 | | Size | Where |
 |---|---|---|
-| Carrier perfboard | 30 × 70 | −X column, z 18…88, on four standoff pads |
-| Driver board | 29.46 × 48.25 × ~6 | plugged into the carrier, z 31.7…80.0 |
-| 24-pin FPC socket | 16 wide, 12.5 from the board's near end | on the board's −X edge, centred at **z 44.2** |
+| Carrier perfboard | 30 × 70 | −X column, z 14.5…84.5, on four standoff pads |
+| Driver board | 29.46 × 48.25 | plugged into the carrier, **z 15.5…63.75 — low**, because the adapter frees it from the ribbon |
+| 24-pin FPC socket | 16 wide, 12.5 from the board's near end | on the board's −X edge, centred at z 28.0 |
+| FPC adapter | 18 × 32 × ~5 | at leg 3's turn, centred z 75.25 — **overlaps the carrier, no home yet, and may not be needed** |
 | Cell | 44 × 49 × 6.9 | +X column, low |
 | bq25185 charger | 32 × 26.3 × 7.2 | +X column, above the cell |
-| USB-C pigtail | 15 × 8 body, 10 deep | snapped into the back cover, low and off the leg's centreline |
+| USB-C pigtail | **14 × 4.5 body** (measured), 10 deep | snapped into the back cover, low and off the leg's centreline. The printed opening is 14.3 × 4.8 — `snap_c` per side, because a hole exactly the size of the part will not take it |
 
 
-**The board's position along Z is the whole point of it.** The ribbon slot runs z 24.2 to
-64.2 and its centre is 44.2; the socket is 12.5 from the board's near end, so the board
-starts at 31.7 and the socket lands at 44.2 — opposite the middle of the slot. The ribbon
-comes around the glass edge, turns along the long axis, turns back out, and plugs in. No
-adapter, no extension.
+**The board used to be positioned by the ribbon, and is not any more.** It was placed so its
+socket landed opposite the middle of the ribbon slot. The tail's own S means the connector has
+to meet leg 3, at z 75.25 — and a board with its socket 12.5 from the *bottom* end then runs
+9.5 mm off the top of the interior. With the adapter fitted the driver goes **low on the
+carrier** (z 15.5…63.75) where it fits. Turned end-for-end it would fit at z 39.5…87.75 with
+no adapter at all — see above.
 
 ### The driver board plugs into a carrier, it is not held by the case
 
@@ -353,23 +477,29 @@ With no PCB in front of it, the interior starts right behind the glass and the b
 easier: **20.95 mm** deep off the stand pocket, **16.4 mm** over it, and **9.5 mm** clear in
 front of the cell. The cell needs 6.9 of that 9.5.
 
-Nothing is plugged into the back of the module — the panel's ribbon goes to the driver
-board's own socket — so the only stack that has to be watched is the **driver board**
-itself: PCB 1.6 plus its tallest part (the USB-C shell and the WROOM module are both about
-3.2), which the model carries as `drv_env = 6.0`. There is 16.4 mm of interior where the
-board crosses the stand pocket and 20.95 mm off it, so 6 fits either way.
+Nothing is plugged into the back of the panel — it is bare glass and a tail — so the stack
+that has to be watched is the **driver board on its carrier**, and that has now been
+measured as a whole rather than guessed in three parts:
 
-**`drv_env` is an estimate, not a measurement**, and it is the number holding the depth
-budget up — it is the first item in [TODO.md](TODO.md). It used to be 15, which is about
-what a mated 8-pin cable would have added; with no such cable, both of the model's real
-interferences went away.
+| | |
+|---|---|
+| Driver board + female sockets + carrier PCB | **16.0 mm**, measured, back face to tallest point |
+| Room where it crosses the stand pocket | **16.4 mm** |
+| Spare | **0.4 mm** |
+
+`drv_stack = 16.0` is the number that decides fit, and it supersedes adding up `drv_env`,
+`hdr_h` and `carrier_t` — those still exist for the features that need them individually,
+but their sum is no longer the test. 0.4 mm is the entire margin in the build, and it is why
+`disc_t` cannot grow.
 
 ### Mounting
 
 - **Charger** — four standoff pads. No screw posts: the breakout's hole spacing is not a
   number this model has measured. Foam tape or a strap holds it.
-- **Driver board** — slides into printed rails, no holes needed, with a stop at the bottom.
-  The −X rail is split so it clears the FPC socket.
+- **Driver board** — plugs into female headers on the carrier perfboard; the case holds the
+  carrier, not the board. (`drv_rail` still exists for the no-carrier fallback.)
+- **FPC adapter** — nothing yet. It has four corner holes and needs four bosses, and first it
+  needs a seat that is not already the carrier's — [TODO.md](TODO.md) §2.
 - **Cell** — drops into a fenced pocket on a flat platform (the platform exists so the
   cell doesn't straddle the step where the stand pocket bulges into the interior).
   Foam tape holds it.
@@ -384,8 +514,9 @@ interferences went away.
 | USB-C (Waveshare) | on the driver board, mid-interior | Flashing, **before assembly**. Switch on to program, off to run |
 
 The pigtail has its own snap-in catch, so the case owes it nothing but a **precise
-rectangular hole and clear air behind it**: 15.3 × 8.3 for a 15 × 8 body (0.15 a side), with
-20.95 mm of interior behind it against the 10 mm the body needs. No printed rails, no
+rectangular hole and clear air behind it**: **14.3 × 4.8 for the measured 14 × 4.5 body**
+(`snap_c` = 0.15 a side), with 20.95 mm of interior behind it against the 10 mm the body
+needs. No printed rails, no
 breakout board, no guide posts.
 
 **Measure the part before printing.** A snap fit lives or dies on a tenth of a millimetre,
@@ -404,39 +535,168 @@ a 2 mm chamfer, so the cable clears the desk with the frame leaning back.
 
 - **Disc** Ø54 × 4 mm — bayonets into the pocket (three lugs, twist ~45°), four radial
   detents at 0/90/180/270°. Turn it to 45° to lift it out.
-- **Leg** folds flush into the disc, swings out to a hard stop at 58° where a flat heel
-  lands on the pocket floor, so the load goes into the cover skin rather than the hinge.
-- **Hinge** M2.5 clamp screw into an insert in the far slot wall — see below.
+- **Leg** folds flush into the disc and swings 122° out to a hard stop at 58° from
+  straight down, where a flat on its heel lands on the pocket floor, so the load goes into
+  the cover skin rather than the hinge.
+- **Hinge** a plain Ø2 pin. A clamp land on the slot wall is what holds the leg — see below.
 
-### What locks the leg open
+### One number sets the whole hinge: the pivot is 2 mm off the floor
 
-**The hinge is a clamp screw, not a pin.** An M2.5 screw goes through the near slot wall,
-through the leg, and into a heat-set insert in the far wall. Tighten it and the walls close
-onto the leg; the friction holds it at any angle, including fully deployed, and you set how
-hard with a screwdriver. That is the lock.
+The pivot axis sits at `piv_h = disc_t/2` = **2.0 mm** above the pocket floor. The leg swings
+122°, so every point on it passes through *straight down* somewhere in the stroke — and a
+point `r` from the axis reaches `piv_h - r` at that moment. So **nothing on the leg may lie
+more than 2.0 mm from the pivot axis** in the sector that swings under, or it drives itself
+into the cover.
 
-For the clamp to have anything to close on, the leg is a **close fit in the slot** — 12.0 mm
-in a 12.4 mm slot, so each wall only has to move 0.2 mm. A loose slot just rattles, which is
-why `leg_slot_c` came down from 0.5.
+That is the constraint behind both of the following, and it is why the hub's rear is an arc
+and the hinge is a pin rather than a screw.
 
-**Folded, a catch lip holds it shut**: the foot passes 0.65 mm of overhang at the far end of
-the slot, flexing about 0.3 mm on its 30 mm of leverage — roughly 5 N at the tip, a firm but
-easy click. It will not fall open in a bag.
+### The hub's rear is an arc, not a corner
 
-**A printed detent at the deployed angle is not available at this size**, and it is worth
-saying why rather than shipping something that does not click. The obvious place is the
-hub's arc against the closed end of the slot — but the heel flat, which *is* the hard stop,
-cuts the hub away exactly there: the leg reaches only 3.42 mm behind the pivot instead of
-6 mm, so there is nothing left to carry a groove. Two attempts at it cut air. The clamp
-screw does the same job and can be adjusted after printing, which a moulded detent cannot.
+The heel flat is a plane 2.0 mm from the axis, tangent to the floor at the deployed angle.
+But it crossed the leg's full 3.4 mm thickness, and its far corner stood **3.82 mm** from
+the axis. Intersecting the leg against the cover through the stroke measures what that
+costs:
 
-`pivot_screw = false` goes back to a plain Ø2 pin — a steel rod, or a 1.75 mm filament
-offcut with its ends flared. That still works; it just gives you whatever friction the print
-happens to produce, and no way to change it.
+| Leg angle | Heel corner, vs the pocket floor |
+|---|---|
+| 0° (folded) | clear |
+| 40° | 1.50 mm **inside the cover** |
+| 64° | 1.80 mm **inside the cover** |
+| 100° | 1.07 mm **inside the cover** |
+| 122° (deployed) | clear |
 
-`catch_snap = false` removes the lip. Test-print the disc and leg together (10 g, about
-25 minutes) before committing to a frame: the snap force is the one number here that a
-drawing cannot tell you.
+Both ends of the travel were clear, which is why the two end-pose checks passed. The leg
+could not get between them.
+
+So the rear of the hub is cut back to an arc at `hub_r` = 1.75 mm — `piv_h` less
+`sweep_clr` — over local angles **148° to 270°**, which is exactly the sector that passes
+under the axis (`sweep_a = 270 - theta_dep`). The arc's near end lands on the heel flat's
+tangent point, so the flat keeps its **short side, 0.75 × 12 mm** — the part that comes down
+on the pocket floor at 58°. That is the hard stop, at 0.17 MPa on the cover skin.
+`chk = "cover_legs"` with `chk_th` walks the stroke; all of it is clear now.
+
+### The deployed stop is the slot's rear wall
+
+Rounding the hub's rear to `hub_r` is the *retracted* reach. Measured off the leg mesh, how
+far the leg reaches behind the pivot **while still inside the disc's 4 mm** climbs steeply at
+the end of the stroke, because the leg's upper-forward corner swings round *behind* the
+pivot as it opens:
+
+| Swing | 0° | 60° | 90° | 110° | 118° | 120° | **122°** | 125° |
+|---|---|---|---|---|---|---|---|---|
+| Reach behind the pivot | 1.75 | 2.12 | 1.70 | 2.48 | 2.95 | 3.10 | **3.25** | 3.45 |
+
+That is **0.77 mm of daylight** between anywhere-up-to-110° and fully deployed. The slot's
+rear wall used to sit at `leg_w/2 + 1.2` = 7.2 mm, clearing all of it and doing nothing. It
+now sits at `stop_wall` = **3.25 mm**, so the leg meets it only in the last degree or two —
+verified clear at 121°, touching at 122° — and past that the interference grows about
+**0.07 mm per degree**. The heel flat comes down on the pocket floor at the same moment, so
+the two share the load.
+
+That wall exists because **the heel flat on its own is a tangency, not a stop.** The flat is
+a plane `piv_h` from the axis, so it can never cut the floor however far it turns; only its
+finite edge can, and that edge is 2.14 mm out, so it saturates:
+
+| Past the stop | Heel edge, into the floor |
+|---|---|
+| 126° | 0.048 mm |
+| 132° | 0.101 mm |
+| 143° | 0.138 mm — the deepest it ever gets |
+| 150° | 0.120 mm, coming back out |
+
+Twenty degrees of over-travel against 0.138 mm. The wall is what makes the lean angle
+definite instead of a friction setting.
+
+### What holds the leg: the clamp land
+
+The leg is 12.0 mm in a 12.4 mm slot, so it had **0.4 mm of play** and nothing touching it.
+The land removes the play: over `clamp_len` = 8 mm at the pivot the slot is **11.9 mm**, so
+the leg goes in on 0.1 mm of interference, with 45° lead-ins along the slot so it presses in
+rather than jamming on a step.
+
+The land is carried on a **spring, not on the bulk of the disc**. A relief slot behind it
+leaves a tongue fixed at both ends — 0.8 × 4 × 14.25 mm. Its rear root is wherever the leg
+slot ends, so `stop_wall` sets that arm, not a free parameter; bringing the wall in from 7.2
+to 3.25 stiffened the tongue 2.6×, which is why `clamp_pr` is 0.5 rather than 0.6:
+
+| | |
+|---|---|
+| Tongue rate | 77.8 N/mm, loaded 3.25 mm from one root |
+| At 0.1 mm interference | 7.78 N → **10.9 N·mm** of hinge torque |
+| Gravity on the leg | 0.35 N·mm — so **31×** |
+| To move it by hand | 0.31 N at the foot |
+| Stress at the root | 35 MPa, against ~50 MPa yield |
+
+That spread is the point. On a rigid wall, ±0.15 mm on 0.2 mm of interference is either
+nothing or a leg that will not go in; on the tongue it is a hinge that is always firm and
+always movable. `clamp_pr` is the **print-tuned number** here, the way `catch_p` is for the
+catch — print the disc and leg together (10 g, ~25 min) and set it by feel.
+
+**Folded, the catch lip holds it shut**: the foot passes 0.65 mm of overhang at the far end
+of the slot, flexing about 0.3 mm on its 30 mm of leverage — roughly 5 N at the tip, a firm
+but easy click. It will not fall open in a bag.
+
+### How the leg goes in
+
+1. Slide the leg into the disc's slot **from the forward (open) end**, pressing it over the
+   clamp land's 45° lead-ins. It is a 0.1 mm push fit there, not a drop-in.
+2. Line the leg's axle hole up with the disc's pin bore.
+3. Push a **Ø2 × 43.5 mm pin** in through the disc's rim. The bore runs the full width of the
+   disc on the pivot axis — 15.55 mm of solid PLA each side of the slot — so the pin is
+   nearly disc-diameter long. A 1.75 mm filament offcut with its ends flared works.
+4. Bayonet the disc into the cover pocket. **The pocket bore is what traps the pin**: there
+   is nowhere for it to go once the disc is in, so it needs no head, clip or glue.
+
+To get the leg out again, twist the disc to 45° and lift it out, then push the pin back out
+through the rim.
+
+### Why the hinge is a pin
+
+A clamp screw runs along the pivot axis, so **`disc_t` bounds both ends of it**: the head
+seat and the insert bore are each limited to the disc's 4 mm thickness.
+
+| | Needs | In a 4 mm disc |
+|---|---|---|
+| M2.5 head | 5.0 across | **−0.5 mm a side** |
+| M2.5 insert bore | 3.6 across | 0.2 mm of wall a side |
+| Ø2 pin | 2.1 across | 0.95 mm a side |
+
+Only the pin fits, so `pivot_screw = false`. The `HINGE SCREW FITS` echo prints that
+arithmetic for whatever `disc_t` and `insert_size` are set to; the geometry is guarded on
+`clamp_ok`, so the access channel is only cut when it can be a channel rather than a trough
+open on both faces.
+
+`disc_t = 6` would make the screw fit — +0.5 a side on the head, +1.2 on the bore — and
+**that is no longer available.** The measured 16.0 mm stack over the puck against 16.4 mm of
+room leaves 0.4 mm; two more millimetres of disc leaves 14.4 against 16.0. So the hinge is a
+pin, and stays one, unless the driver board comes off the pocket.
+
+### What a snap-out detent would take
+
+The leg is held out by the wall stop and 10.9 N·mm of clamp friction, and held shut by the
+catch lip. What it does not do is **click** out and positively resist folding.
+
+The mechanism for that is settled, and it is the one in
+[US5865128A](https://patents.google.com/patent/US5865128A/en): a slot with a **channel
+portion → ramp portion → locking opening**, a spring holding the pin in the opening, and the
+user pushing the leg along the slot to release it. A fixed cam at the pivot cannot do it —
+anything more than `piv_h` from the axis orbits into the pocket floor. A pin that
+**translates into a pocket** can, because the locking feature stops having to orbit. The room
+for it is the 0.77 mm of reach daylight in the table above.
+
+At `disc_t = 4` the margins are thin:
+
+| | Available | Wanted |
+|---|---|---|
+| Pivot slot travel | ~0.7 mm — `hub_r` 1.75 and the Ø2.1 bore leave no more | 1.5 mm |
+| Locking pocket depth | ~0.37 mm | 0.6–0.8 mm |
+| Spring | printed cantilever inside the leg's own pivot slot, ~4.8 N | fine either way |
+
+It would work, thinly, and it is the only version on offer now that `disc_t` is pinned at 4.
+Building it also changes the gesture: unfolding becomes *push the leg along its own axis,
+then swing*, because the patent's mechanism needs the release push. That is a feel decision
+rather than a geometry one.
 
 **The hub is deliberately 8.25 mm below the frame's centre**, at exactly half the frame's
 *width* above the bottom edge. Rotate the frame 90° and the pivot ends up the same distance
@@ -446,9 +706,6 @@ above whichever edge is now the bottom — so portrait and landscape get an iden
 The frame rests on the **rear** edge of its flat bottom — a slab leaning backwards contacts
 at the back of its base. The 2 mm rear chamfer moves that contact edge forward, and with the
 equal-stance hub the centre of mass sits 9 mm (portrait) and 6 mm (landscape) behind it.
-
-A single hard stop, not a ratchet: the hinge axis lies *in* a 4 mm disc, so the knuckle
-can't exceed ~3 mm, which puts 15° teeth at 0.4 mm — under what a 0.4 mm nozzle resolves.
 
 ---
 
@@ -482,30 +739,16 @@ The end walls are hollowed from the cover side (`lightening()`), leaving 2 mm of
 behind the glass shelf, a rim, and the screw bosses. Without it the two ends are solid
 frame and the part is 24 cm³ heavier for nothing.
 
-### ⚠ The STLs are mirrored in X
-
-`print_mirror = true` mirrors all five parts at export. They still mate with each other, but
-the assembly is the **opposite hand** to the drawings: the ribbon relief, the screw spine
-and the charge port are on the other side. On the bed the ribbon relief sits at
-**x ≈ +45.95** (right of centre); un-mirrored it sits at −45.95.
-
-**The drawing sheets show the as-designed hand; the renders show the printed hand.** The
-renders import the STLs and assemble them exactly as they come out of the exporter, so
-they are the object you will hold — which reads left-right reversed against every sheet.
-`renders/11-print-plate.png` is the rawest of them: the four STLs untouched, in the
-orientation the slicer will open them in.
-
-Set `print_mirror = false` to go back to the drawn hand — the renders and the note in
-every title block follow the flag, and the sheets themselves are always drawn as designed.
-The interference checks run on un-mirrored geometry and are unaffected either way.
-
 ### Hardware
 
-- 5 × **M2.5 heat-set inserts**, 4.0 OD × 4.0 long (four in the frame's end walls, one in the disc)
-- 4 × **M2.5 countersunk screws**, 8 mm (cover) + 1 × M2.5 × 10 (hinge clamp)
+- 4 × **M2.5 heat-set inserts**, 4.0 OD × 4.0 long, in the frame's end walls
+- 4 × **M2.5 countersunk screws**, 8 mm, for the cover
+- 1 × **Ø2 × 43.5 mm pin** for the hinge — steel rod, or a flared 1.75 mm filament offcut
+- 1 × **Waveshare FPC adapter**, 18 × 32, plus a second FPC to the driver board
+- 4 × screws for the adapter — size not yet measured
 - **Double-sided 0.1″ prototype board**, cut to 30 × 70 (driver carrier + divider)
 - 2 × **19-pin 2.54 female headers** for the driver to plug into
-- **Panel-mount USB-C pigtail**, 15 × 8 snap-in body
+- **Panel-mount USB-C pigtail**, 14 × 4.5 snap-in body (measured)
 - Adafruit **bq25185 (#6091)**; 1S LiPo **2000 mAh, 694449, 44 × 49 × 6.9 mm** (the
   salvaged cell above)
 - JST-PH pigtails, foam tape
@@ -546,11 +789,24 @@ reason — they were consequences of hardware this build does not have:
 | Check | Was | Now |
 |---|---|---|
 | `conn_cell` | 154 mm³ — a mated header against the cell | empty; `mod_header = false`, nothing stands off the panel |
-| `drv_module` | 1050 mm³ — a 15 mm driver stack against a module PCB | empty at `drv_env = 6.0`, the board with no cable mated to it, and no PCB to hit |
+| `drv_module` | 1050 mm³ — a 15 mm driver stack against a module PCB | empty: no module PCB to hit |
 
-`disc_legf` now reports geometry **on purpose**: it is the catch lip overlapping the folded
-leg's foot, which is the interference the leg flexes past to snap shut. `disc_legd` stays
-empty, so the catch does not foul the deployed leg.
+`disc_legf` reports geometry **on purpose**: it is the catch lip overlapping the folded
+leg's foot, which is the interference the leg flexes past to snap shut.
+
+`disc_legd` reports geometry now too, where it used to be empty, and also on purpose — two
+things touch there. The clamp land is at the pivot, so it is in contact at every leg angle;
+and at the deployed angle the leg also lands on the slot's rear wall, which is the hard stop
+doing its job. `disc_legs` reports the same thing at whatever angle `chk_th` asks for. It reads **0.4 mm** rather than the designed 0.2, because the check draws the leg
+centred in its slot while the land pushes it 0.2 mm over onto the far wall. Read it as
+`clamp_pr` (0.6) less one side of `leg_slot_c`.
+
+`cover_legs` is the one that must stay empty, and it must stay empty **through the whole
+stroke**, not just at the two ends — that is what caught the heel corner.
+
+`adapt_board` is the one genuine conflict in the build: the adapter overlaps the carrier for
+31.25 mm. It is not a by-design touch and it does not have a fix yet. `adapt_cover` comes
+back zero-thickness, which is the adapter's back face sitting flush on the pocket face.
 
 Two problems caught during the rebuilds:
 
@@ -652,7 +908,7 @@ sh tools/mkrenders.sh           # renders/*.png, all of it from stl/
 | Self-tapping screws instead of inserts | `insert_fit = false` |
 | A different perfboard | `perf_w` / `perf_h`, or `perf_fit = false` |
 | The electronics box needs to grow | `elec_clr`, `col_gap`; the interior follows, and so does the frame if it has to |
-| The driver board measures deeper than 6 mm | `drv_env`, and re-run `chk="drv_module"` |
+| The driver stack measures deeper than 16 mm | `drv_stack` — and then the depth has to grow or the board has to come off the pocket |
 | Bigger cell | `bat_w` / `bat_h` / `bat_t` — the band is 79.5 wide × ~51 tall |
 | Three side buttons | `btn_n = 3`, then `btn_d` / `btn_sp` |
 | More/less white line | `white_show_short` / `white_show_long` |
@@ -661,17 +917,27 @@ sh tools/mkrenders.sh           # renders/*.png, all of it from stl/
 | Deeper/shallower back bevel | `rear_chf` — 2.0 is the ceiling before it eats the 2.2 mm walls |
 | Looser/tighter disc | `pocket_c` |
 | Open the flash port again | `flash_port = true` |
-| Print the drawing hand instead of the mirrored one | `print_mirror = false` |
 
 Preview modes: `standing_p`, `standing_l`, `folded`, `guts` (cover populated with mock
 electronics), `assembly`, `plate`.
 
 Interference checks are built in — `chk` = `frame_cover`, `frame_module`, `cover_module`,
 `cover_board`, `frame_board`, `drv_module`, `conn_cell`, `conn_board`, `conn_cover`,
-`cover_disc`, `disc_legf`, `disc_legd`, `cover_legd`, `cover_legf`:
+`cover_disc`, `disc_legf`, `disc_legd`, `cover_legd`, `cover_legf`, `adapt_board`,
+`adapt_cover`, and the swept ones — `cover_legs` and `disc_legs` take `chk_th` and walk the
+leg's whole travel, and `wall_leg` takes `chk_th` and `chk_d` and asks how far behind the
+pivot the leg reaches at a given angle, which is what `stop_wall` was set from:
 
 ```bash
 openscad -o /tmp/chk.stl -D 'part="none"' -D 'chk="cover_board"' src/epaper_stand.scad
+
+# the leg's whole stroke against the cover -- every angle must write NO FILE
+for t in 0 20 40 60 80 100 122; do
+  rm -f /tmp/chk.stl
+  openscad -o /tmp/chk.stl -D 'part="none"' -D 'chk="cover_legs"' -D "chk_th=$t" \
+    src/epaper_stand.scad 2>/dev/null
+  [ -f /tmp/chk.stl ] && echo "theta $t CLASHES"
+done
 ```
 
 ## Sources

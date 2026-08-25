@@ -102,16 +102,24 @@ clear at both ends.
 - [ ] Check the wall's contact patch after a few dozen cycles. It is a corner landing near
       the wall's top edge; if it is visibly rounding over, the wall wants a small radius.
 
-## 2c. Decide whether to build the snap-out detent
+## 2c. The snap-out detent — a product decision, not a geometry one
 
-The mechanism and its margins are written up in the README. `disc_t = 6` is ruled out by the
-depth budget, so the only version on offer is the thin one at `disc_t = 4`: ~0.7 mm of pivot
-slot travel and a ~0.37 mm locking pocket.
+Three of the four leg problems are fixed and in the STLs: the hub sweep relief (it used to jam
+1.80 mm into the pocket floor at 64°), the clamp land and its flexure tongue (10.9 N·mm, 31×
+gravity), and a firm stop at the deployed angle. The **click** is not built, and cannot be
+built while the leg folds flush — a projecting lug is capped at **0.25 mm** at `disc_t = 4` and
+only **0.39 mm** at 6, both at or below what a 0.4 mm nozzle resolves. Thickening the disc does
+not fix it. (An earlier note here claimed `disc_t = 6` made it workable with a 0.69 mm pocket.
+That used the wrong constraint and is wrong.)
 
-- [ ] Decide: build it thin, or leave the leg held by the wall stop plus 10.9 N·mm of clamp
-      friction. Building it changes the gesture to *push the leg along its axis, then swing*.
-- [ ] If built: test-print the leg alone first — the printed spring finger inside the pivot
-      slot is the part most likely to be wrong.
+- [ ] **Decide whether the leg may stand proud of the rear face when folded.** A lug at
+      leg-local 58°, radius 4.0, bites 0.75 mm into the stop wall at the deployed angle and
+      stands 1.39 mm off the back next to the hub when folded. That buys a real click. Say yes
+      and I build it; say no and the leg stays as it is — which holds fine, it just does not
+      snap.
+- [ ] Either way the friction is at its ceiling: `clamp_pr` 0.5 gives 0.10 mm of interference
+      and 35 MPa at the tongue root, against ~50 MPa yield. 0.14 mm is the most it will take
+      (15.3 N·mm). Do not raise it past that expecting more hold.
 
 ## 3. Print and check the bezel test tile before the frame
 

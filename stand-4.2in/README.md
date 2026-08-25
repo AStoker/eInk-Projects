@@ -672,31 +672,45 @@ open on both faces.
 room leaves 0.4 mm; two more millimetres of disc leaves 14.4 against 16.0. So the hinge is a
 pin, and stays one, unless the driver board comes off the pocket.
 
-### What a snap-out detent would take
+### Why there is no snap-out detent, and what one would cost
 
 The leg is held out by the wall stop and 10.9 N·mm of clamp friction, and held shut by the
-catch lip. What it does not do is **click** out and positively resist folding.
+catch lip. It does not **click**, and the reason is a hard geometric bound, not a tuning
+problem.
 
-The mechanism for that is settled, and it is the one in
-[US5865128A](https://patents.google.com/patent/US5865128A/en): a slot with a **channel
-portion → ramp portion → locking opening**, a spring holding the pin in the opening, and the
-user pushing the leg along the slot to release it. A fixed cam at the pivot cannot do it —
-anything more than `piv_h` from the axis orbits into the pocket floor. A pin that
-**translates into a pocket** can, because the locking feature stops having to orbit. The room
-for it is the 0.77 mm of reach daylight in the table above.
+The mechanism would be the one in
+[US5865128A](https://patents.google.com/patent/US5865128A/en) — a slot with a **channel →
+ramp → locking opening**, a spring holding the pin in the opening, released by pushing the leg
+along the slot. That needs a lug on the leg that projects past the hub arc. **A projecting lug
+has to survive the whole 122° sweep inside the disc's thickness**, and its worst excursion is
+`r × max|sin|` over the 122° arc it traces. The best case centres that arc on straight-back,
+which caps the projection at:
 
-At `disc_t = 4` the margins are thin:
+| `disc_t` | Lug may reach | Hub arc | **Projection available** |
+|---|---|---|---|
+| 4.0 | 2.00 | 1.75 | **0.25 mm** |
+| 6.0 | 3.14 | 2.75 | **0.39 mm** |
+| 8.0 | 4.29 | 3.75 | 0.54 mm |
 
-| | Available | Wanted |
-|---|---|---|
-| Pivot slot travel | ~0.7 mm — `hub_r` 1.75 and the Ø2.1 bore leave no more | 1.5 mm |
-| Locking pocket depth | ~0.37 mm | 0.6–0.8 mm |
-| Spring | printed cantilever inside the leg's own pivot slot, ~4.8 N | fine either way |
+A 0.4 mm nozzle resolves about 0.4 mm. The folded catch that *does* work is 0.65 mm proud with
+0.35 mm of flex. So a detent is below printable resolution at `disc_t = 4` and marginal even at
+8 — **thickening the disc does not rescue it**, which is the opposite of what an earlier version
+of this section said. Nor does friction: the clamp tongue is already near its stress limit at
+0.10 mm of interference (35 MPa of 50), and 0.14 mm is the most it will take.
 
-It would work, thinly, and it is the only version on offer now that `disc_t` is pinned at 4.
-Building it also changes the gesture: unfolding becomes *push the leg along its own axis,
-then swing*, because the patent's mechanism needs the release push. That is a feel decision
-rather than a geometry one.
+**Flush folding and a printable detent are mutually exclusive here.** The bound comes entirely
+from the lug having to stay inside the disc while the leg sweeps. Let the leg stand slightly
+proud of the rear face when folded and the bound disappears — a lug at leg-local 58° points
+straight back at the stop wall at exactly the deployed angle, and sits at mid-thickness there:
+
+| Lug radius | Bite past the wall | Proud when folded | Max proud mid-sweep |
+|---|---|---|---|
+| 3.0 | none | 0.54 | 1.00 |
+| 3.5 | 0.25 | 0.97 | 1.50 |
+| **4.0** | **0.75** | **1.39** | 2.00 |
+
+0.75 mm of positive engagement for a tab standing 1.39 mm off the back next to the hub. That is
+the trade, and it is a decision about the product, not the geometry — [TODO.md](TODO.md) §2c.
 
 **The hub is deliberately 8.25 mm below the frame's centre**, at exactly half the frame's
 *width* above the bottom edge. Rotate the frame 90° and the pivot ends up the same distance

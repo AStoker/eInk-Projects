@@ -120,7 +120,9 @@ rib_exit = 0.0;                     // exit centre, along the long axis, from th
 rib_out  = 4.0;                     // leg 1, out from the glass edge
 rib_band = 9.0;                     // ribbon width through the turn
 rib_run  = 20.0;                    // leg 2, toward the TOP
-rib_marg = 2.0;                     // relief margin around the route
+rib_marg = 5.0;                     // relief margin around the route, along the
+                                    //   long axis.  MEASURED: the hollow wants about 3
+                                    //   more than the route at each end, so 2 -> 5.
 rib_w   = rib_run + rib_band + 2*rib_marg;              // slot LONG, along RIGHT
 rib_off = pan_h/2 + rib_exit - rib_band/2 - rib_marg;   // from the BOTTOM edge
 rib_clr = 3.0;                      // lateral room it needs to bend back around (OUT)
@@ -376,7 +378,41 @@ wash_t    = 0.5;                 // wave washer free height, under the head
 // side is the 0.75 x 12 land that comes down on the pocket floor at stop_ang,
 // so the hard stop survives; only the corner that could not clear is gone.
 hub_sweep = true;
-sweep_clr = 0.25;                // how far the hub's rear arc stays off the floor
+sweep_clr = 0.25;
+
+// SNAP DETENT.  The projecting part is on the DISC and the receiving part is a
+// POCKET in the leg's top face.  That inversion is what makes it possible while
+// the leg still folds flush:
+//   - a LUG ON THE LEG is capped at 0.25 mm, because it has to sweep 122 deg
+//     inside disc_t and its worst excursion is r*max|sin| over that arc;
+//   - a BUMP ON THE LEG breaks the flush fold, because it has to stand proud of
+//     the leg's own thickness to reach anything;
+//   - a POCKET in the leg cannot break flush - it is material removed - and the
+//     DISC does not sweep, so its tooth can be any size at all.
+// The tooth hangs from a sprung tab in the disc's solid rear region, flexing in
+// depth out through the back face where there is open air.  It rides clear of
+// the leg for the whole stroke and only meets it in the last 3.7 deg, because
+// the leg's top face does not reach that far back until then.
+snap_det  = true;
+det_at    = 3.0;    // engagement point, along the leg from the pivot
+det_lift  = 0.45;   // how far the tooth stands past the leg's top face, in depth
+                    //   - this is the deflection the leg has to climb to fold
+// The tooth has to flex REARWARD, not in depth: at the deployed angle the leg's
+// top face points down-and-back, so its normal is mostly -Z.  That puts the
+// spring in the same place as the hard stop, so the two are decoupled - the stop
+// wall stays SOLID and takes the load, the tooth pokes through a WINDOW in it,
+// and the spring is a bridge behind the wall, flexing in Z.  The bridge is
+// rooted in the disc's bulk well outboard of the slot, which is what makes it
+// soft enough: a bridge spanning only the 12.4 slot is too stiff to survive the
+// deflection, and a tab rooted at the rear would be a column, not a spring.
+det_span  = 20.0;   // bridge span in X, rooted in the disc's bulk either side
+det_tt    = 1.0;    // bridge thickness, along the long axis - it flexes this way
+det_h     = 4.0;    // bridge height, in depth
+det_w     = 10.0;   // tooth width, and the window in the stop wall
+det_tooth = 1.2;    // how far the tooth projects forward past the wall
+det_gap   = 1.0;    // relief behind the bridge, so it has somewhere to flex
+det_pkt   = 0.60;   // pocket depth in the leg's top face
+det_pkt_l = 1.50;   // pocket length along the leg                // how far the hub's rear arc stays off the floor
 
 
 // HOLDING THE LEG.  Two different jobs, and they do not want the same mechanism.
@@ -643,6 +679,17 @@ scr_z = [14.0, Zc, H - 14.0];            // legacy, still used by the drawings
 hub_z = W/2;                           // = distance to the bottom edge in BOTH orientations
 theta_dep = 180 - stop_ang;            // leg swing angle when deployed
 slot_w  = leg_w + 2*leg_slot_c;        // the leg's slot in the disc
+// Where the leg's top face is, at the deployed angle, det_at along the leg.
+// That point is what the tooth has to meet, so the tab's thickness follows from
+// it rather than being chosen: tab = (disc_t - face) + det_lift.
+det_fy  = disc_t/2 + ( leg_t/2*cos(theta_dep) + det_at*sin(theta_dep));
+det_fz  = -pivot_r + (-leg_t/2*sin(theta_dep) + det_at*cos(theta_dep));
+det_arm = sqrt(pow(det_fy - disc_t/2,2) + pow(det_fz + pivot_r,2));  // moment arm
+det_I   = det_h*pow(det_tt,3)/12;
+det_k   = 192*2400*det_I/pow(det_span,3);    // fixed-fixed bridge, N/mm
+det_F   = det_k*det_lift;
+det_T   = det_F*det_arm;                     // detent torque about the pivot
+det_sig = (det_F*det_span/8)*(det_tt/2)/det_I;   // mid-span stress
 piv_h   = disc_t/2;                    // pivot axis height above the pocket floor
 hub_r   = piv_h - sweep_clr;           // rear of the hub: what can orbit and clear
 sweep_a = 270 - theta_dep;             // local angle of the heel flat's tangent line
@@ -1344,6 +1391,19 @@ echo(str("HINGE FRICTION: ", clamp_land
                pivot_screw ? "The screw sets the rest."
                            : "PRINT-TUNE clamp_pr the way catch_p is tuned: it is the one number a drawing cannot give you.")
          : "NONE - the leg swings on whatever the print gave it"));
+echo(str("SNAP DETENT: ", snap_det
+         ? str("tooth on the DISC, pocket in the LEG - the inversion is what makes",
+               " it possible while the leg still folds flush | engages at leg-local",
+               " z ",det_at,", which is disc y ",det_fy," z ",det_fz,
+               " - right at the stop wall | rides clear until 118.3 deg, so it only",
+               " meets the leg in the last 3.7 | bridge ",det_span," x ",det_tt,
+               " x ",det_h," -> ",det_k," N/mm | ",det_F," N at ",det_lift,
+               " of lift, arm ",det_arm," -> ",det_T," N.mm of detent (",
+               det_T/leg_len," N at the foot), ",det_sig," MPa at mid-span",
+               " | with the clamp's ",2*0.35*flex_k*(clamp_pr-2*leg_slot_c)*2,
+               " that is ",det_T + 2*0.35*flex_k*(clamp_pr-2*leg_slot_c)*2,
+               " N.mm holding it open")
+         : "not fitted - the leg holds on clamp friction alone"));
 echo(str("DEPLOYED STOP: rear wall ",stop_wall," behind the pivot | the leg reaches",
          " that only at ",theta_dep," deg of swing (it is at 2.48 by 110), and past it",
          " the interference grows about 0.07 mm/deg | the heel flat's own stop is a",

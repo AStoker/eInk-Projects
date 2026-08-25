@@ -198,7 +198,7 @@ corner_r = 5.0; cav_r = 1.5; front_chf = 0.8; win_chf = 0.9; rear_chf = 2.0;
 //   M2     3.2 x 4.0        2.9 x 5.0   4.0
 //   M2.5   4.0 x 4.0        3.6 x 5.0   5.0
 //   M3     4.6 x 5.7        4.0 x 6.7   6.0     <- default
-insert_size = "M3";
+insert_size = "M2.5";
 insert_fit  = true;             // false = self-tapping screws into a pilot hole
 ins_d = (insert_size == "M2") ? 2.9 : (insert_size == "M2.5") ? 3.6 : 4.0;
 ins_l = (insert_size == "M3") ? 5.7 : 4.0;
@@ -231,11 +231,19 @@ disc_d = 54.0; disc_t = 4.0; pocket_c = 0.35;
 lug_out = 1.3; lug_t = 1.3; lug_ang = 26; gap_ang = 34;
 groove_y0 = 1.4;                 // groove position, from the pocket floor
 pivot_r = 16.0; pin_d = 2.0;
-// Hinge pin fit.  0.1 total is a push fit for a ground 2 mm steel rod and a
-// firm turn for a 1.75 mm filament offcut once its ends are flared.  Open it up
-// if the hinge is too stiff to move; close it if the leg flops.
-pin_fit = 0.10;
-leg_len = 35.4; leg_w = 12.0; leg_t = 3.4; leg_slot_c = 0.5;
+// HINGE.  A plain pin gives you whatever friction the print happens to produce,
+// which is not a lock.  pivot_screw makes the pin an M2.5 screw into a heat-set
+// insert in the far slot wall: tighten it and the walls clamp the leg, so the
+// leg holds any angle including fully deployed, and you can set how hard with a
+// screwdriver.  That is the lock - not a detent, which this size of part cannot
+// carry (see the README).
+//
+// For it to clamp, the leg has to be a close fit in the slot: leg_slot_c is
+// 0.2, so each wall only has to close 0.2 mm.  A loose slot just rattles.
+pivot_screw = true;
+pin_fit = 0.10;                  // plain-pin fallback when pivot_screw = false
+leg_len = 35.4; leg_w = 12.0; leg_t = 3.4;
+leg_slot_c = 0.2;                // close, so the clamp screw has something to do
 foot_r = 5.0; stop_ang = 58;     // deployed leg angle from straight down
 // HOLDING THE LEG.  Two different jobs, and they do not want the same mechanism.
 //
@@ -319,9 +327,13 @@ elec_h = max(carrier_fit ? carrier_h : drv_h, bat_h + 2*bat_clr + col_gap + chg_
 // is no other way in, because the front lip is smaller than the glass.  An
 // interior sized only by the electronics comes out 80.9 on the long axis and
 // walls a 90 mm glass out by 9 mm: a case that cannot be assembled.
-glass_pass_w = pan_w + 2*pan_clr_w + 1.0;
+// The glass is OFFSET (pan_px, to centre the ink), so comparing sizes is not
+// enough - the interior has to cover where the glass actually is.  Comparing
+// sizes left it 0.4 mm short on the -X side: another glass that cannot go in.
+glass_x0 = pan_px - pan_w/2 - pan_clr_w - 0.5;
+glass_x1 = pan_px + pan_w/2 + pan_clr_w + 0.5;
 glass_pass_h = pan_h + 2*pan_clr_h + 1.0;
-cav_w = bare_panel ? max(elec_w + 2*elec_clr, glass_pass_w) : pcb_w + 2*mod_clr;
+cav_w = bare_panel ? max(elec_w + 2*elec_clr, glass_x1 - glass_x0) : pcb_w + 2*mod_clr;
 cav_h = bare_panel ? max(elec_h + 2*elec_clr, glass_pass_h) : pcb_h + 2*mod_clr;
 
 half_cav = bare_panel ? cav_w/2 + side_wall
@@ -330,8 +342,13 @@ half_rib = abs(pcb_px + pan_off_x - pan_w/2 - pan_clr_w - rib_clr) + wall_rib;
 W = 2*max(half_cav, half_rib);      // whichever the -X side actually needs
 // with no PCB the long axis is set by the glass and by leaving enough material
 // at each end to put a screw through
-H = bare_panel ? max(pan_h + 2*pan_clr_h + 2*end_wall, cav_h + 2*end_wall)
-               : pcb_h + 2*(mod_clr + wall);
+// End wall thick enough for a screw near each corner: rear chamfer, a margin,
+// the head, a margin to the interior.  This sets the frame's long axis now.
+// A post inside the interior cannot work - the glass has to pass through that
+// interior on its way to the pocket, and at 90 mm long against a 21 mm deep
+// interior it is flat by the time it clears anything, so tilting buys nothing.
+scr_wall = rear_chf + 1.0 + scr_head + 1.0;
+H = bare_panel ? cav_h + 2*scr_wall : pcb_h + 2*(mod_clr + wall);
 Zc = H/2;
 win_w = act_w + 2*white_show_short;  win_h = act_h + 2*white_show_long;
 pcb_face_y = front_t + pan_t + 0.2;                  // the ledge behind the glass
@@ -343,22 +360,40 @@ cov_in_pk = pk_y0 - pk_floor_t;        // cover inner face over the pocket
 cov_in    = depth - cover_t;
 // the interior is centred in the frame; only the GLASS is offset (to centre the
 // ink), and with no PCB the two no longer have to share a datum
-cav_cx = bare_panel ? 0 : pcb_px;
+cav_cx = bare_panel
+  ? min(max(0, glass_x1 - cav_w/2), glass_x0 + cav_w/2)
+  : pcb_px;
 cav_x0 = cav_cx - cav_w/2; cav_x1 = cav_cx + cav_w/2;
 cav_z0 = Zc - cav_h/2;     cav_z1 = Zc + cav_h/2;
 // ribbon cutout centre, measured from the glass's -Z edge
 rib_cz  = (Zc + pan_off_z) - pan_h/2 + rib_off + rib_w/2;
 rib_far = pan_h - rib_off - rib_w;      // what is left on the other side
 // corner screw posts, sized here because the interior layout works around them
-post_s  = 9.0;                           // post cross-section, square-ish
-post_y0 = front_t + pan_t + 1.0;         // starts clear of the glass, so the
-                                         //   glass can still pass on its way in
+post_s  = 0;                             // no posts: see scr_wall above
+post_y0 = front_t + pan_t + 1.0;
 // ---- carrier board: -X column.  The driver plugs into female headers on it,
 // so the carrier is what the case holds and the driver just pushes down into
 // place.  The carrier runs past the driver at the bottom, and that spare board
 // is where the battery divider goes.
 carrier_cx = cav_x0 + elec_clr + carrier_w/2;
-carrier_z0 = cav_z0 + post_s + 1.0;
+// Glass retention pads on the cover.  With the interior open behind the glass -
+// which it has to be, or the glass cannot get in - these are what press it
+// against the front lip.  One at each long-axis end, over the glass's dead
+// border, sized and placed to miss the electronics: the top one is short
+// because the charger runs up that side.
+pad_h = 3.5;      // a rib, not a slab: it only has to touch the glass
+pad_w = bare_panel ? [26.0, 20.0] : [13.0, 13.0];
+pad_x = bare_panel
+  ? [pan_px, pan_px - 12.0]
+  : [bat_cx - bat_w/2 - bat_clr - bat_fence - 1.0 - 6.5,
+     bat_cx + bat_w/2 + bat_clr + bat_fence + 1.0 + 6.5];
+pad_z = bare_panel
+  ? [cav_z0 + pad_h/2 + 1.0, cav_z1 - pad_h/2 - 1.0]
+  : [bat_cz + 12.0, bat_cz - 2.0];
+// the bottom of the interior is spoken for: the glass rib sits against the end,
+// and the rear pigtail sits beside it.  Everything else starts above them.
+elec_z0 = cav_z0 + pad_h + 2.0;
+carrier_z0 = elec_z0;
 carrier_z1 = carrier_z0 + carrier_h;
 carrier_cz = (carrier_z0 + carrier_z1)/2;
 carrier_back = cov_in_pk;                         // sits at the puck face
@@ -381,7 +416,7 @@ perf_back = cov_in_pk - 0.5;
 // ---- +X column: the cell low (keeps the centre of mass down), charger above it
 bat_cx = bare_panel ? (carrier_fit ? carrier_cx + carrier_w/2 : drv_x1)
                       + col_gap + bat_col_w/2 : pcb_px;
-bat_cz = cav_z0 + post_s + 1.0 + bat_clr + bat_h/2;   // clear of the corner posts
+bat_cz = elec_z0 + snap_h/2 + 0.5 + bat_clr + bat_h/2;  // clear of the port band
 bat_x0 = bat_cx - bat_w/2;
 // ---- charger breakout, on its own standoffs.  The quarter Perma-Proto it used
 // to ride on is gone: it was the widest thing in the box and it took a corner
@@ -389,7 +424,7 @@ bat_x0 = bat_cx - bat_w/2;
 // onto the charger's pads.
 // the charger is narrow enough to sit inboard of the corner posts, so it can
 // run past them in Z
-chg_x_c = cav_x1 - post_s - chg_w/2 - 1.0;
+chg_x_c = cav_x1 - chg_w/2 - 1.0;
 chg_back = cov_in_pk - 0.5;
 proto_x0 = chg_x_c - chg_w/2;  proto_x1 = chg_x_c + chg_w/2;   // kept for the docs
 proto_z0 = bat_cz + bat_h/2 + bat_clr + col_gap;
@@ -398,20 +433,6 @@ proto_cx = chg_x_c;  proto_cz = (proto_z0 + proto_z1)/2;
 proto_back = chg_back;
 proto_face = proto_back - proto_t;
 // module retention pads, in the strips either side of the cell
-// Glass retention pads on the cover.  With the interior open behind the glass -
-// which it has to be, or the glass cannot get in - these are what press it
-// against the front lip.  One at each long-axis end, over the glass's dead
-// border, sized and placed to miss the electronics: the top one is short
-// because the charger runs up that side.
-pad_h = 3.5;      // a rib, not a slab: it only has to touch the glass
-pad_w = bare_panel ? [36.0, 20.0] : [13.0, 13.0];
-pad_x = bare_panel
-  ? [pan_px - 2.0, pan_px - 12.0]
-  : [bat_cx - bat_w/2 - bat_clr - bat_fence - 1.0 - 6.5,
-     bat_cx + bat_w/2 + bat_clr + bat_fence + 1.0 + 6.5];
-pad_z = bare_panel
-  ? [cav_z0 + pad_h/2 + 1.0, cav_z1 - pad_h/2 - 1.0]
-  : [bat_cz + 12.0, bat_cz - 2.0];
 // module 8-pin header, absolute
 conn_x = pcb_px + conn_dx;
 conn_z = Zc + conn_dz;
@@ -420,7 +441,7 @@ conn_y1 = mod_back + conn_h;        // back face
 // ports
 // rear-facing USB-C breakout: receptacle flush in the back cover
 ucb_x = bare_panel ?  22.0 : -34.4;               // port centre on the back
-ucb_z = bare_panel ?  12.5 :  11.0;               // low, and off the leg centreline
+ucb_z = bare_panel ? cav_z0 + snap_h/2 + 0.5 : 11.0;   // low, beside the bottom rib
 ucb_w = 13.0; ucb_l = 13.0; ucb_t = 1.6;          // breakout board
 port_w = 9.5; port_h = 3.7;                       // receptacle opening
 chg_z = bare_panel ? proto_cz : proto_z0 + 3.0 + chg_h/2;
@@ -450,11 +471,10 @@ scr_x = (cav_x1 + (W/2 - rear_chf))/2;   // legacy spine position, kept for refe
 // to drop through, which leaves about 8 mm at each end - not enough for a M3
 // head once the rear chamfer has taken its 2 mm.  The posts start behind the
 // glass plane so the glass still passes.
-scr_cx = cav_w/2 - post_s/2;
-scr_cz = post_s/2;                       // measured in from the interior edge
+scr_cx = W/2 - rear_chf - 1.0 - scr_head/2;
+scr_cz = rear_chf + 1.0 + scr_head/2;    // in from each long-axis end
 scr_pos = bare_panel
-  ? [[-scr_cx, cav_z0+scr_cz], [scr_cx, cav_z0+scr_cz],
-     [-scr_cx, cav_z1-scr_cz], [scr_cx, cav_z1-scr_cz]]
+  ? [[-scr_cx, scr_cz], [scr_cx, scr_cz], [-scr_cx, H-scr_cz], [scr_cx, H-scr_cz]]
   : [[scr_x, 14.0], [scr_x, Zc], [scr_x, H-14.0]];
 scr_z = [14.0, Zc, H - 14.0];            // legacy, still used by the drawings
 hub_z = W/2;                           // = distance to the bottom edge in BOTH orientations
@@ -585,13 +605,12 @@ module frame(){
                 cavity(body_d, pcb_face_y);
                 usb_cut();
                 rear_chamfer();
-                prism(cav_w+2.0, cav_h+2.0, cav_r+1.0, 1.1, cav_cx, Zc, body_d-1.0);
                 for(sz=[-1,1]) translate([cav_cx-cav_w/2-1.5, body_d-2.5, Zc+sz*32-5])
                     cube([1.6, 2.1, 10]);
                 lightening();
             }
-            corner_posts();
         }
+        prism(cav_w+2.0, cav_h+2.0, cav_r+1.0, 1.1, cav_cx, Zc, body_d-1.0);
         // and the fastener holes last, so they go through the posts
         for(sp=scr_pos) translate([sp[0],body_d+0.1,sp[1]]) rotate([90,0,0])
             if (insert_fit) {
@@ -605,7 +624,7 @@ module frame(){
 // A post in each interior corner, from behind the glass plane back to the cover
 // face, tied into both walls.  This is what the corner screws thread into.
 module corner_posts(){
-    if (bare_panel)
+    if (false)
         for (sx=[-1,1], sz=[-1,1])
             translate([sx*(cav_w/2 - post_s/2), post_y0,
                        Zc + sz*(cav_h/2 - post_s/2)])
@@ -704,6 +723,11 @@ module cover(){
 
         pocket_cut();
         rear_port_cut();
+        // clear space for the pigtail body itself: anything printed in the cover
+        // that strays into it - platform, ribs - gets relieved automatically
+        if (port_snap)
+            translate([ucb_x, cov_in-snap_d, ucb_z]) xzext(snap_d+0.2)
+                square([snap_w+1.5, snap_h+1.5], center=true);
         rear_chamfer();
         for(sp=scr_pos){
             translate([sp[0], body_d-0.1, sp[1]]) rotate([-90,0,0])
@@ -760,8 +784,18 @@ module disc(){
         }
         translate([-slot_w/2, -0.01, slot_z0])
             cube([slot_w, disc_t+0.02, slot_z1-slot_z0]);
-        translate([-disc_d, disc_t/2, -pivot_r]) rotate([0,90,0])
-            cylinder(d=pin_d+pin_fit, h=2*disc_d);
+        if (pivot_screw) {
+            // clearance through the near wall, countersink on the outside
+            translate([-disc_d, disc_t/2, -pivot_r]) rotate([0,90,0])
+                cylinder(d=scr_free, h=disc_d);
+            translate([-disc_d/2 - slot_w/2, disc_t/2, -pivot_r]) rotate([0,90,0])
+                cylinder(d1=scr_head, d2=scr_free, h=scr_csk+0.01);
+            // insert bore in the far wall
+            translate([slot_w/2 - 0.01, disc_t/2, -pivot_r]) rotate([0,90,0])
+                cylinder(d=ins_d, h=ins_l+ins_relief);
+        } else
+            translate([-disc_d, disc_t/2, -pivot_r]) rotate([0,90,0])
+                cylinder(d=pin_d+pin_fit, h=2*disc_d);
         // soften the outer edge
         translate([0, disc_t-0.6, 0]) rotate([-90,0,0])
             difference(){ cylinder(d=disc_d+2,h=0.7);
@@ -776,9 +810,10 @@ module leg_shape(){
             hull(){ circle(d=leg_w); translate([0,leg_len-foot_r]) circle(r=foot_r); }
         // heel flat: the pocket floor, seen from the leg at the deployed angle
         rotate([theta_dep,0,0]) translate([-50,-60-disc_t/2,-200]) cube([100,60,400]);
-        // axle.  Snug on purpose: the hinge friction is what stops a deployed
-        // leg swinging shut when the frame is picked up.
-        translate([-leg_w,0,0]) rotate([0,90,0]) cylinder(d=pin_d+pin_fit,h=2*leg_w);
+        // axle.  A bearing fit on the screw shank: the clamp is what holds it,
+        // not the hole.
+        translate([-leg_w,0,0]) rotate([0,90,0])
+            cylinder(d=pivot_screw ? scr_free + 0.2 : pin_d+pin_fit, h=2*leg_w);
         // nail chamfer on the tip
         translate([0,leg_t/2,leg_len]) rotate([0,90,0])
             translate([0,0,-leg_w]) cylinder(r=2.2,h=2*leg_w,$fn=4);
@@ -976,9 +1011,14 @@ echo(str("FLASH PORT: ", (drv_z1 + 1.2 < cav_z1)
 echo(str("RELIEFS: pocket relief R",pan_rel," | cavity relief R",cav_rel,
          " (cav_r ",cav_r,", limit 1.707 for a sharp PCB corner)",
          " | wall left at a cavity corner ",wall-cav_rel));
+echo(str("HINGE: ", pivot_screw
+         ? str(insert_size," clamp screw through the disc into an insert in the far",
+               " slot wall | leg ",leg_w," in a ",leg_w+2*leg_slot_c," slot, so each",
+               " wall closes ",leg_slot_c," to clamp | tighten to set the friction")
+         : str("plain dia ",pin_d," pin, ",pin_fit," fit")));
 echo(str("FASTENERS: ", insert_fit
          ? str(insert_size," heat-set inserts, bore dia ",ins_d," x ",ins_l+ins_relief,
-               " deep into a ",post_s," mm corner post | ",insert_size,
+               " deep into a ",scr_wall," mm end wall | ",insert_size,
                " countersunk screws, head ",scr_head,", cone ",scr_csk,
                " deep in a ",cover_t," cover")
          : str("self-tapping into a ",scr_pilot," pilot, ",scr_depth," deep")));
@@ -995,8 +1035,11 @@ echo(str("DRIVER MOUNT: ", carrier_fit
          : "printed side rails"));
 echo(str("CORNER POSTS: ",post_s," x ",post_s," from y ",post_y0," back to ",body_d,
          " | screws at x +/-",scr_cx,", z ",cav_z0+scr_cz," and ",cav_z1-scr_cz));
-echo(str("GLASS FITS THROUGH: interior ",cav_w," x ",cav_h," vs glass ",
-         pan_w," x ",pan_h," -> ", (cav_w > pan_w && cav_h > pan_h) ? "yes" : "NO"));
+echo(str("GLASS GOES IN: interior x ",cav_x0," to ",cav_x1,", z ",cav_z0," to ",cav_z1,
+         " | glass x ",glass_x0," to ",glass_x1,", z ",Zc-pan_h/2," to ",Zc+pan_h/2,
+         " -> ", (cav_x0 <= glass_x0 && cav_x1 >= glass_x1 &&
+                  cav_z0 <= Zc-pan_h/2 && cav_z1 >= Zc+pan_h/2)
+                 ? "clears on every side, drops straight in" : "BLOCKED"));
 echo(str("PERFBOARD: ", (bare_panel && perf_fit)
          ? str(perf_w," x ",perf_h," (",round(perf_w/2.54)," x ",round(perf_h/2.54),
                " holes at 2.54), centred x ",perf_cx,
@@ -1093,7 +1136,8 @@ if (part=="params") {
    ["perf_cx",perf_cx],["perf_cz",perf_cz],["perf_t",perf_t],
    ["carrier_fit",carrier_fit?1:0],["carrier_w",carrier_w],["carrier_h",carrier_h],
    ["carrier_cx",carrier_cx],["carrier_cz",carrier_cz],["carrier_z0",carrier_z0],["carrier_z1",carrier_z1],
-   ["catch_p",catch_p],["pin_fit",pin_fit],["snap_c",snap_c],["carrier_t",carrier_t],["hdr_h",hdr_h],
+   ["catch_p",catch_p],["pin_fit",pin_fit],["snap_c",snap_c],
+   ["pivot_screw",pivot_screw?1:0],["leg_slot_c",leg_slot_c],["scr_wall",scr_wall],["carrier_t",carrier_t],["hdr_h",hdr_h],
    ["port_snap",port_snap?1:0],["snap_w",snap_w],["snap_h",snap_h],["snap_d",snap_d],
    ["post_s",post_s],["post_y0",post_y0],
    ["insert_fit",insert_fit?1:0],["ins_d",ins_d],["ins_l",ins_l],["scr_csk",scr_csk],["cav_cx",cav_cx],["scr_cx",scr_cx],["scr_cz",scr_cz],

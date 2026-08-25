@@ -80,10 +80,65 @@ end walls that left nowhere to put a screw.
       the columns move with it.
 - [ ] Confirm the charger's four standoff pads land on board, not on components. Its hole
       spacing is deliberately not modelled.
-- [ ] Cut the divider perfboard: **11 × 4 holes of 0.1″ strip, 27.9 × 10.2 mm**, for the
-      band above the driver board. Four standoff pads are waiting for it.
+- [ ] Cut the **driver carrier: 30 × 70 mm** of double-sided 0.1″ prototype board, and
+      solder two 19-pin female headers to match the driver's pin rows. **Measure the row
+      spacing** — the model does not know it, and it decides where the holes go. The
+      divider goes on the ~14 × 30 of spare board below the driver.
+- [ ] Measure the **female header height** (`hdr_h`, assumed 8.5) and the **pigtail body**
+      (`snap_w` / `snap_h` / `snap_d`, assumed 15 × 8 × 10). The header height and `drv_env`
+      between them leave only 0.3 mm of margin in front of the driver.
+- [ ] Test-print the **disc and leg** (10 g, ~25 min) and check both ends of the travel:
+      the folded catch should take a firm push to close and a deliberate pull to open
+      (`catch_p` tunes it), and the hinge clamp screw should hold the leg deployed against
+      a shove without being hard to move (tighten to taste; `leg_slot_c` sets how much the
+      walls have to close).
 - [ ] Check your heat-set inserts against the model's assumption (M3, 4.6 OD × 5.7 long,
       Ø4.0 bore). Brands differ; set `ins_d` / `ins_l` and re-export if yours do.
+
+## 2c. The glass could not be installed — twice
+
+Worth recording because both were the same mistake in different clothes, and neither is the
+kind of thing an interference check finds. Nothing intersects; the part simply has no path
+in.
+
+1. **Long axis.** The interior was sized by the electronics (80.9) and the glass is 90.
+   Fixed by `glass_pass_h`.
+2. **Short axis.** The interior was wide *enough* (81.6 against a 76 glass) but the glass is
+   offset 3.2 mm to centre the ink, so it sat 0.4 mm outside on the −X side. Comparing sizes
+   passes; comparing extents does not. Fixed by `glass_x0` / `glass_x1`, and the echo now
+   prints extents.
+
+Corner posts inside the interior were tried and abandoned: with 9 mm posts the glass is
+blocked by 5.9–7.0 mm however deep the posts start, and tilting does not help — the interior
+is 20.9 mm deep against a 90 mm glass, so the glass is flat long before its far end is low
+enough to clear anything. The screws are in the end walls, which cost 2.1 mm of frame
+length at M2.5.
+
+## 2b. What this round changed, and what it left open
+
+The glass could not be installed at all: the interior had been sized by the electronics
+(80.9 on the long axis) and a 90 mm glass has no way into its pocket except through it.
+The interior is now 81.6 × 92.5, set by `glass_pass_h`, and there is an echo line that says
+so on every run.
+
+| | Was | Now |
+|---|---|---|
+| Glass into the pocket | impossible — walled out by 9 mm | drops in from the back |
+| Glass retention | a shelf that blocked it | two ribs on the cover |
+| Corner screws | in 13.75 mm end walls | in 9 × 9 posts inside the interior, starting behind the glass |
+| Driver mounting | printed side rails | plugs into female headers on a 30 × 70 carrier perfboard |
+| Divider board | a separate 27.9 × 10.2 scrap | the spare ~14 × 30 of the carrier |
+| Rear port | breakout board in printed rails | 15 × 8 snap-in pigtail, opening only |
+| Folded leg | nothing held it | catch lip, ~5 N at the foot |
+| Hinge pin | 0.15 / 0.25 clearance | 0.10 friction fit |
+
+- [ ] **The header row spacing on the driver board** is not modelled — measure it before
+      drilling the carrier. It decides where the female headers go, and everything about
+      the driver's position follows from the carrier.
+- [ ] **The pigtail's actual body size.** 15 × 8 × 10 came from the listing; a snap fit
+      wants a caliper. `snap_w` / `snap_h` / `snap_c`.
+- [ ] **Female header height** (`hdr_h`, assumed 8.5). With `drv_env` it leaves 0.3 mm in
+      front of the driver — the tightest number in the build.
 
 ## 3. Print and check the bezel test tile before the frame
 

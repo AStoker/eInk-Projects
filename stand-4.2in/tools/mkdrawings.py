@@ -269,6 +269,7 @@ INSERT = bool(P.get("insert_fit", 0))         # heat-set inserts, or self-tappin
 PERF   = bool(P.get("perf_fit", 0))           # is a separate divider board fitted?
 CARRIER= bool(P.get("carrier_fit", 0))        # driver on a carrier perfboard?
 SNAP   = bool(P.get("port_snap", 0))          # rear port is a snap-in pigtail?
+CLAMP  = bool(P.get("pivot_screw", 0))        # hinge is a clamp screw, not a pin?
 FAST   = (f"M3 heat-set inserts (bore dia {P['ins_d']:g} x {P['ins_l']+1:g} deep) with countersunk screws"
           if INSERT else "self-tapping screws")
 # screw positions, [x, z].  Bare panel: one near each corner, through the end
@@ -944,10 +945,14 @@ def sheet6():
     s.txt(lx, ly+P["leg_len"]+14, f"thickness {n(P['leg_t'])}", "note", size=2.8)
 
     s.notes(178, 22, [
-        (1, f"dia {n(P['pin_d']+0.25)} pin hole, straight through the disc. Pin is trapped by the pocket wall once the disc is fitted"),
-        (2, f"leg slot {n(slot_w)} wide, from {n(-z0)} below the centre to {n(z1)} above"),
+        (1, f"hinge: {n(P['scr_free'])} clearance and a countersink through the near slot wall, {n(P['ins_d'])} x {n(P['ins_l']+1)} insert bore in the far one. Tightening the screw closes the walls onto the leg - that friction is what holds the leg open"
+            if CLAMP else
+            f"dia {n(P['pin_d']+0.25)} pin hole, straight through the disc. Pin is trapped by the pocket wall once the disc is fitted"),
+        (2, f"leg slot {n(slot_w)} wide against a {n(P['leg_w'])} leg - {n(P['leg_slot_c'])} a side, so each wall only has to close that far to clamp. A catch lip {n(P['catch_p'])} proud at the far end snaps over the foot when the leg folds"),
         (3, f"three bayonet lugs, {n(P['lug_ang'])} deg wide x {n(P['lug_out'])} proud, on the inner face"),
-        (4, f"dia {n(P['pin_d']+0.15)} axle hole. Use a {n(P['pin_d'])} rod or a 1.75 filament offcut"),
+        (4, f"dia {n(P['scr_free']+0.2)} axle hole, a bearing fit on the clamp screw's shank"
+            if CLAMP else
+            f"dia {n(P['pin_d']+0.15)} axle hole. Use a {n(P['pin_d'])} rod or a 1.75 filament offcut"),
         (5, f"foot R{n(P['foot_r'])}. The heel behind the pin is cut by the pocket floor at the {n(P['stop_ang'])} deg stop, which is what takes the load"),
     ], cw=42)
     s.titleblock(TBX, TBY, 96, 18, "DISC & LEG", 6, 8, "1:1")

@@ -17,12 +17,12 @@ gets.
 
 | | |
 |---|---|
-| Outer | 91.9 × 108.4 × 25.0 mm |
-| Bezel | 13.45 mm short-axis sides, 10.5 mm long-axis ends |
+| Outer | 91.9 × 110.5 × 25.0 mm |
+| Bezel | 13.45 mm short-axis sides, 11.55 mm long-axis ends |
 | Panel white showing | 0.7 mm short axis, 1.3 mm long axis |
 | Lean | 20.5°, 31.9 mm footprint — the same in both orientations |
-| Interior | 82.1 × 80.9 × 21.0 mm, with 13.75 mm end walls |
-| Fasteners | 4 × M3 countersunk into heat-set inserts, one near each corner |
+| Interior | 81.6 × 92.5 × 21.0 mm, with 9 mm end walls |
+| Fasteners | 4 × M2.5 countersunk into heat-set inserts, one near each corner |
 | Print | 4 parts, ~107 g of filament, no supports |
 
 <img src="renders/01-iso-portrait.png" width="46%" alt="Portrait"> <img src="renders/02-iso-landscape.png" width="46%" alt="Landscape">
@@ -93,11 +93,48 @@ Front to back. Not interchangeable, and each has its own clearances:
 | **glass pocket** | the glass, in a shallow step | 77.5 × 91.5 × 1.26 | `pan_*` |
 | **interior** | the electronics — driver board, cell, charger | 82.1 × 80.9 | `cav_*` |
 
-**The interior is sized by the electronics, not by the panel.** That is the whole
-difference a bare panel makes: it used to be 79.5 × 104, sized around a module PCB that
-this build does not have, and that left 2.2 mm end walls with nowhere to put a screw. At
-80.9 long it leaves **13.75 mm of solid frame at each end** — which is where the four
-corner screws go, and what traps the glass.
+**The interior is sized by two things: the electronics, and the glass getting in.** The
+glass has no way into its pocket except from the back, through the interior — the front lip
+is smaller than the glass. So the interior opening has to clear the glass on every side:
+
+```
+GLASS GOES IN: interior x -42.45 to 39.15, z 9 to 101.5
+             | glass    x -42.45 to 36.05, z 10.25 to 100.25
+             -> clears on every side, drops straight in
+```
+
+Note that it checks **extents, not sizes**. The glass is offset 3.2 mm to centre the ink, so
+an interior that is wide *enough* can still be in the wrong place — comparing sizes left it
+0.4 mm short on the −X side, which is a glass that does not go in.
+
+### Why there are no screw posts inside the interior
+
+Corner posts would be the obvious way to get four corner screws without growing the frame,
+and they do not work. A post at each corner leaves a 74.5 mm gap for a 90 mm glass, so the
+glass would have to go in at an angle — and the arithmetic says it cannot:
+
+| To shorten the glass's span to | you must tilt | which stands it |
+|---|---|---|
+| 85 mm | 19.2° | 29.6 mm tall |
+| 83 mm | 22.7° | 34.8 mm tall |
+| 81 mm | 25.8° | 39.2 mm tall |
+
+The interior is **20.9 mm deep**. The glass is flat long before its far end is low enough to
+clear anything, and flat it needs a post-free path the full 90 mm. Working it the other way:
+with 9 mm posts the glass is blocked by 5.9–7.0 mm no matter how deep the posts start, and
+only a **3 mm** post ever clears — which will not hold an insert.
+
+So the screws go in the end walls, and the end wall has to be thick enough to take one:
+rear chamfer + margin + head + margin. That is what sets the frame's long axis now.
+
+| Insert | Head | End wall | Frame length | End bezel |
+|---|---|---|---|---|
+| M2 | 4.0 | 8.0 | 108.5 | 10.55 |
+| **M2.5** | **5.0** | **9.0** | **110.5** | **11.55** |
+| M3 | 6.0 | 10.0 | 112.5 | 12.55 |
+
+M2.5 is the default: 2.1 mm of extra length against today, and four screws that go where
+they are wanted. `insert_size` moves the whole frame with it.
 
 ### Vocabulary
 
@@ -121,23 +158,17 @@ corner screws go, and what traps the glass.
   the glass down from the rear. Two of them, one at each long-axis end. Not visible from the
   front.
 
-### The glass is trapped, and taped
+### How the glass is held
 
 A printed 91.0 pocket measured short on the long axis, so the pocket is **77.5 × 91.5** —
-1.5 mm of total margin on *both* axes, sized for print variance rather than for a press fit.
-Loose enough to rattle on its own.
+1.5 mm of total margin on *both* axes, sized for print variance rather than for a press
+fit. The front lip stops it coming forward. Behind it the interior is open, because it has
+to be, so something has to press it back against that lip: **two ribs on the cover**, one at
+each long-axis end, over the glass's dead border — 36 mm and 20 mm wide × 3.5 mm, standing
+the full 21 mm from the cover face to just behind the glass. Foam tape on their faces takes
+up the tolerance stack.
 
-What stops it moving is the frame itself. The interior is **shorter than the glass pocket**,
-so at each long-axis end there is **5.3 mm of solid frame directly behind the glass**: the
-glass is captured between the front lip and that shelf, and it cannot go anywhere without
-the frame coming apart. On the −X side there is another 1.5 mm of the same. Only the +X
-edge is open behind, and the pocket walls locate it there.
-
-Tape is still worth using, and each shelf carries a recess for it: **40 mm along the short
-axis × 4.5 mm into the shelf × 0.3 mm deep**, starting at the pocket edge so tape runs off
-the glass without a step to climb. Pad face lands at depth 2.35 against a glass back face
-at 2.45, so the tape dips 0.1 mm rather than standing proud. `tape_pad = false` removes
-them.
+The top rib is the short one because the charger runs up that side of the interior.
 
 ---
 
@@ -245,12 +276,13 @@ the ribbon arrives at — and the cell with the charger above it on the +X side.
 
 | | Size | Where |
 |---|---|---|
-| Driver board | 29.46 × 48.25 × ~6 | −X column, x −39.0…−9.6, z 31.7…80.0 |
+| Carrier perfboard | 30 × 70 | −X column, z 18…88, on four standoff pads |
+| Driver board | 29.46 × 48.25 × ~6 | plugged into the carrier, z 31.7…80.0 |
 | 24-pin FPC socket | 16 wide, 12.5 from the board's near end | on the board's −X edge, centred at **z 44.2** |
-| Cell | 44 × 49 × 6.9 | +X column, low, centred x 16.2 / z 40.1 |
-| bq25185 charger | 32 × 26.3 × 7.2 | +X column, above the cell, centred z 80.5 |
-| USB-C breakout | 13 × 13 | below the driver, centred x −27 / z 21 |
-| Divider perfboard | 27.9 × 10.2 | above the driver, centred x −25.1 / z 87.3 |
+| Cell | 44 × 49 × 6.9 | +X column, low |
+| bq25185 charger | 32 × 26.3 × 7.2 | +X column, above the cell |
+| USB-C pigtail | 15 × 8 body, 10 deep | snapped into the back cover, low and off the leg's centreline |
+
 
 **The board's position along Z is the whole point of it.** The ribbon slot runs z 24.2 to
 64.2 and its centre is 44.2; the socket is 12.5 from the board's near end, so the board
@@ -258,8 +290,19 @@ starts at 31.7 and the socket lands at 44.2 — opposite the middle of the slot.
 comes around the glass edge, turns along the long axis, turns back out, and plugs in. No
 adapter, no extension.
 
-The −X rail is **split either side of the socket** so nothing stands in front of it, and
-the board sits 2 mm off the wall because the rail has to fit between the two.
+### The driver board plugs into a carrier, it is not held by the case
+
+The Waveshare board has **no mounting holes** — but it does have its two 19-pin male headers
+soldered on. So it plugs into female headers on a **carrier perfboard**, and the carrier is
+what the case holds, on four standoff pads. Nothing printed touches the driver board itself.
+
+A 30 × 70 cut of double-sided 0.1″ prototype board does it. The driver takes 48.25 of the
+70, which leaves **about 14 mm × 30 of spare board below it** — that is where the battery
+divider goes, so there is no separate scrap of perfboard any more.
+
+The stack is the number to watch: carrier 1.6 + female header 8.5 + driver PCB 1.6 leaves
+**4.7 mm** in front of the driver for parts that stand about 4.4 proud. That is 0.3 mm of
+margin on two assumptions (`hdr_h`, `drv_env`), and low-profile sockets buy 3 mm of it back.
 
 ### Why not the half-size Perma-Proto
 
@@ -270,24 +313,6 @@ with a much narrower cell (roughly 28 × 90 × 7, ~1500–1800 mAh) or a bigger 
 
 The quarter-size board is gone too, for the same reason the corners needed: it was the
 widest thing in the box. The charger now sits on four standoff pads of its own.
-
-### The divider perfboard: 27.9 × 10.2 mm
-
-**Cut 11 × 4 holes off a strip of 0.1″ perfboard** — 27.9 × 10.2 mm. It goes in the band
-between the top of the driver board and the +Z wall, which is **14.7 mm tall and 41.3 mm
-wide**, on four standoff pads, clear of the stand pocket so it has the full 20.95 mm of
-depth behind it.
-
-Forty-four holes is far more than the job needs — two 100 kΩ resistors and the wire to the
-ADC pin use about four between them — but the spare holes are somewhere to land the JST
-junctions, and four rows leaves **2.25 mm of slack top and bottom**. That slack is the
-point: perfboard cut by scoring and snapping does not come out to the millimetre. Five rows
-(12.7 mm) also fits the band if you cut accurately, at 1 mm of slack.
-
-`perf_fit = false` deletes it and its pads; `perf_w` / `perf_h` resize it.
-
-If you would rather screw it down than tape it, two of its holes open out to 2.7 mm and it
-takes M2.5 inserts in a pair of posts — the same trick as the cover screws.
 
 ### The ribbon relief sets the frame width
 
@@ -355,12 +380,19 @@ interferences went away.
 
 | Port | Where | Purpose |
 |---|---|---|
-| USB-C breakout | **back face**, 27 mm left of centre, 21 mm up | Charging and running from the wall. Wired to the charger's VBUS + GND |
+| USB-C pigtail | **back face**, 22 mm off centre, 12.5 mm up | Charging and running from the wall. Wired to the charger's VBUS + GND |
 | USB-C (Waveshare) | on the driver board, mid-interior | Flashing, **before assembly**. Switch on to program, off to run |
 
-The rear port sits below the stand pocket and off the leg's centreline, and the back edge
-carries a 2 mm chamfer, so a plug clears the desk with the frame leaning back. A
-right-angle cable is tidier but not required.
+The pigtail has its own snap-in catch, so the case owes it nothing but a **precise
+rectangular hole and clear air behind it**: 15.3 × 8.3 for a 15 × 8 body (0.15 a side), with
+20.95 mm of interior behind it against the 10 mm the body needs. No printed rails, no
+breakout board, no guide posts.
+
+**Measure the part before printing.** A snap fit lives or dies on a tenth of a millimetre,
+and `snap_w` / `snap_h` / `snap_c` are the three numbers that decide it.
+
+The port sits below the stand pocket and off the leg's centreline, and the back edge carries
+a 2 mm chamfer, so the cable clears the desk with the frame leaning back.
 
 ---
 
@@ -374,8 +406,37 @@ right-angle cable is tidier but not required.
   detents at 0/90/180/270°. Turn it to 45° to lift it out.
 - **Leg** folds flush into the disc, swings out to a hard stop at 58° where a flat heel
   lands on the pocket floor, so the load goes into the cover skin rather than the hinge.
-- **Pin** Ø2 × 43 mm steel rod, or a cut length of 1.75 mm filament. Trapped by the pocket
-  wall once the disc is in.
+- **Hinge** M2.5 clamp screw into an insert in the far slot wall — see below.
+
+### What locks the leg open
+
+**The hinge is a clamp screw, not a pin.** An M2.5 screw goes through the near slot wall,
+through the leg, and into a heat-set insert in the far wall. Tighten it and the walls close
+onto the leg; the friction holds it at any angle, including fully deployed, and you set how
+hard with a screwdriver. That is the lock.
+
+For the clamp to have anything to close on, the leg is a **close fit in the slot** — 12.0 mm
+in a 12.4 mm slot, so each wall only has to move 0.2 mm. A loose slot just rattles, which is
+why `leg_slot_c` came down from 0.5.
+
+**Folded, a catch lip holds it shut**: the foot passes 0.65 mm of overhang at the far end of
+the slot, flexing about 0.3 mm on its 30 mm of leverage — roughly 5 N at the tip, a firm but
+easy click. It will not fall open in a bag.
+
+**A printed detent at the deployed angle is not available at this size**, and it is worth
+saying why rather than shipping something that does not click. The obvious place is the
+hub's arc against the closed end of the slot — but the heel flat, which *is* the hard stop,
+cuts the hub away exactly there: the leg reaches only 3.42 mm behind the pivot instead of
+6 mm, so there is nothing left to carry a groove. Two attempts at it cut air. The clamp
+screw does the same job and can be adjusted after printing, which a moulded detent cannot.
+
+`pivot_screw = false` goes back to a plain Ø2 pin — a steel rod, or a 1.75 mm filament
+offcut with its ends flared. That still works; it just gives you whatever friction the print
+happens to produce, and no way to change it.
+
+`catch_snap = false` removes the lip. Test-print the disc and leg together (10 g, about
+25 minutes) before committing to a frame: the snap force is the one number here that a
+drawing cannot tell you.
 
 **The hub is deliberately 8.25 mm below the frame's centre**, at exactly half the frame's
 *width* above the bottom edge. Rotate the frame 90° and the pivot ends up the same distance
@@ -388,8 +449,6 @@ equal-stance hub the centre of mass sits 9 mm (portrait) and 6 mm (landscape) be
 
 A single hard stop, not a ratchet: the hinge axis lies *in* a 4 mm disc, so the knuckle
 can't exceed ~3 mm, which puts 15° teeth at 0.4 mm — under what a 0.4 mm nozzle resolves.
-The load also wants the leg to *open*, at ~30 N·mm about the hinge, which no printed detent
-that size holds.
 
 ---
 
@@ -409,11 +468,11 @@ printed parts exactly as the exporter leaves them, which is how they land on the
 
 | Part | STL | On the bed | Why | Filament |
 |---|---|---|---|---|
-| Frame | `stl/frame.stl` | front face down | big flat first layer, and the interior opens upward. The other way up, the 1.4 mm front plate has to bridge the whole interior | ~66 g |
-| Back cover | `stl/cover.stl` | outer back face down | big flat first layer, standoffs and rails build upward | ~31 g |
+| Frame | `stl/frame.stl` | front face down | big flat first layer, and the interior opens upward. The other way up, the 1.4 mm front plate has to bridge the whole interior | ~63 g |
+| Back cover | `stl/cover.stl` | outer back face down | big flat first layer, standoffs and ribs build upward | ~35 g |
 | Disc | `stl/disc.stl` | outer face down | symmetric | ~8 g |
 | Leg | `stl/leg.stl` | flat | symmetric | ~2 g |
-| Bezel test tile | `stl/bezel_test.stl` | front face down — **print this first** | same as the frame | ~25 g |
+| Bezel test tile | `stl/bezel_test.stl` | front face down — **print this first** | same as the frame | ~23 g |
 
 PLA or PETG, 0.2 mm layers, 4 perimeters, 15–20% infill. The bayonet groove and window
 chamfer are both cut at 45°, and only the 0.8 mm front chamfer overhangs — at 45°, on the
@@ -442,12 +501,13 @@ The interference checks run on un-mirrored geometry and are unaffected either wa
 
 ### Hardware
 
-- 4 × **M3 heat-set inserts**, 4.6 OD × 5.7 long (frame, one near each corner)
-- 4 × **M3 countersunk screws**, 8 mm (cover)
-- Ø2 × 43 mm rod or filament offcut (kickstand pin)
+- 5 × **M2.5 heat-set inserts**, 4.0 OD × 4.0 long (four in the frame's end walls, one in the disc)
+- 4 × **M2.5 countersunk screws**, 8 mm (cover) + 1 × M2.5 × 10 (hinge clamp)
+- **Double-sided 0.1″ prototype board**, cut to 30 × 70 (driver carrier + divider)
+- 2 × **19-pin 2.54 female headers** for the driver to plug into
+- **Panel-mount USB-C pigtail**, 15 × 8 snap-in body
 - Adafruit **bq25185 (#6091)**; 1S LiPo **2000 mAh, 694449, 44 × 49 × 6.9 mm** (the
   salvaged cell above)
-- USB-C breakout board with 5.1 kΩ CC pulldowns, ~13 × 13 mm
 - JST-PH pigtails, foam tape
 
 ---
@@ -488,9 +548,17 @@ reason — they were consequences of hardware this build does not have:
 | `conn_cell` | 154 mm³ — a mated header against the cell | empty; `mod_header = false`, nothing stands off the panel |
 | `drv_module` | 1050 mm³ — a 15 mm driver stack against a module PCB | empty at `drv_env = 6.0`, the board with no cable mated to it, and no PCB to hit |
 
-One found during the relayout and fixed: the cover's −X driver rail sat 1.4 mm outside the
-interior wall and buried itself in the frame — 459 mm³ of `frame_cover`. The board now sits
-one rail-width off that wall, and the rail is split either side of the FPC socket.
+`disc_legf` now reports geometry **on purpose**: it is the catch lip overlapping the folded
+leg's foot, which is the interference the leg flexes past to snap shut. `disc_legd` stays
+empty, so the catch does not foul the deployed leg.
+
+Two problems caught during the rebuilds:
+
+- the cover's −X driver rail sat 1.4 mm outside the interior wall and buried itself in the
+  frame — 459 mm³ of `frame_cover`. That rail is gone now with the carrier.
+- **the interior was walled shorter than the glass**, so the panel could not be installed at
+  all. No interference check catches that, because nothing intersects: the glass simply has
+  no path in. It is now a stated constraint (`glass_pass_h`) with its own echo line.
 
 `mock_module()` draws the glass as a **sharp-cornered square**, matching the real part,
 which is what makes `frame_module` able to catch a corner-fillet problem at all.
@@ -517,21 +585,20 @@ of three screws down the +X side, and the whole −X edge unfastened.
 
 ### Heat-set inserts, and why the screws are countersunk
 
-The frame takes **M3 heat-set inserts**: a Ø4.0 bore, 6.7 mm deep, with a 0.4 mm lead-in
-chamfer so the insert starts square. There is 21 mm of solid frame behind each one, so
-depth is not a constraint — melt them in flush with the mating face.
+The frame takes **M2.5 heat-set inserts**: a Ø3.6 bore, 5.0 mm deep, with a lead-in chamfer
+so the insert starts square. Melt them in flush with the mating face.
 
 The screws are **countersunk, not socket cap**, because the cover is 1.4 mm thick. A 90°
-head sinks `(head Ø − clearance Ø) / 2` deep, which for M3 is **1.3 mm** — it disappears
-into a 1.4 mm plate. An M3 socket cap head is 3 mm tall and would stand 1.6 mm proud of the
-back face, and there is nowhere to put a boss to swallow it: the cover meets solid frame at
-that point, not open interior.
+head sinks `(head Ø − clearance Ø) / 2` deep, which for M2.5 is **1.05 mm** — it disappears
+into a 1.4 mm plate. A socket cap head is 2.5–3 mm tall and would stand proud of the back
+face, and there is nowhere to put a boss to swallow it: the cover meets solid frame there,
+not open interior.
 
 | Size | Insert OD × L | Bore | Screw head, 90° | Cone depth |
 |---|---|---|---|---|
 | M2 | 3.2 × 4.0 | Ø2.9 × 5.0 | 4.0 | 0.8 |
-| M2.5 | 4.0 × 4.0 | Ø3.6 × 5.0 | 5.0 | 1.05 |
-| **M3** | **4.6 × 5.7** | **Ø4.0 × 6.7** | **6.0** | **1.3** |
+| M3 | 4.6 × 5.7 | Ø4.0 × 6.7 | 6.0 | 1.3 |
+| **M2.5** | **4.0 × 4.0** | **Ø3.6 × 5.0** | **5.0** | **1.05** |
 
 Insert dimensions vary by brand — measure yours and set `ins_d` / `ins_l`. Everything
 downstream follows, including the cover's clearance hole and countersink.

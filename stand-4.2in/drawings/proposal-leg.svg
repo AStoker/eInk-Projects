@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 297" width="1680" height="1188">
+<style>
+ text { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; fill:#16181c; }
+ .vlabel { font-weight:600; } .sub { fill:#5b636c; } .note { fill:#2f353c; }
+ .dim { fill:#0a6ea6; stroke:#0a6ea6; stroke-width:0.2; } line.dim { fill:none; }
+ .part { fill:#f6f7f9; stroke:#16181c; stroke-width:0.5; }
+ .frame { fill:#e6e9ec; stroke:#16181c; stroke-width:0.4; }
+ .cut  { fill:#ffffff; stroke:#16181c; stroke-width:0.4; }
+ .hid  { fill:none; stroke:#9aa1a9; stroke-width:0.32; stroke-dasharray:1.8 1.2; }
+ .cl   { fill:none; stroke:#c4652f; stroke-width:0.25; stroke-dasharray:5 1.4 1.2 1.4; }
+ .lead { fill:none; stroke:#5b636c; stroke-width:0.22; }
+ .leg  { fill:#e2e7ed; stroke:#16181c; stroke-width:0.5; }
+ .legd { fill:#b9c5d2; stroke:#16181c; stroke-width:0.55; }
+ .arc  { fill:none; stroke:#b3261e; stroke-width:0.45; stroke-dasharray:2.2 1.4; }
+ .socket { fill:none; stroke:#16181c; stroke-width:0.8; }
+ .detmark { fill:none; stroke:#0a6ea6; stroke-width:0.35; stroke-dasharray:3 1.6; }
+ .border { fill:none; stroke:#16181c; stroke-width:0.6; }
+</style>
+<text x="66.00" y="52.00" class="vlabel" font-size="5.0" text-anchor="middle">1   BACK FACE</text>
+<text x="66.00" y="58.00" class="sub" font-size="3.0" text-anchor="middle">leg on the centreline, straight down the long axis</text>
+<rect x="22.05" y="63.50" width="87.90" height="106.50" rx="3" class="part"/>
+<path d="M58.00,108.12 L74.00,108.12 L74.00,170.20 L58.00,170.20 Z" class="cut"/>
+<line x1="58.00" y1="162.50" x2="74.00" y2="162.50" class="hid"/>
+<path d="M59.00,111.12 L73.00,111.12 L73.00,164.00 L69.00,169.00 L63.00,169.00 L59.00,164.00 Z" class="leg"/>
+<circle cx="66.00" cy="114.00" r="1.30" class="cut"/>
+<line x1="49.00" y1="114.00" x2="83.00" y2="114.00" class="cl"/>
+<line x1="66.00" y1="175.00" x2="66.00" y2="101.12" class="cl"/>
+<circle cx="25.55" cy="166.50" r="2.50" class="hid"/>
+<circle cx="25.55" cy="67.00" r="2.50" class="hid"/>
+<circle cx="106.45" cy="166.50" r="2.50" class="hid"/>
+<circle cx="106.45" cy="67.00" r="2.50" class="hid"/>
+<rect x="81.00" y="158.00" width="14.00" height="4.50" rx="0" class="hid"/>
+<line x1="81.00" y1="160.25" x2="100.00" y2="142.00" class="lead"/>
+<text x="101.50" y="142.90" class="note" font-size="2.6" text-anchor="start">USB-C pigtail</text>
+<line x1="25.55" y1="166.50" x2="10.00" y2="176.00" class="lead"/>
+<text x="11.50" y="176.90" class="note" font-size="2.6" text-anchor="start">M2.5 corner screws</text>
+<line x1="74.00" y1="162.50" x2="110.00" y2="158.00" class="lead"/>
+<text x="111.50" y="158.90" class="note" font-size="2.6" text-anchor="start">recess steps to 1.0 —</text>
+<text x="111.50" y="161.80" class="note" font-size="2.6" text-anchor="start">solid frame behind</text>
+<line x1="63.00" y1="169.00" x2="26.00" y2="181.00" class="lead"/>
+<text x="24.50" y="181.90" class="note" font-size="2.6" text-anchor="end">foot tip stops at z 3 —</text>
+<text x="24.50" y="184.80" class="note" font-size="2.6" text-anchor="end">clear of the 2.0 chamfer,</text>
+<text x="24.50" y="188.60" class="note" font-size="2.6" text-anchor="end">nothing overhangs</text>
+<line x1="15.05" y1="169.00" x2="15.05" y2="114.00" class="dim"/>
+<line x1="13.45" y1="169.00" x2="16.65" y2="169.00" class="dim"/>
+<line x1="13.45" y1="114.00" x2="16.65" y2="114.00" class="dim"/>
+<text x="13.55" y="141.50" class="dim" font-size="2.7" text-anchor="middle" transform="rotate(-90 13.55 141.50)">leg_len 55</text>
+<line x1="58.00" y1="194.00" x2="74.00" y2="194.00" class="dim"/>
+<line x1="58.00" y1="192.40" x2="58.00" y2="195.60" class="dim"/>
+<line x1="74.00" y1="192.40" x2="74.00" y2="195.60" class="dim"/>
+<text x="66.00" y="192.70" class="dim" font-size="2.7" text-anchor="middle">rec_w 16</text>
+<text x="96.00" y="199.00" class="note" font-size="2.8" text-anchor="middle">piv_z 58   leg_w 14</text>
+<text x="96.00" y="203.50" class="note" font-size="2.8" text-anchor="middle">clears the screws by 32.4</text>
+<text x="206.00" y="52.00" class="vlabel" font-size="5.0" text-anchor="middle">2   SECTION AT THE PIVOT   1.5:1</text>
+<text x="206.00" y="58.00" class="sub" font-size="3.0" text-anchor="middle">swings 35&#176; — under 90&#176;, so the stub cannot dive</text>
+<path d="M232.00,169.00 L232.00,58.17 L234.10,58.17 L234.10,169.00 Z" class="part"/>
+<path d="M234.10,169.00 L234.10,158.50 L246.10,158.50 L246.10,169.00 Z" class="frame"/>
+<line x1="240.10" y1="163.75" x2="188.00" y2="167.00" class="lead"/>
+<text x="189.50" y="167.90" class="note" font-size="2.6" text-anchor="start">frame end wall</text>
+<path d="M232.00,76.17 L238.75,76.17 L238.75,157.75 L233.50,157.75 L233.50,169.30 L232.00,169.30 Z" class="cut"/>
+<circle cx="235.00" cy="85.00" r="1.50" class="cut"/>
+<path d="M232.00,80.67 L238.00,80.67 L238.00,158.50 L233.50,167.50 L232.00,167.50 Z" class="leg"/>
+<path d="M236.03,83.53 L240.95,86.97 L188.91,153.44 L187.68,152.58 Z" class="legd"/>
+<line x1="235.00" y1="82.17" x2="238.00" y2="80.67" class="lead"/>
+<text x="239.50" y="81.57" class="note" font-size="2.6" text-anchor="start">folded — flush</text>
+<line x1="216.25" y1="122.23" x2="190.00" y2="146.00" class="lead"/>
+<text x="191.50" y="146.90" class="note" font-size="2.6" text-anchor="start">deployed  35&#176;</text>
+<text x="191.50" y="149.80" class="note" font-size="2.6" text-anchor="start">lean 22.3&#176;   footprint 34.1</text>
+<line x1="232.00" y1="182.00" x2="238.75" y2="182.00" class="dim"/>
+<line x1="232.00" y1="180.40" x2="232.00" y2="183.60" class="dim"/>
+<line x1="238.75" y1="180.40" x2="238.75" y2="183.60" class="dim"/>
+<text x="235.38" y="180.70" class="dim" font-size="2.7" text-anchor="middle">rec_dep 4.5</text>
+<text x="210.00" y="192.00" class="note" font-size="2.8" text-anchor="middle">leg_t 4.0 at the pivot, 1.0 at the tip</text>
+<text x="210.00" y="197.00" class="note" font-size="2.8" text-anchor="middle">today: lean 20.5&#176;, footprint 31.9</text>
+<circle cx="235.00" cy="85.00" r="10.00" class="detmark"/>
+<line x1="225.25" y1="75.25" x2="228.00" y2="63.00" class="lead"/>
+<text x="229.50" y="63.90" class="note" font-size="2.6" text-anchor="start">see 3</text>
+<text x="338.00" y="52.00" class="vlabel" font-size="5.0" text-anchor="middle">3   PIVOT DETAIL   6:1</text>
+<text x="338.00" y="58.00" class="sub" font-size="3.0" text-anchor="middle">two indents, one stub</text>
+<path d="M290.00,131.00 L334.30,131.00 L334.30,132.50 L343.30,132.50 L343.30,131.00 L344.70,131.00 L344.70,132.50 L353.70,132.50 L353.70,131.00 L398.00,131.00 L398.00,151.40 L290.00,151.40 Z" class="part"/>
+<text x="344.00" y="146.60" class="note" font-size="2.4" text-anchor="middle">recess floor</text>
+<path d="M338.80,132.50 L339.22,132.63 L339.64,132.74 L340.07,132.85 L340.50,132.94 L340.93,133.03 L341.37,133.10 L341.80,133.16 L342.24,133.21 L342.68,133.25 L343.12,133.28 L343.56,133.30 L344.00,133.30 L344.44,133.30 L344.88,133.28 L345.32,133.25 L345.76,133.21 L346.20,133.16 L346.63,133.10 L347.07,133.03 L347.50,132.94 L347.93,132.85 L348.36,132.74 L348.78,132.63 L349.20,132.50" class="arc"/>
+<path d="M344.00,116.00 L330.79,129.97 L346.81,135.03 Z" class="leg"/>
+<path d="M344.00,116.00 L341.19,135.03 L357.21,129.97 Z" class="legd"/>
+<circle cx="344.00" cy="116.00" r="6.00" class="cut"/>
+<path d="M355.40,104.60 A9.30,9.30 0 1 1 332.60,104.60" class="socket"/>
+<line x1="357.80" y1="107.00" x2="358.00" y2="92.00" class="lead"/>
+<text x="359.50" y="92.90" class="note" font-size="2.6" text-anchor="start">C socket in the ear —</text>
+<text x="359.50" y="95.80" class="note" font-size="2.6" text-anchor="start">the pin snaps in, and lifts</text>
+<text x="359.50" y="99.60" class="note" font-size="2.6" text-anchor="start">0.38 to ride the hump</text>
+<line x1="338.80" y1="132.50" x2="318.00" y2="146.00" class="lead"/>
+<text x="316.50" y="146.90" class="note" font-size="2.6" text-anchor="end">closed indent</text>
+<line x1="349.20" y1="132.50" x2="356.00" y2="150.00" class="lead"/>
+<text x="357.50" y="150.90" class="note" font-size="2.6" text-anchor="start">deployed indent</text>
+<text x="357.50" y="153.80" class="note" font-size="2.6" text-anchor="start">+ hard stop</text>
+<line x1="344.00" y1="133.30" x2="320.00" y2="135.00" class="lead"/>
+<text x="318.50" y="135.90" class="note" font-size="2.6" text-anchor="end">hump 0.38</text>
+<line x1="354.00" y1="116.00" x2="354.00" y2="131.00" class="dim"/>
+<line x1="352.40" y1="116.00" x2="355.60" y2="116.00" class="dim"/>
+<line x1="352.40" y1="131.00" x2="355.60" y2="131.00" class="dim"/>
+<text x="352.50" y="123.50" class="dim" font-size="2.7" text-anchor="middle" transform="rotate(-90 352.50 123.50)">piv_h 2.5</text>
+<text x="342.00" y="166.00" class="note" font-size="2.7" text-anchor="middle">stub 2.88 at 72.5&#176;  ·  indent 0.25</text>
+<text x="342.00" y="171.00" class="note" font-size="2.7" text-anchor="middle">72.5&#176; = 90&#176; &#8722; dep_ang/2, which is what puts</text>
+<text x="342.00" y="175.50" class="note" font-size="2.7" text-anchor="middle">the tip on the floor at BOTH ends</text>
+<text x="20.00" y="208.00" class="note" font-size="2.85" text-anchor="start">1   The leg is a LEVER.  Beyond the pin sits a stub; at dep_ang it bottoms in the deployed indent, so the load path is</text>
+<text x="20.00" y="212.85" class="note" font-size="2.85" text-anchor="start">     leg → stub → cover, in COMPRESSION.  Nothing is held out by friction or by a spring, which is what the disc design</text>
+<text x="20.00" y="217.70" class="note" font-size="2.85" text-anchor="start">     had been reduced to — and why it did not hold.</text>
+<text x="20.00" y="222.55" class="note" font-size="2.85" text-anchor="start">2   The swing is 35&#176;, under 90&#176; on purpose.  Past 90&#176; the stub dives below the floor — that is exactly the 1.80 mm jam</text>
+<text x="20.00" y="227.40" class="note" font-size="2.85" text-anchor="start">     at 64&#176; the old 122&#176; swing produced.  Under 90&#176; it cannot recur; it is not merely avoided.</text>
+<text x="20.00" y="232.25" class="note" font-size="2.85" text-anchor="start">3   TWO INDENTS FROM ONE STUB.  Set the stub at 90&#176; &#8722; dep_ang/2 and its tip reaches the floor at BOTH ends of the</text>
+<text x="20.00" y="237.10" class="note" font-size="2.85" text-anchor="start">     stroke, digging 0.38 into the floor plane in between.  That dig is the snap: one indent holds it closed, one holds</text>
+<text x="20.00" y="241.95" class="note" font-size="2.85" text-anchor="start">     it deployed, and the deployed indent's far wall is the hard stop.  Under load the stub is pushed INTO its indent.</text>
+<text x="20.00" y="246.80" class="note" font-size="2.85" text-anchor="start">4   The &#216;2 pin is kept — pressed through the leg, snapped into C sockets in the cover's ears.  Those sockets are also</text>
+<text x="20.00" y="251.65" class="note" font-size="2.85" text-anchor="start">     the spring: the pin lifts 0.38 to ride the hump.  No screw, no insert, and the leg pops out for service.</text>
+<text x="20.00" y="256.50" class="note" font-size="2.85" text-anchor="start">5   The folded foot tip stops at z 3.0, clear of the 2.0 rear chamfer, so NOTHING overhangs the bottom edge.  Below</text>
+<text x="20.00" y="261.35" class="note" font-size="2.85" text-anchor="start">     z 9 the cover is backed by solid frame, so the recess steps to 1.0 and the leg tapers to 1.0 at the tip.</text>
+<text x="20.00" y="266.20" class="note" font-size="2.85" text-anchor="start">6   PORTRAIT ONLY.  The rotating disc, bayonet, four rotation detents, clamp land, flexure tongue and detent bridge</text>
+<text x="20.00" y="271.05" class="note" font-size="2.85" text-anchor="start">     are all deleted.  The recess misses the driver carrier entirely, so removing the puck keeps its full 4.55 mm.</text>
+<text x="20.00" y="275.90" class="note" font-size="2.85" text-anchor="start">7   TO CHECK: the recess ceiling is a 16 mm bridge in the cover's current print orientation.  May want the cover</text>
+<text x="20.00" y="280.75" class="note" font-size="2.85" text-anchor="start">     printed the other way up, or a bridging rib across the recess.</text>
+<rect x="8.00" y="8.00" width="404.00" height="281.00" rx="0" class="border"/>
+<line x1="8.00" y1="32.00" x2="412.00" y2="32.00" class="border"/>
+<line x1="8.00" y1="202.00" x2="412.00" y2="202.00" class="border"/>
+<text x="210.00" y="17.50" class="vlabel" font-size="5.4" text-anchor="middle">PROPOSAL — kickstand redesign:  lever leg, mechanical stop, two indents, no rotating disc</text>
+<text x="210.00" y="25.00" class="sub" font-size="3.0" text-anchor="middle">4.2" e-Paper desk frame   ·   for review before any geometry is cut   ·   2026-08-26</text>
+</svg>

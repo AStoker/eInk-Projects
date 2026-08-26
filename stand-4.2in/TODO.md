@@ -40,34 +40,29 @@ end** — the top in portrait, so `rib_off = 35`). What is left:
 - [ ] **The heat-set inserts you actually have** — the model assumes M2.5, Ø3.6 bore × 5.0
       deep. Set `ins_d` / `ins_l` and re-export if yours differ.
 
-## 2. The adapter is a service loop — decide how to pay for it
+## 2. The adapter — solved, but two numbers still need measuring
 
-The tail *does* reach the driver: the board faces down so its socket edge is nearest the
-display, and turned end-for-end (`fpc_end = "top"`) it fits at z 39.5 … 87.75. The problem is
-that the glass is on the frame and the driver is on the cover, so the joint crosses the split,
-and the tail has **3.4 mm** of give against the **~25 mm** a ZIF release needs.
+It is **taped to the back of the glass**, at x −40.45 … −22.45, z 65.75 … 97.75. There is
+14.8 mm of depth there against the 5 it needs, it clears the driver's parts by 2.0, and leg 3's
+turn falls inside its span. `adapt_board` and `adapt_cover` are both empty. No bosses, no
+screws, no layout move — and taped to the glass it stays with the frame, so only the long FPC
+crosses the split.
 
-- [ ] **Try the cheap way first: can you release the tail's ZIF with the cover barely open?**
-      The fold gives about 3.4 mm of lift. If a fingernail or a spudger gets on the lever in
-      that, nothing crosses the split, `adapt_fit = false`, and everything below goes away.
-      This is a hands-on check, not a calculation.
-- [ ] If not, the adapter needs **4.6 mm of depth that does not exist** (16 stack + 5 adapter
-      against 16.4). Pick:
-      - `depth` 25 → 29.6 — the frame gets thicker;
-      - low-profile female headers, `hdr_h` 8.5 → 5.5 — buys 3.0, still 1.6 short;
-      - both — 1.6 mm of depth plus a different header.
-- [ ] And it still needs a home: where leg 3 puts it overlaps the carrier. Shorten the carrier
-      and re-home the battery divider, or move the driver column.
-- [ ] Then four mounting bosses at its hole positions, off the cover or the carrier.
-- [ ] Re-run `adapt_board` and `adapt_cover`; both should be empty once it has a home.
+Both of the numbers that were gating this are now measured: `adapt_env` 5.0, and leg 3 at
+10 mm, which lands on the adapter (it ends between x −35.2 and −26.2 against a footprint of
+−40.45 … −22.45). The tail folds over onto the adapter and the cable on to the driver is
+routed by hand, so nothing downstream is constrained.
+- [ ] Use **foam** double-sided tape, not a thin film, and route the tail so its spring-back
+      loads the tape in shear. Shear is ~46 N against a 0.02 N part; peel is the failure mode.
 - [ ] Order the second FPC once the loop length is known — long enough for the cover to come
-      off and the connector to be reached, not just to span the gap.
+      off and be set down beside the frame, not just to span the closed gap.
 
 ## 2z. The ribbon's two length figures disagree
 
-- [ ] The route needs at least **24 mm** of developed tail before leg 3 starts (4 out + 20 up),
-      against the **18 mm** measured flat. Re-measure. Whichever is right decides whether leg 2
-      really runs 20 mm, and `rib_w` / `rib_off` are derived from it, so the slot moves with it.
+- The 18 vs 24 mm disagreement over the tail length **no longer blocks anything**: the hollow
+      is sized generously at 49 mm (14.5 below the exit, 34.5 above), which covers leg 2 at
+      anything from 0 to 34. Oversize costs nothing here; undersize is the only failure. Worth
+      re-measuring out of curiosity, not as a gate.
 - [ ] Leg 1 wants 4 mm out from the glass edge and the relief gives 3.75 — 0.25 short.
       `rib_clr = 3.25` fixes it but grows the frame 0.5 mm on the short axis, which moves
       `hub_z = W/2` and the stance with it. Decide whether to spend it.
@@ -76,8 +71,10 @@ and the tail has **3.4 mm** of give against the **~25 mm** a ZIF release needs.
 
 - [ ] Confirm the charger's four standoff pads land on board, not on components. Its hole
       spacing is deliberately not modelled.
-- [ ] Cut the **driver carrier** — size depends on §2 — from double-sided 0.1″ prototype
-      board, and solder two 19-pin female headers to match the driver's pin rows.
+- [ ] Solder two 19-pin female headers to the carrier to match the driver's pin rows. The
+      board's own mounting holes are now modelled (Ø2.0 at 26 × 66 centres) and the cover has
+      pegs for them, so it no longer needs cutting to size **unless** §2 forces the carrier
+      shorter to make room for the adapter.
 - [ ] The stack over the puck has **0.4 mm of margin** (16.0 measured against 16.4). Check
       it for real before committing to the frame: if the stack is over 16.4, the depth has
       to grow or the board has to come off the pocket.
@@ -102,24 +99,22 @@ clear at both ends.
 - [ ] Check the wall's contact patch after a few dozen cycles. It is a corner landing near
       the wall's top edge; if it is visibly rounding over, the wall wants a small radius.
 
-## 2c. The snap-out detent — a product decision, not a geometry one
+## 2c. Test-print the snap detent
 
-Three of the four leg problems are fixed and in the STLs: the hub sweep relief (it used to jam
-1.80 mm into the pocket floor at 64°), the clamp land and its flexure tongue (10.9 N·mm, 31×
-gravity), and a firm stop at the deployed angle. The **click** is not built, and cannot be
-built while the leg folds flush — a projecting lug is capped at **0.25 mm** at `disc_t = 4` and
-only **0.39 mm** at 6, both at or below what a 0.4 mm nozzle resolves. Thickening the disc does
-not fix it. (An earlier note here claimed `disc_t = 6` made it workable with a 0.69 mm pocket.
-That used the wrong constraint and is wrong.)
+All four leg problems are now fixed and in the STLs: the hub sweep relief, the clamp land and
+its tongue, the firm stop at the deployed angle, and the **snap detent** — tooth on the disc,
+pocket in the leg, so it clicks out and still folds flush. Held open by 29.5 N·mm.
 
-- [ ] **Decide whether the leg may stand proud of the rear face when folded.** A lug at
-      leg-local 58°, radius 4.0, bites 0.75 mm into the stop wall at the deployed angle and
-      stands 1.39 mm off the back next to the hub when folded. That buys a real click. Say yes
-      and I build it; say no and the leg stays as it is — which holds fine, it just does not
-      snap.
-- [ ] Either way the friction is at its ceiling: `clamp_pr` 0.5 gives 0.10 mm of interference
-      and 35 MPa at the tongue root, against ~50 MPa yield. 0.14 mm is the most it will take
-      (15.3 N·mm). Do not raise it past that expecting more hold.
+- [ ] Print the disc and leg together (10 g, ~25 min) and feel the detent. Expect the last
+      ~12° of opening to firm up progressively, then a distinct click as it seats.
+- [ ] **`det_fit` is the tuning number** (0.06). It is the pocket's growth over the tooth, and
+      it sets how much the tooth must deflect to leave. No click, drop it to 0.03; too stiff to
+      fold, raise it 0.03 at a time. It inherited 0.225 once and there was no detent at all.
+- [ ] Check the bridge survives a few dozen cycles. It is 1.1 mm thick at 25.7 MPa against
+      ~50 yield, so it should, but it is the one printed spring carrying repeated load.
+- [ ] Check the tooth's tip is not being clipped mid-swing — `det_tooth` is 0.9 because 1.2 put
+      the tip inside the leg's mid-sweep envelope. If the leg feels like it catches around
+      60°, that is what came back.
 
 ## 3. Print and check the bezel test tile before the frame
 

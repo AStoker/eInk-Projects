@@ -105,7 +105,7 @@ Front face down, portrait, so you are looking at the **rear face**. The tail lea
 |---|---|---|---|
 | 1 | straight out from the glass edge | 4 mm | `rib_out` |
 | 2 | 90° turn towards the **TOP**, running parallel to the RIGHT edge | 9 mm wide × 20 mm long | `rib_band`, `rib_run` |
-| 3 | 90° turn **away from the RIGHT side** — inboard, across the rear face | to the connector | — |
+| 3 | 90° turn **away from the RIGHT side** — inboard, across the rear face | 10 mm | `rib_leg3` |
 
 Leg 2 is the whole reason the relief is a slot rather than a local pocket at the exit: the
 ribbon spends 20 mm travelling *parallel* to the RIGHT edge before it turns inboard. Leg 2 is
@@ -118,7 +118,7 @@ The three relief sizes are deliberately *not* called width/height/depth:
 |---|---|---|---|
 | **out** | `rib_clr` | 3.0 | outboard from the pocket edge, along the short axis |
 | **deep** | `rib_dep` | 3.0 | past the glass back face, along depth — so the fold has somewhere to go |
-| **long** | `rib_w` | 33.0 | along the RIGHT edge, on the long axis |
+| **long** | `rib_w` | 49.0 | along the RIGHT edge, on the long axis |
 
 **`rib_w` and `rib_off` are derived from the route now, not typed in.** `rib_w` is
 `rib_run + rib_band + 2 × rib_marg` and `rib_off` puts the slot's near edge half a band below
@@ -187,18 +187,51 @@ Mounting the driver on the **frame** instead, so nothing crosses the split, does
 glass drops in through the interior and needs the full 90 mm clear, so anything standing off
 the frame's ledge blocks it — the same reason there are no corner posts.
 
-As fitted, the adapter is:
+**The adapter is taped to the back of the glass.** That is what makes it fit, and it is also
+the right side of the split — taped to the glass it stays with the **frame**, so the panel's
+short stiff tail never crosses the joint and only the long FPC does.
 
 | | |
 |---|---|
-| Outline | 18 × 32 × ~5 mm (depth with both connectors — **assumed**) |
-| Holes | 4 corners, Ø2.2 at 2.0 mm inset — **both assumed, measure them** |
-| Where it sits | at leg 3's turn: x −40.45 … −22.45, centred z 75.25 |
-| Problem | it overlaps the carrier, needs 4.6 mm of depth nobody has, and has no mounting |
+| Outline | 18 × 32 × **5 mm** (depth with both connectors, confirmed) |
+| Where | against the glass's back face, x −40.45 … −22.45, z 65.75 … 97.75 |
+| Depth there | glass back 2.65 to the carrier's face 17.45 = **14.8 mm**, so it clears by 9.8 |
+| Clear of the driver's parts by | 2.0 mm (`adapt_gap`; 1.0 still caught them by 0.2) |
+| Leg 3 | turns at z 75.25 and runs **10 mm** inboard, ending between x −35.2 and −26.2 — **lands on the adapter** |
+| Holding force | 18 × 32 = 5.8 cm² of foam tape ≈ 46 N in shear against a 0.02 N part |
 
-**A measurement to re-check:** the route needs at least 4 + 20 = **24 mm** of developed tail
-before leg 3 starts, against the **18 mm** measured flat. Those two do not agree. Whichever is
-right decides whether leg 2 really runs 20 mm, and `rib_w` / `rib_off` are derived from it.
+It overlaps the carrier by 18.75 mm **in plan view**, and that is not a clash — they are 9.8 mm
+apart in depth. Reading that plan-view overlap as a conflict is what made the adapter look
+homeless for so long, and it was never real.
+
+Two things moved to make room, both small: the **top glass-retention rib** shifted toward +X
+(`pad_off1` 12.0 → 7.8, so it spans x −21.0 … −1.0 instead of −25.2 … −5.2, still well inside
+the glass's dead border), and the adapter sits 2 mm above the driver's tall parts.
+
+The one real risk is **peel, not shear**: a 24-pin FPC pushing perpendicular can lift a corner.
+Route the tail so its spring-back loads the tape in shear, and use foam rather than a thin
+film so it can absorb the bend.
+
+**Oversize is free here.** The hollow is only ever a problem when it is too *small*, so
+`rib_marg` is set generously (10) rather than to the route. The hollow is **49 mm** — 14.5 mm
+below the exit and 34.5 above — which covers leg 2 running anywhere from nothing to 34 mm, and
+so covers both the 18 mm and the 24 mm readings of the tail length. That takes the
+disagreement between them off the critical path.
+
+**What caps its length is the corner screws, not the route.** The inserts at z 14.5 and 96
+reach x −38.65, which overlaps the hollow's x −44.95 … −41.95 by 3.3 mm — so the hollow has to
+stop short of them. It ends at z 89.75 against a bore starting at 94.2: **4.45 mm of headroom.**
+The other cost of length is the 1 mm outer wall outboard of it, now 49 mm long. The
+`RIBBON HOLLOW HEADROOM` echo prints both on every run, so it cannot quietly grow into a screw.
+
+**Leg 3 only has to land on the adapter, not hit a socket.** The tail folds over onto it, and
+the cable on from the adapter to the driver is routed by hand — so nothing downstream of the
+adapter is constrained by geometry. That is what takes the whole layout off the critical path.
+
+**One measurement still disagrees:** the route needs at least 4 + 20 = **24 mm** of developed
+tail before leg 3 starts, against the **18 mm** measured flat. Whichever is right decides
+whether leg 2 really runs 20 mm, and `rib_w` / `rib_off` are derived from it — so the ribbon
+hollow moves with it.
 
 ### The three nested recesses
 
@@ -494,6 +527,13 @@ but their sum is no longer the test. 0.4 mm is the entire margin in the build, a
 
 ### Mounting
 
+- **Carrier board** — four **Ø1.85 pegs on Ø6.5 pads**, at the board's own hole pattern:
+  four Ø2.0 holes at **26 × 66 centres** (24 × 64 edge to edge), 2.0 mm in from each edge of
+  the 30 × 70 board. The holes drop onto the pegs and locate it, instead of it floating on
+  four blank pads. The first header pin is only 2.0 mm from each hole, so nothing on a peg may
+  exceed 4.0 mm across — which is why they are pegs and not screw bosses.
+  `cover_board` reports geometry here by design: `mock_board` is a plain slab with no holes in
+  it, so the pegs necessarily pass through it.
 - **Charger** — four standoff pads. No screw posts: the breakout's hole spacing is not a
   number this model has measured. Foam tape or a strap holds it.
 - **Driver board** — plugs into female headers on the carrier perfboard; the case holds the
@@ -672,45 +712,56 @@ open on both faces.
 room leaves 0.4 mm; two more millimetres of disc leaves 14.4 against 16.0. So the hinge is a
 pin, and stays one, unless the driver board comes off the pocket.
 
-### Why there is no snap-out detent, and what one would cost
+### The snap-out detent, and why it works while the leg still folds flush
 
-The leg is held out by the wall stop and 10.9 N·mm of clamp friction, and held shut by the
-catch lip. It does not **click**, and the reason is a hard geometric bound, not a tuning
-problem.
+The leg clicks out. It is held open by 29.5 N·mm — the detent's 18.6 plus the clamp's 10.9,
+against 0.35 N·mm of gravity — and still folds flush.
 
-The mechanism would be the one in
-[US5865128A](https://patents.google.com/patent/US5865128A/en) — a slot with a **channel →
-ramp → locking opening**, a spring holding the pin in the opening, released by pushing the leg
-along the slot. That needs a lug on the leg that projects past the hub arc. **A projecting lug
-has to survive the whole 122° sweep inside the disc's thickness**, and its worst excursion is
-`r × max|sin|` over the 122° arc it traces. The best case centres that arc on straight-back,
-which caps the projection at:
+**The trick is inverting which part projects.** A *lug on the leg* is capped at 0.25 mm,
+because it has to sweep 122° inside the disc's thickness and its worst excursion is
+`r × max|sin|` over that arc. A *bump on the leg* breaks the flush fold, because it has to
+stand proud of the leg's own thickness to reach anything. So neither works. But:
 
-| `disc_t` | Lug may reach | Hub arc | **Projection available** |
-|---|---|---|---|
-| 4.0 | 2.00 | 1.75 | **0.25 mm** |
-| 6.0 | 3.14 | 2.75 | **0.39 mm** |
-| 8.0 | 4.29 | 3.75 | 0.54 mm |
+- a **pocket** in the leg cannot break flush — it is material *removed*;
+- the **disc** never sweeps, so a tooth on it can be any size at all.
 
-A 0.4 mm nozzle resolves about 0.4 mm. The folded catch that *does* work is 0.65 mm proud with
-0.35 mm of flex. So a detent is below printable resolution at `disc_t = 4` and marginal even at
-8 — **thickening the disc does not rescue it**, which is the opposite of what an earlier version
-of this section said. Nor does friction: the clamp tongue is already near its stress limit at
-0.10 mm of interference (35 MPa of 50), and 0.14 mm is the most it will take.
+So the tooth is on the disc and the pocket is in the leg. Both are cut from **one solid**
+(`det_solid()`): the disc adds it, and the leg subtracts the same solid transformed into
+leg-local coordinates. Their alignment is construction, not arithmetic.
 
-**Flush folding and a printable detent are mutually exclusive here.** The bound comes entirely
-from the lug having to stay inside the disc while the leg sweeps. Let the leg stand slightly
-proud of the rear face when folded and the bound disappears — a lug at leg-local 58° points
-straight back at the stop wall at exactly the deployed angle, and sits at mid-thickness there:
+The tooth has to flex **rearward**, not in depth — at the deployed angle the leg's top face
+points down-and-back, so its normal is mostly −Z. That puts the spring where the hard stop is,
+so the two are decoupled: **the stop wall stays solid and takes the load**, the tooth pokes
+through a **window** in it, and the spring is a **bridge** across the disc's rear bulk, rooted
+20 mm apart where it is long enough to be soft.
 
-| Lug radius | Bite past the wall | Proud when folded | Max proud mid-sweep |
-|---|---|---|---|
-| 3.0 | none | 0.54 | 1.00 |
-| 3.5 | 0.25 | 0.97 | 1.50 |
-| **4.0** | **0.75** | **1.39** | 2.00 |
+**Where the tooth sits was measured against the leg, not derived.** The leg's deep reach behind
+the pivot happens only in a thin sliver hard against the **back face** — a tooth at mid-thickness
+(y 1.2…2.6) was never touched at any angle at all. Up in the sliver it gives a proper ramp:
 
-0.75 mm of positive engagement for a tab standing 1.39 mm off the back next to the hub. That is
-the trade, and it is a decision about the product, not the geometry — [TODO.md](TODO.md) §2c.
+| Leg angle | 60° | 100° | 110° | 116° | 120° | **122°** |
+|---|---|---|---|---|---|---|
+| Tooth deflection | clear | clear | 0.071 | 0.233 | 0.325 | **clear — seated** |
+
+Contact at 110°, deflected progressively to 0.325 mm by 120°, then the pocket swallows it and
+it relaxes. That is the patent's **channel → ramp → locking opening**, and to fold the leg has
+to push it back out.
+
+| | |
+|---|---|
+| Bridge | 20 × 1.1 × 2.6 mm → **16.6 N/mm** |
+| At the measured 0.325 mm | 5.4 N on a 3.45 mm arm → **18.6 N·mm** |
+| With the clamp friction | **29.5 N·mm holding it open**, 0.83 N at the foot to fold |
+| Mid-span stress | 25.7 MPa (yield ~50) |
+| Folds flush | **yes** |
+
+Two things the swept `det_leg` check caught, both of which would have printed wrong:
+
+- `det_tooth` 1.2 put the tip at r 2.09, and the leg's mid-sweep envelope reaches 2.12 — the
+  tip was clipped at 60°. Pulled back to 0.9.
+- The pocket inherited `det_clr/2` = 0.225 mm of growth, which let the tooth float ±5° once
+  seated. There was no engagement at all. `det_fit` = 0.06 is now its own parameter, and it is
+  the number that *is* the detent.
 
 **The hub is deliberately 8.25 mm below the frame's centre**, at exactly half the frame's
 *width* above the bottom edge. Rotate the frame 90° and the pivot ends up the same distance

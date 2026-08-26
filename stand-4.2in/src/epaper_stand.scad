@@ -120,9 +120,23 @@ rib_exit = 0.0;                     // exit centre, along the long axis, from th
 rib_out  = 4.0;                     // leg 1, out from the glass edge
 rib_band = 9.0;                     // ribbon width through the turn
 rib_run  = 20.0;                    // leg 2, toward the TOP
-rib_marg = 5.0;                     // relief margin around the route, along the
-                                    //   long axis.  MEASURED: the hollow wants about 3
-                                    //   more than the route at each end, so 2 -> 5.
+rib_leg3 = 10.0;                    // leg 3, inboard across the rear face.  It
+                                    //   only has to LAND on the adapter, not hit
+                                    //   a socket - the tail folds over onto it,
+                                    //   and the cable on from the adapter to the
+                                    //   driver is routed by hand, so nothing
+                                    //   downstream of the adapter is constrained.
+rib_clr_out = rib_out;              // leg 1's reach, named for the echo
+rib_marg = 10.0;                    // relief margin around the route, along the
+                                    //   long axis.  OVERSIZE IS FREE HERE - the hollow
+                                    //   is only ever a problem when it is too SMALL -
+                                    //   so this is set generously rather than to the
+                                    //   route.  At 10 the hollow spans 14.5 below the
+                                    //   exit and 34.5 above, which covers leg 2 running
+                                    //   anywhere from nothing to 34, and so covers both
+                                    //   the 18 and the 24 readings of the tail length.
+                                    //   What stops it growing further is the CORNER
+                                    //   SCREWS, not the route - see the echo.
 rib_w   = rib_run + rib_band + 2*rib_marg;              // slot LONG, along RIGHT
 rib_off = pan_h/2 + rib_exit - rib_band/2 - rib_marg;   // from the BOTTOM edge
 rib_clr = 3.0;                      // lateral room it needs to bend back around (OUT)
@@ -183,7 +197,7 @@ serv_lift = 25.0;      // ASSUMED: cover lift needed to get at a ZIF lever
 adapt_w = 18.0; adapt_h = 32.0; adapt_t = 1.6;
 adapt_hole   = 2.2;    // ASSUMED M2 clearance - measure the holes
 adapt_inset  = 2.0;    // ASSUMED hole inset from each edge - measure it
-adapt_env    = 5.0;    // ASSUMED board + its two FPC connectors, total depth
+adapt_env    = 5.0;    // board + its two FPC connectors, total depth - CONFIRMED
 proto_w = 43.2; proto_h = 50.8; proto_t = 1.6; // Perma-Proto quarter-size
 proto_hole_sp = 35.6; proto_stand = 3.0;
 bat_w = 44.0; bat_h = 49.0; bat_t = 6.9;       // 2000 mAh LiPo, 694449 pouch
@@ -395,7 +409,7 @@ sweep_clr = 0.25;
 // the leg's top face does not reach that far back until then.
 snap_det  = true;
 det_at    = 3.0;    // engagement point, along the leg from the pivot
-det_lift  = 0.45;   // how far the tooth stands past the leg's top face, in depth
+det_lift  = 0.325;   // how far the tooth stands past the leg's top face, in depth
                     //   - this is the deflection the leg has to climb to fold
 // The tooth has to flex REARWARD, not in depth: at the deployed angle the leg's
 // top face points down-and-back, so its normal is mostly -Z.  That puts the
@@ -406,11 +420,32 @@ det_lift  = 0.45;   // how far the tooth stands past the leg's top face, in dept
 // soft enough: a bridge spanning only the 12.4 slot is too stiff to survive the
 // deflection, and a tab rooted at the rear would be a column, not a spring.
 det_span  = 20.0;   // bridge span in X, rooted in the disc's bulk either side
-det_tt    = 1.0;    // bridge thickness, along the long axis - it flexes this way
-det_h     = 4.0;    // bridge height, in depth
-det_w     = 10.0;   // tooth width, and the window in the stop wall
-det_tooth = 1.2;    // how far the tooth projects forward past the wall
+det_tt    = 1.1;    // bridge thickness, along the long axis - it flexes this way
+det_h     = 2.6;    // bridge height, in depth
+det_w     = 10.0;   // tooth and stem width
+det_tooth = 0.9;    // how far the tooth projects forward past the wall.  1.2 put
+                    //   the tip at r 2.09 and the leg's mid-sweep envelope reaches
+                    //   2.12, so the tip was clipped at 60 deg.
 det_gap   = 1.0;    // relief behind the bridge, so it has somewhere to flex
+// The tooth has to sit LOW in the slot, not up by the back face.  At the deployed
+// angle the leg's top face has swept down past the wall, leaving a wedge of leg
+// material that grows DOWNWARD from the back face - so a high tooth is caught
+// early and rides for 20 deg, while a low one is caught late and clicks.  These
+// two put the catch at about 111 deg: 11 deg of ramp, then the pocket.
+// MEASURED against the leg, not derived: the leg's deep reach behind the pivot
+// happens only in a thin sliver hard against the BACK FACE, not down at
+// mid-thickness.  A tooth at y 1.2..2.6 was never touched at any angle at all.
+// Up in the sliver it gives a proper ramp: first contact at 110 deg, deflected
+// 0.071 / 0.233 / 0.325 at 110 / 116 / 120, then CLEAR at 122 as the pocket
+// swallows it.  That is the channel -> ramp -> locking opening.
+det_y0    = 3.2;    // tooth and stem, bottom in depth
+det_y1    = 4.0;    // ... and top, flush with the disc's back face
+det_clr   = 0.45;   // clearance around the stem where it passes the wall
+det_fit   = 0.06;   // pocket growth over the tooth.  This is the DETENT: it sets
+                    //   how much angular slack the tooth has once seated, and so
+                    //   how far it must deflect to climb out.  0.225 (half of
+                    //   det_clr, which it used to inherit) let the tooth float
+                    //   +/-5 deg and there was no engagement at all.
 det_pkt   = 0.60;   // pocket depth in the leg's top face
 det_pkt_l = 1.50;   // pocket length along the leg                // how far the hub's rear arc stays off the floor
 
@@ -447,6 +482,17 @@ carrier_fit = true;
 carrier_w = 30.0; carrier_h = 70.0; carrier_t = 1.6;
 hdr_h = 8.5;        // female header body: driver's underside to the carrier face
 carrier_pad = 4.5;  // standoff pad diameter under each carrier corner
+// MEASURED off the board: four dia 2.0 mounting holes, 24 x 64 edge-to-edge,
+// which is 26 x 66 CENTRE to centre and lands 2.0 in from each edge of the
+// 30 x 70 board - so the board the model already assumed is the board in hand.
+// The pads become pegs: the holes drop straight onto them and locate the board
+// instead of it floating on four blank pads.
+carrier_hole  = 2.0;      // hole diameter
+carrier_hx    = 26.0;     // hole centres, across the short axis
+carrier_hz    = 66.0;     // hole centres, along the long axis
+carrier_peg   = 0.15;     // peg undersize, so the board drops on rather than presses
+carrier_pin   = 2.0;      // hole centre to the first header pin - a keep-out, so
+                          //   nothing on the peg may be wider than 2*carrier_pin
 
 /* [Rear USB-C pigtail] */
 // Panel-mount pigtail with its own snap-in catch, so the cover just needs a
@@ -556,8 +602,12 @@ carrier_cx = cav_x0 + elec_clr + carrier_w/2;
 // because the charger runs up that side.
 pad_h = 3.5;      // a rib, not a slab: it only has to touch the glass
 pad_w = bare_panel ? [26.0, 20.0] : [13.0, 13.0];
+// The TOP rib is shifted toward +X to clear the FPC adapter taped behind the
+// glass: the adapter needs x -40.45..-22.45 and the rib used to start at -25.2.
+// It still lands well inside the glass's dead border either way.
+pad_off1 = 7.8;
 pad_x = bare_panel
-  ? [pan_px, pan_px - 12.0]
+  ? [pan_px, pan_px - pad_off1]
   : [bat_cx - bat_w/2 - bat_clr - bat_fence - 1.0 - 6.5,
      bat_cx + bat_w/2 + bat_clr + bat_fence + 1.0 + 6.5];
 pad_z = bare_panel
@@ -602,12 +652,22 @@ tail_crosses_split = tail_give >= serv_lift;
 // leg 3 turns inboard at the top of the run, so that is where the adapter's
 // socket has to be - not hard against the RIGHT wall.
 rib_end_z = (Zc + pan_off_z) + rib_exit + rib_run;   // where leg 3 starts
+adapt_gap = 2.0;                                    // clear of the driver's parts.
+                                                    //   1.0 still caught them by 0.2 mm.
 adapt_cx = cav_x0 + elec_clr + adapt_w/2 + 1.0;
-adapt_cz = rib_end_z;
+// Taped to the glass, the adapter sits in FRONT of everything - so the only
+// thing it has to clear is the driver board's own tall parts, which stand
+// drv_env-drv_t proud toward the glass.  Sitting it just above drv_z1 does that,
+// and leg 3's turn still falls inside its span so the tail can reach a socket.
+adapt_cz = drv_z1 + adapt_gap + adapt_h/2;
 adapt_z0 = adapt_cz - adapt_h/2;  adapt_z1 = adapt_cz + adapt_h/2;
 adapt_x0 = adapt_cx - adapt_w/2;  adapt_x1 = adapt_cx + adapt_w/2;
-// how much of the carrier it lands on, which is the open layout question
-adapt_foul = min(adapt_z1, carrier_z1) - max(adapt_z0, carrier_z0);
+// plan-view overlap with the carrier - kept only because it is NOT a clash, and
+// saying so stops it being rediscovered as one.  Taped to the glass the adapter
+// sits at mod_back and the carrier's face is at carrier_face; adapt_clear is the
+// gap that actually matters.
+adapt_foul  = min(adapt_z1, carrier_z1) - max(adapt_z0, carrier_z0);
+adapt_clear = carrier_face - (mod_back + adapt_env);
 // ---- the perfboard, in the band between the driver board and the +Z wall
 perf_cx = cav_x0 + elec_clr + perf_w/2 + 1.0;
 perf_cz = (drv_z1 + cav_z1)/2;
@@ -687,7 +747,7 @@ det_fz  = -pivot_r + (-leg_t/2*sin(theta_dep) + det_at*cos(theta_dep));
 det_arm = sqrt(pow(det_fy - disc_t/2,2) + pow(det_fz + pivot_r,2));  // moment arm
 det_I   = det_h*pow(det_tt,3)/12;
 det_k   = 192*2400*det_I/pow(det_span,3);    // fixed-fixed bridge, N/mm
-det_F   = det_k*det_lift;
+det_F   = det_k*det_lift;   // det_lift is the MEASURED peak deflection
 det_T   = det_F*det_arm;                     // detent torque about the pivot
 det_sig = (det_F*det_span/8)*(det_tt/2)/det_I;   // mid-span stress
 piv_h   = disc_t/2;                    // pivot axis height above the pocket floor
@@ -910,9 +970,15 @@ module cover(){
             // female headers on the carrier and the carrier is what is held.
             if (carrier_fit)
                 for(sx=[-1,1],sz=[-1,1])
-                    translate([carrier_cx+sx*(carrier_w/2-3.5), cov_in,
-                               carrier_cz+sz*(carrier_h/2-3.5)])
-                        rotate([90,0,0]) cylinder(d=carrier_pad+2.0, h=cov_in-carrier_back);
+                    translate([carrier_cx+sx*carrier_hx/2, cov_in,
+                               carrier_cz+sz*carrier_hz/2]) rotate([90,0,0]) {
+                        // the pad the board sits on...
+                        cylinder(d=carrier_pad+2.0, h=cov_in-carrier_back);
+                        // ...and the peg through its own hole, which locates it.
+                        // Kept under 2*carrier_pin across so it cannot foul the
+                        // first header pin row.
+                        cylinder(d=min(carrier_hole-carrier_peg, 2*carrier_pin),
+                                 h=cov_in-carrier_back+carrier_t+1.2); }
             else {
                 translate([drv_cx + drv_w/2+drv_clr+drv_rail/2-1.0, drv_back-2.6, drv_cz])
                     xzext(cov_in-drv_back+2.6) square([drv_rail, drv_h-1.0],center=true);
@@ -1012,6 +1078,34 @@ module clamp_pad(){
         polygon([[x0, z0-clamp_pr], [x1, z0], [x1, z1], [x0, z1+clamp_pr]]);
 }
 
+// The tooth, and the stem carrying it back through the stop wall to the bridge.
+// ONE definition: the disc ADDS this solid and the leg SUBTRACTS the very same
+// solid transformed into leg-local coordinates, so the pocket cannot be
+// misaligned with the tooth - the alignment is construction, not arithmetic.
+module det_solid(grow=0){
+    z0 = -(pivot_r + stop_wall) - det_clr - 0.1 - det_tt;   // back, at the bridge
+    z1 = -(pivot_r + stop_wall) + det_tooth;                // the tooth's tip
+    translate([-(det_w/2+grow), det_y0-grow, z0-grow])
+        cube([det_w+2*grow, (det_y1-det_y0)+2*grow, (z1-z0)+2*grow]);
+}
+// The spring: a bridge across the disc's rear bulk, flexing along the long axis.
+module det_bridge(){
+    zb = -(pivot_r + stop_wall) - det_clr - 0.1 - det_tt;
+    translate([-det_span/2, disc_t - det_h, zb])       // top-aligned, so it
+        cube([det_span, det_h, det_tt]);                 //   meets the tooth
+}
+// ...and the clearance it needs: a window through the stop wall for the stem,
+// and a relief behind the bridge so it has somewhere to flex into.
+module det_free(){
+    zw1 = -(pivot_r + stop_wall);
+    zw0 = zw1 - det_clr - 0.1 - det_tt - det_gap;
+    translate([-(det_w/2+det_clr), det_y0-det_clr, zw0])
+        cube([det_w+2*det_clr, (det_y1-det_y0)+2*det_clr, zw1-zw0]);
+    zb = -(pivot_r + stop_wall) - det_clr - 0.1 - det_tt;
+    translate([-det_span/2-0.01, disc_t - det_h, zb - det_gap])
+        cube([det_span+0.02, det_h, det_gap]);
+}
+
 module disc(){
     slot_z0 = -(pivot_r + stop_wall);
     slot_z1 = leg_len - pivot_r + 3.5;
@@ -1039,6 +1133,7 @@ module disc(){
                 cube([slot_w, disc_t+0.02, slot_z1-slot_z0]);
             if (clamp_land) clamp_pad();
         }
+        if (snap_det) det_free();       // window through the wall, relief behind
         if (clamp_land && clamp_flex)   // relief slot behind the clamp land
             prism(flex_gap, flex_len+1.0, flex_gap/2, disc_t+0.02,
                   -(slot_w/2 + flex_t + flex_gap/2),
@@ -1064,7 +1159,9 @@ module disc(){
         translate([0, disc_t-0.6, 0]) rotate([-90,0,0])
             difference(){ cylinder(d=disc_d+2,h=0.7);
                           cylinder(d1=disc_d-1.2,d2=disc_d+0.1,h=0.65); }
-    } } }
+    }
+    if (snap_det) { det_bridge(); det_solid(); }
+    } }
 
 // =================================================================== leg
 // leg-local: pin at the origin, leg along +Z, thickness in Y centred on 0
@@ -1078,6 +1175,13 @@ module leg_shape(){
         // passes straight down during the stroke.  Without this the heel flat's
         // far corner orbits 1.8 into the pocket floor and the leg jams.
         if (hub_sweep) hub_sweep_cut();
+        // the detent pocket: the disc's own tooth, inverted into leg-local
+        // coordinates and grown by det_fit - small, so the tooth has to deflect.
+        // leg_placed does translate-then-rotate, so undoing it is
+        // rotate(+theta) after translate(-T) - in that order.
+        if (snap_det)
+            rotate([theta_dep,0,0]) translate([0, -disc_t/2, pivot_r])
+                det_solid(det_fit);
         // axle.  A bearing fit on the screw shank: the clamp is what holds it,
         // not the hole.
         translate([-leg_w,0,0]) rotate([0,90,0])
@@ -1100,9 +1204,19 @@ module hub_sweep_cut(){
         }
 }
 
+// The adapter is TAPED TO THE BACK OF THE GLASS, not mounted to the case.  That
+// is what makes it fit: at the glass's back face, in the band above the driver
+// board, there is 14.8 mm of clear depth against the 5 it needs.  The footprint
+// still overlaps the carrier in plan view, but they are 9.8 mm apart in DEPTH,
+// so it was never a real conflict - reading a plan-view overlap as a clash is
+// what made this look homeless for so long.
+//
+// It also lands on the right side of the split: taped to the glass, the adapter
+// stays with the FRAME, so the panel's short stiff tail never crosses the joint
+// and only the long FPC does.  That is exactly the service loop.
 module mock_adapter(){
     if (adapt_fit)
-        color("#3f7f3f") translate([adapt_cx, cov_in_pk - adapt_env, adapt_cz])
+        color("#3f7f3f") translate([adapt_cx, mod_back, adapt_cz])
             xzext(adapt_env) square([adapt_w, adapt_h], center=true);
 }
 
@@ -1298,12 +1412,24 @@ echo(str("ADAPTER DEPTH COST: driver stack ",drv_stack," + adapter ",adapt_env,
                  " would cover it, or low-profile headers (hdr_h ",hdr_h,
                  " -> 5.5) buy back 3.0 of it")));
 echo(str("FPC ADAPTER: ", adapt_fit
-         ? str(adapt_w," x ",adapt_h," x ",adapt_env," (assumed depth), four corner",
-               " holes dia ",adapt_hole," at ",adapt_inset," inset (BOTH ASSUMED)",
-               " | has to sit within ",rib_reach," of the ribbon exit, which puts it",
-               " at x ",adapt_x0," to ",adapt_x1,", z ",adapt_z0," to ",adapt_z1,
-               " | that lands on the carrier for ",adapt_foul,
-               " mm of its length - NO MOUNTING YET, see TODO")
+         ? str(adapt_w," x ",adapt_h," x ",adapt_env,", TAPED to the",
+               " back of the glass at x ",adapt_x0," to ",adapt_x1,", z ",adapt_z0,
+               " to ",adapt_z1," | depth there: glass back ",mod_back," to the",
+               " carrier's face ",carrier_face," = ",carrier_face-mod_back,
+               ", so it clears by ",adapt_clear,
+               " | it overlaps the carrier by ",adapt_foul,
+               " in PLAN, which is not a clash - they are ",adapt_clear,
+               " apart in depth | sits ",adapt_gap," above the driver's parts",
+               " | leg 3 turns at z ",rib_end_z," and runs ",rib_leg3,
+               " inboard, ending between x ",
+               (pan_px - pan_w/2 - rib_clr_out) + rib_leg3," and ",
+               (pan_px - pan_w/2 - rib_clr_out + rib_band) + rib_leg3," -> ",
+               ((pan_px - pan_w/2 - rib_clr_out + rib_band + rib_leg3) >= adapt_x0
+                && (pan_px - pan_w/2 - rib_clr_out + rib_leg3) <= adapt_x1
+                && rib_end_z >= adapt_z0 && rib_end_z <= adapt_z1)
+                 ? "LANDS ON THE ADAPTER" : "MISSES THE ADAPTER",
+               " | taped to the glass it stays with the FRAME, so only the long",
+               " FPC crosses the split")
          : "not fitted"));
 echo(str("DEPTH BUDGET over the puck: stack ",drv_stack," measured (driver + female",
          " sockets + carrier), room ",cov_in_pk-mod_back," -> ",
@@ -1327,7 +1453,8 @@ echo(str("RIBBON RELIEF: out ",rib_clr," (from the pocket edge) | deep ",rib_dep
 echo(str("RIBBON ROUTE (rear face, portrait): tail leaves the CENTRE of the RIGHT",
          " side, ",rib_exit," off the glass centre | leg 1 out ",rib_out,
          " | leg 2 turns to the TOP, ",rib_band," wide x ",rib_run," long",
-         " | leg 3 turns inboard, away from RIGHT, at z ",rib_end_z));
+         " | leg 3 turns inboard, away from RIGHT, at z ",rib_end_z,", and runs ",
+         rib_leg3," - it only has to LAND on the adapter, the tail folds over onto it"));
 echo(str("RIBBON OUTBOARD: leg 1 needs ",rib_out," out from the GLASS edge; the",
          " relief gives ",rib_clr+pan_clr_w," (rib_clr ",rib_clr," from the pocket",
          " edge plus ",pan_clr_w," of pocket clearance) -> ",
@@ -1341,6 +1468,15 @@ echo(str("RIBBON LENGTH - CHECK THIS: the route needs at least ",rib_out+rib_run
          "), against rib_tail ",rib_tail," measured flat.  Those two do not agree",
          " - one of them is wrong, and it decides whether leg 2 can really run ",
          rib_run));
+echo(str("RIBBON HOLLOW HEADROOM: the corner screw bores at z ",cav_z0+scr_cz,
+         " and ",cav_z1-scr_cz," reach x ",-scr_cx+ins_d/2," , which overlaps the",
+         " hollow's x ",-(abs(pan_px)+pan_w/2+pan_clr_w+rib_clr)," to ",
+         -(abs(pan_px)+pan_w/2+pan_clr_w)," - so THEY are what caps its length, not",
+         " the route | hollow ends at z ",(Zc+pan_off_z)-pan_h/2+rib_off+rib_w,
+         ", bore starts at z ",cav_z1-scr_cz-ins_d/2,
+         " -> ",(cav_z1-scr_cz-ins_d/2)-((Zc+pan_off_z)-pan_h/2+rib_off+rib_w),
+         " of headroom.  The other cost of length is the ",wall_rib,
+         " outer wall outboard of it, which is now ",rib_w," long"));
 echo(str("RIBBON RELIEF along the long axis: ",rib_w," long | ",rib_off,
          " from the -Z glass edge, ",rib_far," from the +Z edge | they sum to ",
          rib_off+rib_w+rib_far," against a ",pan_h," glass"));
@@ -1426,6 +1562,13 @@ echo(str("REAR PORT: ", port_snap
                ucb_x," z ",ucb_z," | needs ",snap_d," clear behind, has ",
                cov_in - (ucb_z < cav_z0 + 30 ? 0 : 0) - mod_back)
          : str("breakout board in rails, opening ",port_w," x ",port_h)));
+echo(str("CARRIER MOUNT: four dia ",carrier_hole," holes at ",carrier_hx," x ",carrier_hz,
+         " centres (",carrier_hx-carrier_hole," x ",carrier_hz-carrier_hole,
+         " edge to edge), ",(carrier_w-carrier_hx)/2," in from each edge of the ",
+         carrier_w," x ",carrier_h," board | pegs dia ",
+         min(carrier_hole-carrier_peg, 2*carrier_pin)," on pads dia ",carrier_pad+2,
+         " | first header pin is ",carrier_pin," from the hole, so nothing on the peg",
+         " may exceed ",2*carrier_pin," across"));
 echo(str("DRIVER MOUNT: ", carrier_fit
          ? str("carrier ",carrier_w," x ",carrier_h," on four pads, driver plugs into ",
                hdr_h," female headers | driver face to glass plane ",
@@ -1515,6 +1658,10 @@ if(chk=="cover_legf")   intersection(){ cover(); leg_f(0,0); }
 // mid-travel sweep.  The two poses above are the ends of the stroke; chk_th lets
 // the whole swing be walked, which is where a hub corner orbiting an axis only
 // disc_t/2 off the pocket floor gets you into trouble.
+// the detent tooth against the leg: empty early, ramp interference near the end,
+// and empty again at theta_dep because the pocket has swallowed it
+if(chk=="det_leg")      intersection(){ union(){ det_solid(); det_bridge(); }
+                                        leg_placed(chk_th); }
 if(chk=="adapt_board")  intersection(){ mock_adapter(); mock_board(); }
 if(chk=="adapt_cover")  intersection(){ mock_adapter(); cover(); }
 if(chk=="cover_legs")   intersection(){ cover(); leg_f(0,chk_th); }
@@ -1552,6 +1699,10 @@ if (part=="params") {
    ["leg_t",leg_t],["foot_r",foot_r],["stop_ang",stop_ang],["theta_dep",theta_dep],
    ["leg_slot_c",leg_slot_c],["detent_d",detent_d],
    ["slot_w",slot_w],["piv_h",piv_h],["hub_r",hub_r],["sweep_a",sweep_a],
+   ["snap_det",snap_det?1:0],["det_at",det_at],["det_lift",det_lift],["det_span",det_span],
+   ["det_tt",det_tt],["det_h",det_h],["det_w",det_w],["det_tooth",det_tooth],
+   ["det_y0",det_y0],["det_y1",det_y1],["det_clr",det_clr],["det_fit",det_fit],
+   ["det_k",det_k],["det_F",det_F],["det_T",det_T],["det_sig",det_sig],
    ["hub_sweep",hub_sweep?1:0],["sweep_clr",sweep_clr],["stop_wall",stop_wall],
    ["clamp_land",clamp_land?1:0],["clamp_pr",clamp_pr],["clamp_len",clamp_len],
    ["head_seat",head_seat],["wash_t",wash_t],["seat_x",seat_x],
@@ -1567,12 +1718,12 @@ if (part=="params") {
    ["proto_z0",proto_z0],["proto_z1",proto_z1],["proto_back",proto_back],["proto_face",proto_face],
    ["proto_hole_sp",proto_hole_sp],
    ["drv_env",drv_env],["drv_stack",drv_stack],
-   ["rib_tail",rib_tail],["rib_reach",rib_reach],
+   ["rib_tail",rib_tail],["rib_leg3",rib_leg3],["rib_reach",rib_reach],
    ["adapt_fit",adapt_fit?1:0],["adapt_w",adapt_w],["adapt_h",adapt_h],
    ["adapt_t",adapt_t],["adapt_env",adapt_env],["adapt_hole",adapt_hole],
    ["adapt_inset",adapt_inset],["adapt_cx",adapt_cx],["adapt_cz",adapt_cz],
    ["adapt_x0",adapt_x0],["adapt_x1",adapt_x1],["adapt_z0",adapt_z0],["adapt_z1",adapt_z1],
-   ["adapt_foul",adapt_foul],["drv_w",drv_w],["drv_h",drv_h],["drv_t",drv_t],["drv_x0",drv_x0],["drv_x1",drv_x1],
+   ["adapt_gap",adapt_gap],["adapt_foul",adapt_foul],["adapt_clear",adapt_clear],["drv_w",drv_w],["drv_h",drv_h],["drv_t",drv_t],["drv_x0",drv_x0],["drv_x1",drv_x1],
    ["drv_cx",drv_cx],["drv_cz",drv_cz],["drv_z0",drv_z0],["drv_z1",drv_z1],
    ["drv_back",drv_back],["drv_clr",drv_clr],["drv_rail",drv_rail],
    ["ucb_x",ucb_x],["ucb_z",ucb_z],["ucb_w",ucb_w],["ucb_l",ucb_l],["ucb_t",ucb_t],
@@ -1582,6 +1733,8 @@ if (part=="params") {
    ["bare_panel",bare_panel?1:0],["perf_fit",perf_fit?1:0],["perf_w",perf_w],["perf_h",perf_h],
    ["perf_cx",perf_cx],["perf_cz",perf_cz],["perf_t",perf_t],
    ["carrier_fit",carrier_fit?1:0],["carrier_w",carrier_w],["carrier_h",carrier_h],
+   ["carrier_hole",carrier_hole],["carrier_hx",carrier_hx],["carrier_hz",carrier_hz],
+   ["carrier_peg",carrier_peg],["carrier_pin",carrier_pin],
    ["carrier_cx",carrier_cx],["carrier_cz",carrier_cz],["carrier_z0",carrier_z0],["carrier_z1",carrier_z1],
    ["catch_p",catch_p],["pin_fit",pin_fit],["snap_c",snap_c],
    ["pivot_screw",pivot_screw?1:0],["leg_slot_c",leg_slot_c],["scr_wall",scr_wall],["carrier_t",carrier_t],["hdr_h",hdr_h],

@@ -422,7 +422,14 @@ det_lift  = 0.325;   // how far the tooth stands past the leg's top face, in dep
 det_span  = 20.0;   // bridge span in X, rooted in the disc's bulk either side
 det_tt    = 1.1;    // bridge thickness, along the long axis - it flexes this way
 det_h     = 2.6;    // bridge height, in depth
-det_w     = 10.0;   // tooth and stem width
+det_wall  = 1.0;    // stop wall left SOLID in front of the bridge.  Without it the
+                    //   bridge, the stem's window and the wall all shared one z
+                    //   band: the bridge fused to the wall beyond the window and
+                    //   came out 6.2x too stiff (87 MPa, past yield), and the
+                    //   window ate the stop's bearing land down to two strips.
+det_gapf  = 0.6;    // gap in front of the bridge, so it can flex forward too
+det_w     = 5.0;    // tooth and stem width.  10 cut the stop wall down to 0.75 a
+                    //   side; 5 leaves 3.25 a side to bear on.
 det_tooth = 0.9;    // how far the tooth projects forward past the wall.  1.2 put
                     //   the tip at r 2.09 and the leg's mid-sweep envelope reaches
                     //   2.12, so the tip was clipped at 60 deg.
@@ -744,6 +751,11 @@ slot_w  = leg_w + 2*leg_slot_c;        // the leg's slot in the disc
 // it rather than being chosen: tab = (disc_t - face) + det_lift.
 det_fy  = disc_t/2 + ( leg_t/2*cos(theta_dep) + det_at*sin(theta_dep));
 det_fz  = -pivot_r + (-leg_t/2*sin(theta_dep) + det_at*cos(theta_dep));
+det_zw1 = -(pivot_r + stop_wall);      // stop wall, front face
+det_zw0 = det_zw1 - det_wall;          //   ... back face
+det_zb1 = det_zw0 - det_gapf;          // bridge, front face
+det_zb0 = det_zb1 - det_tt;            //   ... back face
+det_zr0 = det_zb0 - det_gap;           // rear relief
 det_arm = sqrt(pow(det_fy - disc_t/2,2) + pow(det_fz + pivot_r,2));  // moment arm
 det_I   = det_h*pow(det_tt,3)/12;
 det_k   = 192*2400*det_I/pow(det_span,3);    // fixed-fixed bridge, N/mm
@@ -1082,27 +1094,34 @@ module clamp_pad(){
 // ONE definition: the disc ADDS this solid and the leg SUBTRACTS the very same
 // solid transformed into leg-local coordinates, so the pocket cannot be
 // misaligned with the tooth - the alignment is construction, not arithmetic.
+// z layout behind the slot, front to back:
+//   det_zw1  the wall's front face - what the leg's stop lands on
+//   det_zw0  the wall's back face      (det_wall thick, SOLID across the slot)
+//   det_zb1  the bridge's front face   (det_gapf of air in front of it)
+//   det_zb0  the bridge's back face    (det_tt thick)
+//   det_zr0  the rear relief           (det_gap of air behind it)
 module det_solid(grow=0){
-    z0 = -(pivot_r + stop_wall) - det_clr - 0.1 - det_tt;   // back, at the bridge
-    z1 = -(pivot_r + stop_wall) + det_tooth;                // the tooth's tip
-    translate([-(det_w/2+grow), det_y0-grow, z0-grow])
-        cube([det_w+2*grow, (det_y1-det_y0)+2*grow, (z1-z0)+2*grow]);
+    translate([-(det_w/2+grow), det_y0-grow, det_zb1-grow])
+        cube([det_w+2*grow, (det_y1-det_y0)+2*grow,
+              (det_zw1 + det_tooth - det_zb1)+2*grow]);
 }
 // The spring: a bridge across the disc's rear bulk, flexing along the long axis.
 module det_bridge(){
-    zb = -(pivot_r + stop_wall) - det_clr - 0.1 - det_tt;
-    translate([-det_span/2, disc_t - det_h, zb])       // top-aligned, so it
-        cube([det_span, det_h, det_tt]);                 //   meets the tooth
+    translate([-det_span/2, disc_t - det_h, det_zb0])   // top-aligned, so it
+        cube([det_span, det_h, det_tt]);                //   meets the tooth
 }
 // ...and the clearance it needs: a window through the stop wall for the stem,
 // and a relief behind the bridge so it has somewhere to flex into.
 module det_free(){
-    zw1 = -(pivot_r + stop_wall);
-    zw0 = zw1 - det_clr - 0.1 - det_tt - det_gap;
-    translate([-(det_w/2+det_clr), det_y0-det_clr, zw0])
-        cube([det_w+2*det_clr, (det_y1-det_y0)+2*det_clr, zw1-zw0]);
-    zb = -(pivot_r + stop_wall) - det_clr - 0.1 - det_tt;
-    translate([-det_span/2-0.01, disc_t - det_h, zb - det_gap])
+    // window through the stop wall, only as wide as the stem needs
+    translate([-(det_w/2+det_clr), det_y0-det_clr, det_zb1])
+        cube([det_w+2*det_clr, (det_y1-det_y0)+2*det_clr, det_zw1-det_zb1]);
+    // air in FRONT of the bridge, across its whole span - this is what was
+    // missing, and it is why the bridge was only free over the window's width
+    translate([-det_span/2-0.01, disc_t - det_h, det_zb1])
+        cube([det_span+0.02, det_h, det_zw0-det_zb1]);
+    // ...and behind it
+    translate([-det_span/2-0.01, disc_t - det_h, det_zr0])
         cube([det_span+0.02, det_h, det_gap]);
 }
 
@@ -1701,6 +1720,8 @@ if (part=="params") {
    ["slot_w",slot_w],["piv_h",piv_h],["hub_r",hub_r],["sweep_a",sweep_a],
    ["snap_det",snap_det?1:0],["det_at",det_at],["det_lift",det_lift],["det_span",det_span],
    ["det_tt",det_tt],["det_h",det_h],["det_w",det_w],["det_tooth",det_tooth],
+   ["det_wall",det_wall],["det_gapf",det_gapf],
+   ["det_zw1",det_zw1],["det_zw0",det_zw0],["det_zb1",det_zb1],["det_zb0",det_zb0],
    ["det_y0",det_y0],["det_y1",det_y1],["det_clr",det_clr],["det_fit",det_fit],
    ["det_k",det_k],["det_F",det_F],["det_T",det_T],["det_sig",det_sig],
    ["hub_sweep",hub_sweep?1:0],["sweep_clr",sweep_clr],["stop_wall",stop_wall],

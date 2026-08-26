@@ -123,14 +123,14 @@ The three relief sizes are deliberately *not* called width/height/depth:
 **`rib_w` and `rib_off` are derived from the route now, not typed in.** `rib_w` is
 `rib_run + rib_band + 2 × rib_marg` and `rib_off` puts the slot's near edge half a band below
 the exit, so the slot straddles the exit and covers the run to the TOP. They come out at 33
-long, **38.5 up from the BOTTOM, 18.5 short of the TOP** — and they cannot drift from the
+long, **30.5 up from the BOTTOM, 10.5 short of the TOP** — and they cannot drift from the
 route any more, which is how they went wrong twice:
 
 - `rib_off = 15` put the slot at the **BOTTOM**, under a source comment insisting the model's
   −Z was the top and warning against "fixing" it. It was the reversed reading it warned about.
 - `rib_off = 35` then put the slot 15 short of the **TOP**, from reading "the ribbon is towards
   the top" as the exit position. The exit is at the **centre**; it is the *run* that goes
-  towards the top.
+  towards the top. It is 30.5 now, and derived rather than typed.
 
 **One clearance is 0.25 mm short.** Leg 1 needs 4 mm out from the glass edge; the relief gives
 3.75 (`rib_clr` 3.0 from the pocket edge, plus 0.75 of pocket clearance). `rib_clr = 3.25`
@@ -140,8 +140,7 @@ with it the stance, so it is not a free change. The echo prints the shortfall on
 ### The tail reaches the driver — but it cannot cross the split
 
 The driver board faces **down**, so its socket edge is the one nearest the display, and the
-tail can meet it. Leg 3 only has to travel about 4 mm inboard: the board's −X edge sits at
-x −41.18 and the glass's RIGHT edge at −41.20.
+tail can meet it. Leg 3 runs **10 mm** inboard, ending between x −35.2 and −26.2.
 
 Which way round the board is mounted decides whether it fits:
 
@@ -166,26 +165,20 @@ Lift the cover and you are pulling on the glass. So the **adapter is a service l
 reach fix**: the short tail plugs into it on the panel side, and a longer FPC crosses the
 split with enough slack to open the case.
 
-### What the service loop costs
+### Where the service loop goes
 
-Putting the adapter in front of the driver stacks 5 mm onto 16 mm against 16.4 mm of room —
-**4.6 mm short.** Three ways out, and none is free:
+Two placements were costed and both fail, which is worth recording because the answer is
+neither of them:
 
-| | Cost |
-|---|---|
-| `depth` 25 → 29.6 | the frame gets 4.6 mm thicker |
-| Low-profile female headers, `hdr_h` 8.5 → 5.5 | buys back 3.0 mm; still 1.6 short |
-| Both | 1.6 mm of depth plus a different header |
+- **In front of the driver.** Stacks 5 mm onto 16 against 16.4 mm of room — 4.6 short, and the
+  driver's own USB-C shell and WROOM module already take 4.4 of the 4.7 there. It would have
+  cost `depth` 25 → 29.6, or low-profile headers, or both.
+- **On the carrier board.** Driver 48.25 + adapter 32 = 80.25 against 70, and overhanging fails
+  too because the adapter's corner holes are 28 apart, so the far pair lands off the board.
 
-The alternative is to **not cross the split at all** — release the tail's ZIF before the cover
-comes off. That needs only enough lift to reach the lever, and the tail's fold gives 3.4 mm of
-it. Whether 3.4 mm is enough to get at the lever is a hands-on question, not a calculable one,
-and it is the cheapest outcome by far if the answer is yes. It is the first item in
-[TODO.md](TODO.md) §2.
-
-Mounting the driver on the **frame** instead, so nothing crosses the split, does not work: the
-glass drops in through the interior and needs the full 90 mm clear, so anything standing off
-the frame's ledge blocks it — the same reason there are no corner posts.
+Mounting the driver on the **frame** instead, so nothing crosses the split at all, does not
+work either: the glass drops in through the interior and needs the full 90 mm clear, so
+anything standing off the frame's ledge blocks it — the same reason there are no corner posts.
 
 **The adapter is taped to the back of the glass.** That is what makes it fit, and it is also
 the right side of the split — taped to the glass it stays with the **frame**, so the panel's
@@ -538,8 +531,9 @@ but their sum is no longer the test. 0.4 mm is the entire margin in the build, a
   number this model has measured. Foam tape or a strap holds it.
 - **Driver board** — plugs into female headers on the carrier perfboard; the case holds the
   carrier, not the board. (`drv_rail` still exists for the no-carrier fallback.)
-- **FPC adapter** — nothing yet. It has four corner holes and needs four bosses, and first it
-  needs a seat that is not already the carrier's — [TODO.md](TODO.md) §2.
+- **FPC adapter** — **foam double-sided tape, onto the back of the glass.** The case owes it
+  nothing: no bosses, no screws, no pocket. Its four corner holes go unused. Taped there it
+  stays with the *frame*, which is what keeps the panel's short stiff tail out of the joint.
 - **Cell** — drops into a fenced pocket on a flat platform (the platform exists so the
   cell doesn't straddle the step where the stand pocket bulges into the interior).
   Foam tape holds it.
@@ -665,7 +659,7 @@ to 3.25 stiffened the tongue 2.6×, which is why `clamp_pr` is 0.5 rather than 0
 | Tongue rate | 77.8 N/mm, loaded 3.25 mm from one root |
 | At 0.1 mm interference | 7.78 N → **10.9 N·mm** of hinge torque |
 | Gravity on the leg | 0.35 N·mm — so **31×** |
-| To move it by hand | 0.31 N at the foot |
+| To move it by hand | 0.31 N at the foot (0.83 N once the detent is seated) |
 | Stress at the root | 35 MPa, against ~50 MPa yield |
 
 That spread is the point. On a rigid wall, ±0.15 mm on 0.2 mm of interference is either
@@ -677,19 +671,50 @@ catch — print the disc and leg together (10 g, ~25 min) and set it by feel.
 of the slot, flexing about 0.3 mm on its 30 mm of leverage — roughly 5 N at the tip, a firm
 but easy click. It will not fall open in a bag.
 
-### How the leg goes in
+### The stand subassembly — parts, print, assembly
 
-1. Slide the leg into the disc's slot **from the forward (open) end**, pressing it over the
-   clamp land's 45° lead-ins. It is a 0.1 mm push fit there, not a drop-in.
-2. Line the leg's axle hole up with the disc's pin bore.
-3. Push a **Ø2 × 43.5 mm pin** in through the disc's rim. The bore runs the full width of the
-   disc on the pivot axis — 15.55 mm of solid PLA each side of the slot — so the pin is
-   nearly disc-diameter long. A 1.75 mm filament offcut with its ends flared works.
-4. Bayonet the disc into the cover pocket. **The pocket bore is what traps the pin**: there
-   is nowhere for it to go once the disc is in, so it needs no head, clip or glue.
+**Everything the stand needs.** There are no fasteners in it beyond one pin, and no inserts —
+`pivot_screw = false`, because an M2.5 head and its insert bore are both wider than the 4 mm
+disc is thick:
 
-To get the leg out again, twist the disc to 45° and lift it out, then push the pin back out
-through the rim.
+| | Qty | Notes |
+|---|---|---|
+| **Disc** `stl/disc.stl` | 1 | ~8 g. Carries the bayonet lugs, the clamp land and its tongue, the stop wall, and the detent's sprung bridge and tooth |
+| **Leg** `stl/leg.stl` | 1 | ~2 g. Carries the swept hub, the heel flat, the foot and the detent pocket |
+| **Pin, Ø2 × 43.5 mm** | 1 | Steel rod, or a 1.75 mm filament offcut with its ends flared |
+| Fasteners | **none** | no screws, no inserts, no clips |
+
+Both springs — the clamp tongue and the detent bridge — are **printed into the disc**. Nothing
+is added to make the leg hold or click.
+
+**Printing.** Both parts go on the bed as exported; nothing to rotate, no supports.
+
+| | On the bed | Why it matters |
+|---|---|---|
+| Disc | outer face down | Puts both springs' bending **in the layer plane**, which is the strong direction. The clamp tongue flexes across the short axis and the detent bridge along the long axis; printed the other way up they would be splitting layers |
+| Leg | flat, top face up | The detent pocket is a shallow angled recess in the top face (0.85 mm at its deepest), so it opens upward and needs no support |
+
+**Assembly**, in order:
+
+1. **Slide the leg into the disc's slot from the forward (open) end**, pressing it over the
+   clamp land's 45° lead-ins. It is a 0.1 mm push fit there, not a drop-in. Folded, the leg's
+   hub stops 0.60 mm short of the detent tooth, so it goes in without touching it.
+2. **Line the leg's axle hole up with the disc's pin bore.**
+3. **Push the pin in through the disc's rim.** The bore runs the full width of the disc on the
+   pivot axis — 15.55 mm of solid PLA each side of the slot — so the pin is nearly
+   disc-diameter long.
+4. **Bayonet the disc into the cover pocket**: drop it in at 45° and twist ~45° so the three
+   lugs engage. **The pocket bore is what traps the pin** — there is nowhere for it to go once
+   the disc is in, so it needs no head, clip or glue.
+
+**Taking it apart** is the reverse: twist the disc to 45°, lift it out, push the pin back out
+through the rim, and slide the leg forward out of the slot.
+
+**Before assembling, hold the printed disc up to the light** and check the detent bridge is a
+free island — air visible in front of it and behind it, right across its span. If it is fused
+to the stop wall it will be far too stiff and will take a permanent set on the first
+deployment. That failure is invisible to every interference check in this model, because
+nothing intersects; it only shows in the part.
 
 ### Why the hinge is a pin
 
@@ -755,13 +780,22 @@ to push it back out.
 | Mid-span stress | 25.7 MPa (yield ~50) |
 | Folds flush | **yes** |
 
-Two things the swept `det_leg` check caught, both of which would have printed wrong:
+Three things the checks caught, all of which would have printed wrong:
 
 - `det_tooth` 1.2 put the tip at r 2.09, and the leg's mid-sweep envelope reaches 2.12 — the
   tip was clipped at 60°. Pulled back to 0.9.
 - The pocket inherited `det_clr/2` = 0.225 mm of growth, which let the tooth float ±5° once
   seated. There was no engagement at all. `det_fit` = 0.06 is now its own parameter, and it is
   the number that *is* the detent.
+- **The bridge was not actually free.** Cross-sectioning the exported disc showed it fused to
+  the stop wall beyond x ±5.45, because the only relief in front of it was the stem's window —
+  a **10.9 mm** free span, not 20. That made it 6.2× stiffer than designed and put it at
+  **86.7 MPa against ~50 yield**: it would have taken a permanent set on the first deployment
+  and the click would have faded. The same window had eaten the stop's bearing land down to two
+  0.75 mm strips. Both came from the bridge, the window and the wall sharing one z band. The
+  wall is now solid (`det_wall` 1.0) with the bridge behind it (`det_gapf` 0.6 of air in
+  front), relieved across its full span, and the tooth narrowed to 5 mm so the wall keeps
+  3.25 mm of bearing either side. Verified from the mesh: the bridge is an island at every x.
 
 **The hub is deliberately 8.25 mm below the frame's centre**, at exactly half the frame's
 *width* above the bottom edge. Rotate the frame 90° and the pivot ends up the same distance
@@ -792,8 +826,8 @@ printed parts exactly as the exporter leaves them, which is how they land on the
 |---|---|---|---|---|
 | Frame | `stl/frame.stl` | front face down | big flat first layer, and the interior opens upward. The other way up, the 1.4 mm front plate has to bridge the whole interior | ~63 g |
 | Back cover | `stl/cover.stl` | outer back face down | big flat first layer, standoffs and ribs build upward | ~35 g |
-| Disc | `stl/disc.stl` | outer face down | symmetric | ~8 g |
-| Leg | `stl/leg.stl` | flat | symmetric | ~2 g |
+| Disc | `stl/disc.stl` | outer face down | puts both printed springs' bending **in the layer plane** — the clamp tongue and the detent bridge. The other way up they split layers | ~8 g |
+| Leg | `stl/leg.stl` | flat, top face up | the detent pocket is a recess in the top face, so it opens upward and needs no support | ~2 g |
 | Bezel test tile | `stl/bezel_test.stl` | front face down — **print this first** | same as the frame | ~23 g |
 
 PLA or PETG, 0.2 mm layers, 4 perimeters, 15–20% infill. The bayonet groove and window
@@ -809,14 +843,17 @@ frame and the part is 24 cm³ heavier for nothing.
 - 4 × **M2.5 heat-set inserts**, 4.0 OD × 4.0 long, in the frame's end walls
 - 4 × **M2.5 countersunk screws**, 8 mm, for the cover
 - 1 × **Ø2 × 43.5 mm pin** for the hinge — steel rod, or a flared 1.75 mm filament offcut
-- 1 × **Waveshare FPC adapter**, 18 × 32, plus a second FPC to the driver board
-- 4 × screws for the adapter — size not yet measured
-- **Double-sided 0.1″ prototype board**, cut to 30 × 70 (driver carrier + divider)
+- 1 × **Waveshare FPC adapter**, 18 × 32, plus a second FPC to the driver board. It is
+  **taped down, not screwed** — its four corner holes go unused
+- **Double-sided 0.1″ prototype board, 30 × 70**, with four Ø2.0 mounting holes at 26 × 66
+  centres (driver carrier + divider). It drops onto four printed pegs; no cutting needed
 - 2 × **19-pin 2.54 female headers** for the driver to plug into
 - **Panel-mount USB-C pigtail**, 14 × 4.5 snap-in body (measured)
 - Adafruit **bq25185 (#6091)**; 1S LiPo **2000 mAh, 694449, 44 × 49 × 6.9 mm** (the
   salvaged cell above)
-- JST-PH pigtails, foam tape
+- JST-PH pigtails, and **foam** double-sided tape — for the glass, the cell, the charger
+  and the FPC adapter. Foam rather than film: the adapter's tape has to absorb the ribbon's
+  spring-back, and peel is its failure mode
 
 ---
 

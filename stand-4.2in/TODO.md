@@ -10,7 +10,7 @@ openscad -o /tmp/p.stl -D 'part="params"' src/epaper_stand.scad 2>&1 \
   | sed -n 's/^ECHO: "P|\(.*\)"$/\1/p' | tr '|' '=' > /tmp/params.txt
 python3 tools/mkdrawings.py && python3 tools/mkpage.py
 
-for p in frame cover disc leg bezel_test; do
+for p in frame cover leg bezel_test; do
   openscad -o stl/$p.stl -D "part=\"$p\"" src/epaper_stand.scad
 done
 sh tools/mkrenders.sh
@@ -62,8 +62,8 @@ nothing downstream is constrained. Nothing to design; two things to do at assemb
       anything from 0 to 34. Oversize costs nothing here; undersize is the only failure. Worth
       re-measuring out of curiosity, not as a gate.
 - [ ] Leg 1 wants 4 mm out from the glass edge and the relief gives 3.75 — 0.25 short.
-      `rib_clr = 3.25` fixes it but grows the frame 0.5 mm on the short axis, which moves
-      `hub_z = W/2` and the stance with it. Decide whether to spend it.
+      `rib_clr = 3.25` fixes it but grows the frame 0.5 mm on the short axis. The stance no
+      longer rides on the frame width, so only the frame moves. Decide whether to spend it.
 
 ## 4. Still open from the relayout
 
@@ -73,56 +73,61 @@ nothing downstream is constrained. Nothing to design; two things to do at assemb
       board's own mounting holes are now modelled (Ø2.0 at 26 × 66 centres) and the cover has
       pegs for them, so it does not need cutting to size — the adapter is taped to the glass
       and never competes with it for board area.
-- [ ] The stack over the puck has **0.4 mm of margin** (16.0 measured against 16.4). Check
-      it for real before committing to the frame: if the stack is over 16.4, the depth has
-      to grow or the board has to come off the pocket.
+- [ ] The driver stack has **3.95 mm of margin** now (16.0 measured against 19.95) — the
+      carrier misses the stand recess entirely, so it datums to the cover's register face at
+      22.6 rather than to the recess floor's backing at 18.7. Still worth confirming the 16.0
+      before committing to the frame, but it is no longer the tight one.
 
-## 5. Test-print the disc and leg (10 g, ~25 min) — one print, two things to check
+## 5. Test-print the leg (~3.4 g, ~12 min) — the whole stand is one part
 
-All four leg problems are fixed and in the STLs: the hub sweep relief, the clamp land and its
-tongue, the firm stop at the deployed angle, and the snap detent. Print the pair before
-committing to a frame. Parts, print orientation and the assembly order are in the README under
-**The stand subassembly** — it needs one Ø2 × 43.5 pin and nothing else, no screws or inserts.
+Push a Ø2 × 18 pin through the printed leg (3.0 proud each side), then press that subassembly
+into the cover's pocket so both pin ends snap into their ears. The pin cannot go in afterwards. Parts, print
+orientation and the assembly order are in the README under **The stand subassembly**. It needs
+one pin and nothing else — no screws, no inserts, no clips.
 
-- [ ] **Before assembling, hold the disc up to the light**: the detent bridge must be a free
-      island, air in front and behind, right across its span. Fused to the stop wall it is
-      6.2× too stiff and past yield. No interference check can see this — nothing intersects.
+**Print it with supports.** The heel's stop flat is a 35° overhang and the two nubs want a clean
+underside. It is the only part in the build that needs them.
 
-**The travel.** Walk the *whole* stroke, not just the two ends — the heel corner that jammed
-at 64° was clear at both ends, which is exactly why it went unnoticed.
+**The travel.** Walk the *whole* stroke, not just the two ends.
 
-- [ ] The leg should swing 0° → 122° without touching the pocket floor anywhere.
-- [ ] The folded catch should take a firm push to close and a deliberate pull to open
-      (`catch_p` tunes it).
-- [ ] The leg should hold wherever it is put, and take a light thumb push to move — about
-      0.31 N at the foot mid-travel (0.83 N once the detent has seated at the deployed end).
-      **`clamp_pr` tunes it** (0.5 now: 0.4 removes the slot play, the remaining 0.1 is
-      interference on the tongue). Too loose, raise it 0.05 at a time; won't go in, drop it.
-- [ ] Deployed, it should take a shove without folding, and stop against the slot's rear wall
-      rather than drifting.
-- [ ] **Measure the lean angle with a protractor**, in both orientations, against the drawn
-      20.5° / 31.9 mm footprint. If it reads flat, `stop_wall` is not being reached and wants
-      to come in — not `stop_ang` changed.
+- [ ] The leg should swing 0° → 35° without binding anywhere.
+- [ ] **Deployed, it should take a firm shove without folding.** The heel's flat is the stop;
+      if the leg keeps rotating past ~35° the flat is not landing — check the print for support
+      material still stuck to it before changing any parameter.
+- [ ] **Measure the lean with a protractor** against the drawn 22.3° / 34.1 mm footprint. If it
+      reads more upright, the heel is not reaching the floor; if it reads flatter, something is
+      holding the leg off the seat.
+- [ ] Folded, the leg should sit **flush with the back face** and nothing should overhang the
+      bottom edge.
 
-**The detent.** Expect the last ~12° of opening to firm up progressively, then a distinct
-click as it seats.
+**The detent.** Two numbers tune it, and they do different jobs:
 
-- [ ] **`det_fit` is the tuning number** (0.06) — the pocket's growth over the tooth, which
-      sets how far the tooth must deflect to leave. No click, drop it to 0.03; too stiff to
-      fold, raise it 0.03 at a time. It inherited 0.225 once and there was no detent at all.
-- [ ] If the leg catches around **60°**, the tooth's tip is being clipped — `det_tooth` is 0.9
-      because 1.2 put the tip inside the leg's mid-sweep envelope.
+- [ ] **`det_seat` (0.12) is the click.** Expect a distinct seat at both ends of the stroke. No
+      click, raise it 0.03 at a time; too stiff to fold, drop it.
+- [ ] **`nub_pre` (0.05) is the friction** — whether the leg holds wherever it is put. Flops
+      around, raise it 0.02 at a time; won't move at all, drop it.
+- [ ] **`lip_h` (0.35) is the folded latch.** It should take a deliberate pull to open and a
+      firm push to close. Won't close, drop it; won't stay shut, raise it.
+- [ ] **Check the finger access actually works.** Off the ears there is 2.5 open either side of
+      the leg, the whole length, at the full 4.5 depth. If a nail won't go under the leg's edge,
+      the pocket has to get wider — but `rec_w` is capped at ~18.9 by the driver carrier at
+      x −11.45, and widening it also widens `leg_w`'s derivation.
+- [ ] **Hold the cover up to the light before assembling.** The pocket must be blind everywhere:
+      no daylight through its floor, and the two ears must be solid with their C-mouths open
+      into the pocket, not through the back face. `chk="rec_floor_gap"` and `chk="rib_recess"`
+      both pass in the model, but a thin floor can still print through.
 
-**After a few dozen cycles**, check the two printed springs and the one bearing edge:
+**The pin socket.** This is the one feature that could fail on the first assembly:
 
-- [ ] The detent bridge (1.1 mm at 25.7 MPa against ~50 yield) — the only printed spring
-      taking repeated load. **Check it is actually free**: it should be an island with air
-      in front and behind across its full 20 mm span. It was fused to the stop wall beyond
-      x ±5.45 once, which made it 6.2× too stiff and put it past yield; that was invisible
-      in every clash check and only showed up in a cross-section of the mesh.
-- [ ] The clamp tongue (35 MPa) — should be fine, but it is preloaded permanently.
-- [ ] The stop wall's contact patch. It is a corner landing near the wall's top edge; if it is
-      visibly rounding over, the wall wants a small radius.
+- [ ] The pin should **snap past the socket mouth** (1.51 across a 2.1 bore) and then be
+      retained. If the lip shears instead of flexing, drop `ear_mouth` toward 0.8 so there is
+      less to deflect, and check the cover printed the mouth open rather than bridged over.
+
+**After a few dozen cycles:**
+
+- [ ] Check the two nubs for wear — they are the only sliding contact in the stand.
+- [ ] Check the heel's contact patch. It is a 3.07 × 14 face, so bearing stress is negligible;
+      if it is visibly rounding over, the flat is not seating square.
 
 ## 6. Print and check the bezel test tile before the frame
 
@@ -150,9 +155,10 @@ click as it seats.
       using it: it then refuses to charge outside roughly 0–45 °C.
 - [ ] Wire red → B+, black → B− on the JST battery pigtail (polarity verified on this
       pack).
-- [ ] Wire the USB-C breakout's **VBUS** and **GND** to the charger's VBUS and GND pads.
-      Confirm the breakout has the 5.1 kΩ CC1/CC2 pulldowns, or no USB-C source will turn
-      its 5 V on.
+- [ ] Wire the USB-C pigtail's **VBUS** and **GND** to the charger's VBUS and GND pads.
+      Confirm the pigtail has the 5.1 kΩ CC1/CC2 pulldowns, or no USB-C source will turn
+      its 5 V on. The port now sits at x −5, z 92, immediately left of the charger, so this
+      is a ~4 mm run — leave a little slack so the cover can still lift off.
 - [ ] Build the battery divider: two 100 kΩ from the cell to an ADC pin on **ADC1
       (GPIO 32–39)**. ADC2 is unusable while WiFi is on.
 - [ ] **Flash the ESP32 and confirm OTA works before the cover goes on.** The flash port
@@ -191,9 +197,9 @@ click as it seats.
 - [ ] `drawings/4.2in-frame-drawings.pdf` is stale — it predates the current sheets. It was
       printed from `drawings/index.html`, so regenerate it the same way (or drop it and
       treat the SVG sheets plus `index.html` as the only drawing deliverables).
-- [ ] `slicer/assembly-test.3mf` predates every change since 2026-08-25 — it was saved from
-      an older set of STLs and will open with stale geometry. Re-save it from the current
-      exports or drop it.
+- [ ] `slicer/assembly-test.3mf` and `slicer/leg-test.3mf` predate the stand redesign — they
+      were saved from an older set of STLs (including the deleted `disc.stl`) and will open
+      with stale geometry. Re-save them from the current exports or drop them.
 - [ ] `src/` still carries `epaper_stand_v2/v3/v4.scad` alongside the live
       `epaper_stand.scad`. Decide which are worth keeping and move the rest next to
       `archive-v1-wedge/`.

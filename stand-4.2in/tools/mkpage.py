@@ -16,11 +16,11 @@ sheets = json.load(open("drawings/_sheets.json"))
 TITLES = [
     ("Assembly &amp; envelope", "Overall size, where the ink lands in the bezel, and every opening in the shell."),
     ("Internal layout", "What sits where inside the cavity, dimensioned from the cavity edges."),
-    ("Depth stack-up", "The tight axis. Section A&ndash;A with the depth magnified &times;6.4."),
+    ("Depth stack-up", "The tight axis. Section A&ndash;A with the depth magnified &times;5.2."),
     ("Frame", "The printed front shell &mdash; cavity, screw pilots, and the stepped module pocket."),
-    ("Back cover", "The printed back &mdash; stand pocket, board mounts, cell platform, port."),
-    ("Disc &amp; leg", "The two kickstand parts, printed flat."),
-    ("Stand kinematics", "How the deployed leg sets the lean, and why the hub sits low."),
+    ("Back cover", "The printed back &mdash; stand recess, board mounts, cell platform, port."),
+    ("Leg &amp; pivot", "The one moving part, and the pivot section that carries the stop and the detent."),
+    ("Stand kinematics", "How the deployed leg sets the lean, and why it stops where it does."),
     ("Power wiring", "Charging the cell and running the board from it, off one USB-C port."),
 ]
 
@@ -31,7 +31,7 @@ VERIFY = [
      "This is what <code>bezel_test.stl</code> checks."),
     ("conn_h", n(P["conn_h"]) + " mm",
      "Assumed height of the module&rsquo;s mated 8-pin header off its back. Sheet 3 shows " +
-     n(P["cov_in_pk"] - P["bat_t"] - P["mod_back"]) + " mm available over the cell. A stock vertical "
+     n(P["rec_back"] - P["bat_t"] - P["mod_back"]) + " mm available over the cell. A stock vertical "
      "PH2.0 plug plus a wire bend is 8&ndash;9 mm &mdash; right-angle housing, direct-solder, or "
      "<code>depth = 26.6</code>."),
     ("pan_off_x / pan_off_z", "0",
@@ -49,8 +49,7 @@ VERIFY = [
 PARTS = [
     ("Frame", "frame.stl", "front face on the bed", "43.3 cm&sup3;", "~54 g"),
     ("Back cover", "cover.stl", "outer face on the bed", "37.7 cm&sup3;", "~47 g"),
-    ("Disc", "disc.stl", "outer face on the bed", "6.7 cm&sup3;", "~8 g"),
-    ("Leg", "leg.stl", "flat", "1.3 cm&sup3;", "~2 g"),
+    ("Leg", "leg.stl", "flat &mdash; supports on, the heel overhangs", "2.7 cm&sup3;", "~3.4 g"),
     ("Bezel test tile", "bezel_test.stl", "front face down &mdash; print first", "15.9 cm&sup3;", "~20 g"),
 ]
 
@@ -63,7 +62,7 @@ BOM = [
     ("USB-C breakout, 5.1 k&Omega; CC pulldowns", f'~{n(P["ucb_w"])} &times; {n(P["ucb_l"])}'),
     ("M2.5 &times; 8 self-tapping screws", "3 off &mdash; back cover"),
     ("M2.5 &times; 6 screws", "2 off &mdash; Perma-Proto"),
-    ("&#8960;2 &times; 43 rod or 1.75 filament offcut", "1 off &mdash; kickstand pin"),
+    (f'&#8960;{n(P["pin_d"])} &times; {n(P["pin_len"])} rod or a 1.75 filament offcut', "1 off &mdash; kickstand pin, snaps into the recess side walls"),
 ]
 
 CSS = """
@@ -244,9 +243,9 @@ def build():
                  f'<td class="num">{d}</td><td class="num">{e}</td></tr>')
     o.append('</tbody></table>')
     o.append('<p class="v" style="color:var(--ink-2);font-size:14px">PLA or PETG, 0.2 mm layers, '
-             '4 perimeters, 15&ndash;20&thinsp;% infill, no supports. The bayonet groove and the '
-             'window chamfer are both cut at 45&deg;, and the only bridge left is the '
-             '1.9 mm ceiling over the closed flash pocket.</p>')
+             '4 perimeters, 15&ndash;20&thinsp;% infill. Supports on the leg only &mdash; its '
+             'heel is a 35&deg; overhang. The window chamfer is cut at 45&deg;, and the only '
+             'bridge left is the 1.9 mm ceiling over the closed flash pocket.</p>')
     o.append('</section>')
 
     o.append('<section class="panel">')

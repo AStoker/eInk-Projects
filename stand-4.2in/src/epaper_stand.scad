@@ -1,11 +1,11 @@
 // =====================================================================
-//  4.2" e-Paper desk frame  -  v2  "minimal bezel + rotating kickstand"
+//  4.2" e-Paper desk frame  -  "minimal bezel + snap-out kickstand"
 //  Waveshare 4.2inch e-Paper Module (B) + e-Paper ESP32 Driver Board
 //
-//  Frame  : 17 mm deep, bezel = the panel's own dead border + ~2 mm plastic
-//  Cover  : full back, carries the driver board + the stand pocket
-//  Disc   : bayonets into the pocket, rotates in 90 deg detents (P <-> L)
-//  Leg    : folds flush into the disc, swings out to a hard stop
+//  Frame  : bezel = the panel's own dead border + ~2 mm plastic
+//  Cover  : full back, carries the driver board + the stand recess
+//  Leg    : the ONLY moving part.  Folds flush into the recess, swings out
+//           dep_ang onto a flat on its heel.  Portrait only.
 //
 //  ----------------------------------------------------------------- axes
 //  X = short axis, Y = depth (0 = front face), Z = long axis (0 = bottom edge)
@@ -55,13 +55,13 @@
 //             visible inside the window on purpose.  One per axis.
 //
 //  ------------------------------------------------------------------- parts
-//  FRAME front shell | COVER back | DISC rotating puck | LEG kickstand |
+//  FRAME front shell | COVER back | LEG kickstand |
 //  BEZEL TEST TILE  the front-face-only print for checking fit before the frame
 // =====================================================================
 
 /* [What to build] */
-// frame | cover | disc | leg | bezel_test | plate | standing_p | standing_l | exploded
-part = "standing_p";
+// frame | cover | leg | bezel_test | plate | standing | folded | assembly | exploded | guts
+part = "standing";
 
 /* [Display module] */
 // BARE PANEL: glass plus its FPC tail, and nothing else.  The tail plugs
@@ -280,204 +280,124 @@ tape_dep   = 0.3;                   // recessed into the ledge at pcb_face_y
 
 /* [Module retention] */
 rib_t = 2.5; rib_inset = 3.0; rib_gap = 0.25; rib_pad = 7.0;
+// A glass rib low enough to cross the stand pocket is drawn as TWO segments,
+// outboard of it.  Run straight through, the pocket cuts its ROOT away and
+// leaves a 20 x 3.5 x 20.7 wall cantilevered off one end - and it is the wall
+// that holds the glass down.  chk="rib_recess" is the guard.
+rib_pocket_c = 1.0;   // material left between the pocket wall and a segment
+rib_seg      = 15.0;  // segment length, each side
 
 /* [Kickstand] */
-disc_d = 54.0; disc_t = 4.0; pocket_c = 0.35;
-lug_out = 1.3; lug_t = 1.3; lug_ang = 26; gap_ang = 34;
-groove_y0 = 1.4;                 // groove position, from the pocket floor
-pivot_r = 16.0; pin_d = 2.0;
-// HINGE.  A plain pin gives you whatever friction the print happens to produce,
-// which is not a lock.  pivot_screw makes the pin an M2.5 screw into a heat-set
-// insert in the far slot wall: tighten it and the walls clamp the leg, so the
-// leg holds any angle including fully deployed, and you can set how hard with a
-// screwdriver.  That is the lock - not a detent, which this size of part cannot
-// carry (see the README).
+// THE STAND IS A LEVER, and that is the whole design.  What came before was a leg
+// The leg swings dep_ang, and past the pin it carries a HEEL whose flat
+// face is coplanar with the recess floor at exactly that angle.  Deployed, the
+// display's weight pushes the leg further open, the heel's flat lands on the floor,
+// and the load runs leg -> heel -> cover in COMPRESSION.  That is what holds the
+// display up; it is not friction and it is not a spring.  (Prior art for the same
+// stop: US4515338A, "flat stop faces ... at an obtuse angle equal to the desired
+// open angle plus 90 deg".)
 //
-// For it to clamp, the leg has to be a close fit in the slot: leg_slot_c is
-// 0.2, so each wall only has to close 0.2 mm.  A loose slot just rattles.
-// ...but only if the screw fits, and at disc_t = 4 it does not.  The screw runs
-// along X, so disc_t bounds BOTH ends of it: an M2.5 head is 5.0 across in a
-// 4.0 plate (0.5 a side short of existing) and its insert bore is 3.6 in that
-// same 4.0 plate (0.2 a side of wall, which an expanding insert splits).  That
-// is why the old countersink was parked at x -33.2, outside the part, cutting
-// nothing: there was nowhere for it to go.  clamp_ok reports it, and the
-// HINGE echo prints the arithmetic.
+// dep_ang IS UNDER 90 DEG ON PURPOSE.  The heel lands ON the floor plane only while
+// the swing stays inside a right angle; past 90 it would rotate through the plane
+// instead, and the deepest point of its arc would be inside the cover.
 //
-// So the buildable hinge at disc_t = 4 is the plain pin, and the friction comes
-// from clamp_pr instead of a screwdriver.  disc_t 6 makes the screw fit (+0.5 a
-// side on the head, +1.2 on the bore) and is the change to make if the hinge
-// wants to be adjustable - see TODO.md.
-pivot_screw = false;
-pin_fit = 0.10;                  // plain-pin fallback when pivot_screw = false
-leg_len = 35.4; leg_w = 12.0; leg_t = 3.4;
-leg_slot_c = 0.2;                // close, so the clamp screw has something to do
-foot_r = 5.0; stop_ang = 58;     // deployed leg angle from straight down
-
-// THE DEPLOYED STOP.  Rounding the hub's rear left the leg reaching only hub_r
-// backwards - but that is the RETRACTED reach.  Measured off the leg mesh, how
-// far the leg reaches behind the pivot while still inside the disc's thickness
-// climbs steeply at the end of the stroke, because its upper-forward corner
-// swings round BEHIND the pivot as it opens:
+// ON TOP of the stop there is a detent, and its geometry is worth stating because
+// the obvious version does not work.  A single nub at a fixed leg angle traces an
+// arc about the pin, so it is DEEPEST MID-STROKE and shallowest at both ends: it
+// can never drop into a pocket at each end.  So instead:
 //
-//     deg    0    60    90   110   118   120   122   125
-//     mm  1.75  2.12  1.70  2.48  2.95  3.10  3.25  3.45
+//   ONE SEAT, TWO NUBS.  The seat is a single pocket in the recess floor directly
+//   below the pin.  The leg carries two nubs, at 0 and -dep_ang from straight-down,
+//   each at radius det_R.  Whichever nub is pointing straight down is at the bottom
+//   of its arc and sits in that one pocket - nub F when folded, nub D when deployed.
 //
-// 0.77 mm of clean daylight between anywhere-up-to-110 and fully deployed.  The
-// slot's rear wall used to sit leg_w/2 + 1.2 = 7.2 back, clearing all of it and
-// doing nothing.  Bringing it to stop_wall = the reach at theta_dep makes it a
-// REAL hard stop: the leg meets it only in the last couple of degrees, and past
-// that the interference grows 0.07 mm/deg.  The heel flat still lands on the
-// pocket floor at the same moment, so both share the load.
+//   AND THE TRACK BETWEEN THEM IS AN ARC, not a flat.  This is not a detail: a nub
+//   at fixed radius sweeps a circle about the pin, so against a FLAT floor it is
+//   interfering everywhere except at one angle - the swept check showed exactly that,
+//   a 0.09 mm rub at every step of the stroke.  Cut the track as a cylinder about the
+//   pin and the nub rides at constant depth, so nub_pre is a chosen preload rather
+//   than an accident of where in the stroke you happen to be.
 //
-// The stop the heel flat gives on its own is a tangency - the flat is a plane
-// piv_h from the axis, so it can never cut the floor, and only its edge gets
-// 0.138 mm under, saturating about 20 deg past the stop.  This wall replaces
-// that with something that bites.
-stop_wall = 3.25;                // rear wall, behind the pivot
-
-// CLAMP LAND.  The clamp screw could not clamp anything.  The leg sits in the
-// slot with 2*leg_slot_c = 0.4 of play, and closing that play needs the slot
-// wall to travel 0.4 mm - but the wall is disc_t of plate loaded in its OWN
-// plane over 15.5 mm of depth, which is stiff enough that tightening crushes
-// the boss instead of moving the wall.  Nothing ever touched the leg, so the
-// hinge ran on whatever the print gave it: a leg that swings freely.
+//   det_click = det_seat + nub_pre is then the climb out of the seat, and the
+//   compliance that allows it is the pin's free play plus the socket lip, so
+//   det_click wants to stay near pin_fit.
 //
-// The land is the fix, and it works whether or not there is a screw.  It takes
-// the slot to line-to-line with the leg over clamp_len at the pivot, so there
-// is no dead travel left.  With the plain pin, clamp_pr's interference IS the
-// friction.  With a screw (disc_t >= 6), tension then runs straight down a
-// solid column of plastic into extra normal force on the leg's side face, and a
-// wave washer under the head meters it - without one a rigid stack goes from
-// nothing to crushed inside a few degrees of the screwdriver.
-clamp_land = true;
-clamp_pr  = 0.5;                 // land height.  2*leg_slot_c of that is the play
-                                 //   it removes; the rest is interference.
-                                 //   PRINT-TUNE THIS - it is the catch_p of the
-                                 //   hinge, the one number a drawing cannot give.
-clamp_len = 8.0;                 // along the long axis, centred on the pivot
-// ...backed by a spring, not by the bulk of the disc.  A land on a rigid wall
-// makes the fit a lottery: +/-0.15 of print variance on 0.2 of interference is
-// either nothing or a leg that will not go in.  A relief slot behind the land
-// leaves a fixed-fixed tongue carrying it - flex_t thick over flex_z0+flex_z1
-// long, about 30 N/mm - so the same +/-0.15 moves the clamp force between 2 and
-// 15 N.mm of hinge torque instead of between zero and jammed.  Gravity on the
-// leg is 0.35 N.mm, so even the loose end of that range holds it.
-clamp_flex = true;
-flex_t    = 0.8;                 // tongue: slot face to relief slot, along X
-flex_gap  = 0.8;                 // relief slot width
-flex_z1   = 11.0;                // relief slot, in front of the pivot
-// The tongue's REAR root is wherever the leg slot ends, because behind that the
-// tongue is fused to the wall - so stop_wall sets it, not a free parameter.
-// Moving the wall in from 7.2 to 3.25 shortens that arm and stiffens the tongue
-// about 2.6x, which is why clamp_pr came down from 0.6: same interference on a
-// stiffer spring would put the root past PLA's yield.
-flex_z0   = stop_wall;           // = the rear root, behind the pivot
-head_seat = 4.0;                 // head seat, out from the slot wall along X.
-                                 //   The screw enters through the disc's RIM,
-                                 //   so it needs a flat at the bottom of an
-                                 //   access channel - the old countersink was
-                                 //   placed at x -33.2, outside the part, and
-                                 //   cut nothing at all.
-wash_t    = 0.5;                 // wave washer free height, under the head
-
-// SWEEP CLEARANCE.  The pivot axis sits piv_h = disc_t/2 above the pocket
-// floor, so ANY leg material further than piv_h from the axis orbits below the
-// floor part way through the stroke.  The heel flat left a corner 3.82 from the
-// axis: measured against the cover it buries itself 1.80 mm into the floor at
-// 64 deg, so the leg could not complete its travel at all.
+// And what holds the leg SHUT is lip_h: a small lip across the mouth of the recess
+// near the foot.  The tip tucks under it, and because that is piv_z - lip_z from the
+// pin, releasing it only asks the leg to bow lip_h over that length.
 //
-// hub_sweep rounds the rear of the hub to hub_r over the exact sector that
-// passes straight down - sweep_a to 270 deg in leg-local angle - and stops
-// there, which leaves the SHORT side of the heel flat untouched.  That short
-// side is the 0.75 x 12 land that comes down on the pocket floor at stop_ang,
-// so the hard stop survives; only the corner that could not clear is gone.
-hub_sweep = true;
-sweep_clr = 0.25;
-
-// SNAP DETENT.  The projecting part is on the DISC and the receiving part is a
-// POCKET in the leg's top face.  That inversion is what makes it possible while
-// the leg still folds flush:
-//   - a LUG ON THE LEG is capped at 0.25 mm, because it has to sweep 122 deg
-//     inside disc_t and its worst excursion is r*max|sin| over that arc;
-//   - a BUMP ON THE LEG breaks the flush fold, because it has to stand proud of
-//     the leg's own thickness to reach anything;
-//   - a POCKET in the leg cannot break flush - it is material removed - and the
-//     DISC does not sweep, so its tooth can be any size at all.
-// The tooth hangs from a sprung tab in the disc's solid rear region, flexing in
-// depth out through the back face where there is open air.  It rides clear of
-// the leg for the whole stroke and only meets it in the last 3.7 deg, because
-// the leg's top face does not reach that far back until then.
-snap_det  = true;
-det_at    = 3.0;    // engagement point, along the leg from the pivot
-det_lift  = 0.325;   // how far the tooth stands past the leg's top face, in depth
-                    //   - this is the deflection the leg has to climb to fold
-// The tooth has to flex REARWARD, not in depth: at the deployed angle the leg's
-// top face points down-and-back, so its normal is mostly -Z.  That puts the
-// spring in the same place as the hard stop, so the two are decoupled - the stop
-// wall stays SOLID and takes the load, the tooth pokes through a WINDOW in it,
-// and the spring is a bridge behind the wall, flexing in Z.  The bridge is
-// rooted in the disc's bulk well outboard of the slot, which is what makes it
-// soft enough: a bridge spanning only the 12.4 slot is too stiff to survive the
-// deflection, and a tab rooted at the rear would be a column, not a spring.
-det_span  = 20.0;   // bridge span in X, rooted in the disc's bulk either side
-det_tt    = 1.1;    // bridge thickness, along the long axis - it flexes this way
-det_h     = 2.6;    // bridge height, in depth
-det_wall  = 1.0;    // stop wall left SOLID in front of the bridge.  Without it the
-                    //   bridge, the stem's window and the wall all shared one z
-                    //   band: the bridge fused to the wall beyond the window and
-                    //   came out 6.2x too stiff (87 MPa, past yield), and the
-                    //   window ate the stop's bearing land down to two strips.
-det_gapf  = 0.6;    // gap in front of the bridge, so it can flex forward too
-det_w     = 5.0;    // tooth and stem width.  10 cut the stop wall down to 0.75 a
-                    //   side; 5 leaves 3.25 a side to bear on.
-det_tooth = 0.9;    // how far the tooth projects forward past the wall.  1.2 put
-                    //   the tip at r 2.09 and the leg's mid-sweep envelope reaches
-                    //   2.12, so the tip was clipped at 60 deg.
-det_gap   = 1.0;    // relief behind the bridge, so it has somewhere to flex
-// The tooth has to sit LOW in the slot, not up by the back face.  At the deployed
-// angle the leg's top face has swept down past the wall, leaving a wedge of leg
-// material that grows DOWNWARD from the back face - so a high tooth is caught
-// early and rides for 20 deg, while a low one is caught late and clicks.  These
-// two put the catch at about 111 deg: 11 deg of ramp, then the pocket.
-// MEASURED against the leg, not derived: the leg's deep reach behind the pivot
-// happens only in a thin sliver hard against the BACK FACE, not down at
-// mid-thickness.  A tooth at y 1.2..2.6 was never touched at any angle at all.
-// Up in the sliver it gives a proper ramp: first contact at 110 deg, deflected
-// 0.071 / 0.233 / 0.325 at 110 / 116 / 120, then CLEAR at 122 as the pocket
-// swallows it.  That is the channel -> ramp -> locking opening.
-det_y0    = 3.2;    // tooth and stem, bottom in depth
-det_y1    = 4.0;    // ... and top, flush with the disc's back face
-det_clr   = 0.45;   // clearance around the stem where it passes the wall
-det_fit   = 0.06;   // pocket growth over the tooth.  This is the DETENT: it sets
-                    //   how much angular slack the tooth has once seated, and so
-                    //   how far it must deflect to climb out.  0.225 (half of
-                    //   det_clr, which it used to inherit) let the tooth float
-                    //   +/-5 deg and there was no engagement at all.
-det_pkt   = 0.60;   // pocket depth in the leg's top face
-det_pkt_l = 1.50;   // pocket length along the leg                // how far the hub's rear arc stays off the floor
-
-
-// HOLDING THE LEG.  Two different jobs, and they do not want the same mechanism.
-//
-// FOLDED, the leg has to resist being knocked open while the frame is carried.
-// A catch lip at the far end of the slot does that: the foot snaps under it, and
-// the leg flexes the 0.35 mm needed because the foot is 30 mm from the pivot and
-// has all the leverage in the world.
-//
-// DEPLOYED, the frame's own weight already holds the leg into its hard stop -
-// it cannot fold while it is carrying anything.  What it needs is enough hinge
-// friction not to swing shut while the frame is picked up, which is a pin fit,
-// not a detent.
-//
-// A detent on the hub was tried and does not work at this size: the heel flat -
-// the surface that makes the hard stop - eats exactly the part of the hub that
-// would have to carry it.
-catch_snap = true;
-catch_p = 0.65;    // how far the lip overhangs the slot -> ~0.3 mm of flex,
-                   //   about 5 N at the foot, which is a firm but easy click
-catch_t = 1.2;     // lip thickness
-catch_c = 0.35;    // interference the foot has to flex past
-detent_r = 22.0; detent_d = 3.0; // rotation detents
+// PORTRAIT ONLY, which is what lets the leg run straight down the centreline - and
+// that is what clears the corner screws by 32.4 and misses the driver carrier.
+dep_ang  = 35.0;    // swing from folded.  The stance knob.
+leg_len  = 55.0;    // pivot to foot tip
+foot_z   = 3.0;     // where the folded foot tip stops.  MUST clear rear_chf (2.0)
+                    //   or the leg hangs over the bottom edge of the frame.
+leg_t    = 4.0;     // thickness at the pivot.  Sets piv_y: the pin sits leg_t/2
+                    //   below the back face so the folded leg is FLUSH.
+leg_tf   = 1.0;     // thickness at the tip.  The taper is ONE-SIDED - the back face
+                    //   stays flush and the front face rises - so the thin end fits
+                    //   the shallow recess without standing proud.
+foot_r   = 4.0;     // foot corner radius, in plan
+heel_z   = 4.0;     // how far the heel reaches past the pin.  Longer = more flat to
+                    //   bear on, but it must stay inside rec_top through the sweep.
+pin_d    = 2.0;     // pin, snapped into sockets in the recess side walls
+pin_fit  = 0.10;    // ... and its clearance.  ALSO the detent's compliance budget:
+                    //   this is how far the leg can lift to let a nub out of the seat.
+rec_dep  = 4.5;     // recess depth below the back face
+rec_shl  = 1.4;     // ... where solid frame is behind it (below cav_z0), where a
+                    //   deep recess would leave no floor at all
+// rec_w IS THE PIN LENGTH.  The pin spans the pocket exactly: it passes through
+// both ears and its ends finish flush with the pocket's side walls, so the walls
+// themselves cap it and nothing else has to retain it axially.  20 also happens to
+// be half of a stock 40 mm rod.
+rec_w    = 18.0;
+rec_clr  = 0.5;     // clearance between the leg and each EAR
+rec_wall = 1.5;     // wall left outboard of the pocket in the boss below.  Bounded
+                    //   by the driver carrier at x -11.45: the boss reaches +/-10.5,
+                    //   clearing it by 0.95.
+rec_floor= 1.8;     // THE POCKET'S FLOOR, and it has to be built: see recess_boss().
+                    //   The cover's own register is only cover_t+reg_step thick, and
+                    //   the pocket is rec_dep deep, so the cut goes clean through it.
+                    //   What used to stop that was the battery platform happening to
+                    //   sit behind part of the pocket - and between the shallow step
+                    //   and the platform's start there was a 7.75 mm band of pure
+                    //   hole.  Sets rec_back, and so the depth the boards get across
+                    //   the pocket band.
+det_tot  = 0.35;    // how far a nub crest reaches past the heel's flat.  Keep it
+                    //   SMALL: the flat is meant to take the load, and a nub that
+                    //   bottoms before the flat lands would lift the flat off.
+det_iw   = 0.9;     // seat width along the long axis.  Sets how many degrees either
+                    //   end of the stroke the detent is engaged over.
+det_seat = 0.12;    // how much DEEPER the seat is than the track.  THE CLICK.
+                    //   PRINT-TUNE: no click, raise it; too stiff to fold, drop it.
+nub_pre  = 0.05;    // nub interference against the track, i.e. THE FRICTION that
+                    //   holds the leg wherever it is put.  PRINT-TUNE.  Won't move,
+                    //   drop it; flops around, raise it 0.02 at a time.
+nub_r    = 0.35;    // nub ridge radius.  Also sets how far apart the two nubs land,
+                    //   which must stay wider than det_iw or they act as one ridge.
+                    //   Must stay under det_iw/2 or the nub cannot enter the seat.
+nub_root = 0.5;     // how far INSIDE the leg's front face each nub is rooted.  A
+                    //   nub whose crest circle clears that face exports as its own
+                    //   loose solid, so this is not cosmetic.
+// FINGER ACCESS comes free now.  The ears are only ear_len long, so away from the
+// pivot the leg sits in the full rec_w with (rec_w - leg_w)/2 open either side of
+// it, the whole length, at the full pocket depth.  There is no separate notch band
+// - and it was that band, sharing z 9.5..17.5 with the bottom glass rib and with
+// the old port position, that undercut the rib and crowded the port.
+lip_h    = 0.35;    // folded-latch lip overhang. PRINT-TUNE: too much and the leg
+                    //   will not close, none and it will not stay closed.
+lip_z    = 5.5;     // ... its height, over the leg near the tip
+lip_w    = 1.6;     // ... and its width along the long axis
+// THE SOCKETS LIVE ON EARS INSIDE THE POCKET, not bored through its side walls.
+// Bored outward they had to be reached from outside, which broke the back face into
+// two more openings; on ears the C-mouth opens into the pocket, and the pocket is
+// blind, so the back face stays unbroken.
+ear_w    = 2.0;     // ear thickness, inboard from each pocket wall.  With rec_w and
+                    //   rec_clr this sets leg_w: rec_w - 2*(ear_w + rec_clr).
+ear_mouth= 0.72;    // socket mouth, as a fraction of the bore.  Under 1.0 so the
+                    //   pin snaps past it and is then retained.
+ear_len  = 8.0;     // ear length along the long axis, centred on the pin
+pk_floor_t_legacy = 1.8;   // (retired: the old pocket floor)
 
 /* [Driver carrier] */
 // The Waveshare board has no mounting holes, but it does have its two 19-pin
@@ -579,11 +499,21 @@ Zc = H/2;
 win_w = act_w + 2*white_show_short;  win_h = act_h + 2*white_show_long;
 pcb_face_y = front_t + pan_t + 0.2;                  // the ledge behind the glass
 mod_back   = pcb_face_y + (bare_panel ? 0 : pcb_t);  // where the interior starts
-pk_d   = disc_d + 2*pocket_c;
-pk_dep = disc_t + 0.15;
-pk_y0  = depth - pk_dep;               // pocket floor
-cov_in_pk = pk_y0 - pk_floor_t;        // cover inner face over the pocket
 cov_in    = depth - cover_t;
+// rec_y0 is the recess floor; elec_back is the rearmost plane the boards may reach.
+rec_y0    = depth - rec_dep;           // recess floor
+rec_shl_y = depth - rec_shl;           // ... where solid frame is behind it
+// The recess only runs down the CENTRELINE (x +/-rec_w/2), and the carrier sits at
+// x -41.45..-11.45, so the carrier misses it entirely and datums to elec_back.
+// Only things that actually cross the recess band see rec_back, and the cell is
+// the one that does - which is why it keeps its platform.
+rec_back  = rec_y0 - rec_floor;        // the boss plane, where the recess runs
+// cov_in is the SKIN datum, not the cover's inner face.  cover() lays a register
+// prism cover_t+reg_step thick starting at body_d-reg_step across the whole cavity
+// footprint, so the face anything inside actually lands on is reg_step further
+// forward.  Datuming the boards to cov_in buried the carrier 2106 mm3 deep in it.
+reg_step  = 1.0;
+elec_back = cov_in - reg_step;         // ... everywhere else: the register face
 // the interior is centred in the frame; only the GLASS is offset (to centre the
 // ink), and with no PCB the two no longer have to share a datum
 cav_cx = bare_panel
@@ -626,7 +556,7 @@ elec_z0 = cav_z0 + pad_h + 2.0;
 carrier_z0 = elec_z0;
 carrier_z1 = carrier_z0 + carrier_h;
 carrier_cz = (carrier_z0 + carrier_z1)/2;
-carrier_back = cov_in_pk;                         // sits at the puck face
+carrier_back = elec_back;                         // rests on the register face
 carrier_face = carrier_back - carrier_t;
 // ---- driver board, on the carrier, positioned so the 24-pin socket on its -X
 // edge lines up with the middle of the ribbon slot.  Then the tail plugs
@@ -643,7 +573,7 @@ drv_z0 = !bare_panel  ? cav_z1 - 1.0 - drv_h
        :                      rib_end_z - fpc_off;          // runs upward
 drv_z1 = drv_z0 + drv_h;
 drv_cz = (drv_z0 + drv_z1)/2;
-drv_back = carrier_fit ? carrier_face - hdr_h : cov_in_pk - 0.5;
+drv_back = carrier_fit ? carrier_face - hdr_h : elec_back - 0.5;
 fpc_z = drv_z0 + fpc_off;                         // socket centre, on the -X edge
 // ---- what the tail can actually reach.  rib_tail is the flat length; the 180
 // deg fold back on itself at the pocket edge spends about 2*rib_dep of it, and
@@ -678,7 +608,7 @@ adapt_clear = carrier_face - (mod_back + adapt_env);
 // ---- the perfboard, in the band between the driver board and the +Z wall
 perf_cx = cav_x0 + elec_clr + perf_w/2 + 1.0;
 perf_cz = (drv_z1 + cav_z1)/2;
-perf_back = cov_in_pk - 0.5;
+perf_back = elec_back - 0.5;
 // ---- +X column: the cell low (keeps the centre of mass down), charger above it
 bat_cx = bare_panel ? (carrier_fit ? carrier_cx + carrier_w/2 : drv_x1)
                       + col_gap + bat_col_w/2 : pcb_px;
@@ -691,7 +621,7 @@ bat_x0 = bat_cx - bat_w/2;
 // the charger is narrow enough to sit inboard of the corner posts, so it can
 // run past them in Z
 chg_x_c = cav_x1 - chg_w/2 - 1.0;
-chg_back = cov_in_pk - 0.5;
+chg_back = elec_back - 0.5;
 proto_x0 = chg_x_c - chg_w/2;  proto_x1 = chg_x_c + chg_w/2;   // kept for the docs
 proto_z0 = bat_cz + bat_h/2 + bat_clr + col_gap;
 proto_z1 = proto_z0 + chg_h;
@@ -706,8 +636,22 @@ conn_y0 = mod_back;                 // front face of the keep-out
 conn_y1 = mod_back + conn_h;        // back face
 // ports
 // rear-facing USB-C breakout: receptacle flush in the back cover
-ucb_x = bare_panel ?  22.0 : -34.4;               // port centre on the back
-ucb_z = bare_panel ? cav_z0 + snap_h/2 + 0.5 : 11.0;   // low, beside the bottom rib
+// The charge port sits at the TOP of the interior, immediately left of the charger.
+// Two reasons, and the structural one is the important one:
+//
+//   OPENINGS IN THE BACK FACE MUST NOT CROWD EACH OTHER.  Low down it shared a band
+//   with the stand recess and the finger-notch band that used to widen it, leaving
+//   barely 4 mm of rib between two openings in the same 8 mm strip.  Up here the
+//   nearest opening is 27 mm away.
+//
+//   And the charger is right there, so the two wires no longer cross the whole
+//   interior - it lands in the one large region nothing else was using.
+//
+// PORT CLEARANCES is echoed on every run: it measures the distance from this
+// opening to every other opening in the back face, so crowding shows up as a
+// number rather than being noticed on a print.
+ucb_x = bare_panel ?  -5.0 : -34.4;               // port centre on the back
+ucb_z = bare_panel ?  92.0 : 11.0;
 ucb_w = 13.0; ucb_l = 13.0; ucb_t = 1.6;          // breakout board
 port_w = 9.5; port_h = 3.7;                       // receptacle opening
 chg_z = bare_panel ? proto_cz : proto_z0 + 3.0 + chg_h/2;
@@ -743,40 +687,50 @@ scr_pos = bare_panel
   ? [[-scr_cx, scr_cz], [scr_cx, scr_cz], [-scr_cx, H-scr_cz], [scr_cx, H-scr_cz]]
   : [[scr_x, 14.0], [scr_x, Zc], [scr_x, H-14.0]];
 scr_z = [14.0, Zc, H - 14.0];            // legacy, still used by the drawings
-hub_z = W/2;                           // = distance to the bottom edge in BOTH orientations
-theta_dep = 180 - stop_ang;            // leg swing angle when deployed
-slot_w  = leg_w + 2*leg_slot_c;        // the leg's slot in the disc
-// Where the leg's top face is, at the deployed angle, det_at along the leg.
-// That point is what the tooth has to meet, so the tab's thickness follows from
-// it rather than being chosen: tab = (disc_t - face) + det_lift.
-det_fy  = disc_t/2 + ( leg_t/2*cos(theta_dep) + det_at*sin(theta_dep));
-det_fz  = -pivot_r + (-leg_t/2*sin(theta_dep) + det_at*cos(theta_dep));
-det_zw1 = -(pivot_r + stop_wall);      // stop wall, front face
-det_zw0 = det_zw1 - det_wall;          //   ... back face
-det_zb1 = det_zw0 - det_gapf;          // bridge, front face
-det_zb0 = det_zb1 - det_tt;            //   ... back face
-det_zr0 = det_zb0 - det_gap;           // rear relief
-det_arm = sqrt(pow(det_fy - disc_t/2,2) + pow(det_fz + pivot_r,2));  // moment arm
-det_I   = det_h*pow(det_tt,3)/12;
-det_k   = 192*2400*det_I/pow(det_span,3);    // fixed-fixed bridge, N/mm
-det_F   = det_k*det_lift;   // det_lift is the MEASURED peak deflection
-det_T   = det_F*det_arm;                     // detent torque about the pivot
-det_sig = (det_F*det_span/8)*(det_tt/2)/det_I;   // mid-span stress
-piv_h   = disc_t/2;                    // pivot axis height above the pocket floor
-hub_r   = piv_h - sweep_clr;           // rear of the hub: what can orbit and clear
-sweep_a = 270 - theta_dep;             // local angle of the heel flat's tangent line
-disc_rim_x = sqrt(pow(disc_d/2,2) - pow(pivot_r,2));   // rim, on the screw's axis
-seat_x  = -(slot_w/2 + head_seat);     // where the screw head seats
-scr_reach = (seat_x*-1) + slot_w/2 + ins_l;            // screw length needed
-// Can the clamp screw physically exist in a disc this thin?  The screw runs
-// along X, so its head seat and its insert bore are both bounded by disc_t.
-flex_len = flex_z0 + flex_z1;           // clamp tongue, fixed at both ends
-flex_I   = disc_t*pow(flex_t,3)/12;    // bending about X, in the layer plane
-flex_k   = 3*2400*flex_I*pow(flex_len,3)
-           / (pow(flex_z0,3)*pow(flex_z1,3));   // N/mm, load off-centre at the pivot
-head_wall = (disc_t - scr_head)/2;     // PLA either side of the head seat
-ins_wall  = (disc_t - ins_d)/2;        //   ditto, the insert bore
-clamp_ok  = head_wall >= 0.4 && ins_wall >= 0.6;
+// ---- the stand.  Everything here is DERIVED: piv_y from leg_t (flushness),
+// piv_z from leg_len and foot_z, the whole detent from dep_ang and det_tot, the lean
+// from all of them.  Two parameters in this file have already drifted from what they
+// were meant to equal (rib_off, det_span), so nothing about the stand is typed twice.
+piv_z    = leg_len + foot_z;           // pin, up from the bottom edge
+piv_y    = depth - leg_t/2;            // ... and its depth: FLUSH folded leg
+piv_h    = piv_y - rec_y0;             // pin above the recess floor (= rec_dep-leg_t/2)
+shl_z0   = cav_z0 + 0.5;               // where the recess steps to rec_shl
+tap_z    = shl_z0 + 7.5;                // ... so the taper must be FINISHED by
+                                        //   shl_z0, not merely started: the leg
+                                        //   was 2.04 into the shallow floor when
+                                        //   the taper ran all the way to the tip.
+// The heel's flat stop.  In leg-local coords it is the plane a distance piv_h from
+// the pin whose normal has been rotated by dep_ang - i.e. the recess floor, pulled
+// back through the deployed rotation.  Nothing else needs to be said about it: the
+// cut in leg_shape() is that sentence in geometry.
+rec_top  = piv_z + heel_z + 1.5;       // recess, top end: clears the heel's sweep
+rec_z0   = foot_z - rec_clr - 1.0;     // ... and its bottom end
+leg_w    = rec_w - 2*(ear_w + rec_clr);   // the leg fits BETWEEN the ears
+pin_len  = rec_w;                      // ... and the pin spans the whole pocket
+ear_x0   = rec_w/2 - ear_w;            // ear inner face
+finger_g = (rec_w - leg_w)/2;          // open either side of the leg, off the ears
+// The detent.  det_R is the nub crest radius; a nub pointing straight down bottoms
+// det_tot into the seat, and one at dep_ang/2 off vertical rides det_trk, which is
+// the relieved track.  det_click is the difference at the seat's edge - the climb.
+det_R    = piv_h + det_tot;            // nub crest radius about the pin
+det_trk_r= det_R - nub_pre;            // ARC track radius - tighter by the preload
+det_seat_r=det_R + det_seat;           // ... and the seat, deeper still
+det_click= det_seat + nub_pre;         // THE snap: the climb out of the seat
+det_th   = asin(det_iw/(2*det_R));     // leg angle at which a nub leaves the seat
+det_band = sqrt(det_trk_r*det_trk_r - piv_h*piv_h);  // where the arc meets rec_y0,
+                                       //   which bounds the relief on its own
+det_zc   = det_R*sin(dep_ang/2);       // where a nub sits at mid-stroke (drawings)
+// The pocket floor is thinnest under the detent SEAT, not under the pocket floor -
+// the seat is the deepest thing cut into it.  This is what must stay solid, and it
+// is defined here rather than with rec_z0 because it needs det_seat_r.
+rec_floor_min = (piv_y - det_seat_r) - rec_back;
+// stance, by the same maths standing() uses: py is the contact edge
+py_edge  = depth - rear_chf;
+foot_zd  = piv_z - leg_len*cos(dep_ang);          // deployed foot, up from the edge
+foot_yd  = piv_y + leg_len*sin(dep_ang);          // ... and its depth
+lean     = atan2(foot_zd, foot_yd - py_edge);
+footprint= (foot_yd - py_edge)*cos(lean) + foot_zd*sin(lean);
+stand_ok = foot_z >= rear_chf + 0.5;   // nothing may overhang the bottom edge
 
 // ================================================================ helpers
 // rounded rect plus relief circles centred ON the theoretical sharp corners,
@@ -920,6 +874,7 @@ module frame(){
             }
         }
         prism(cav_w+2.0, cav_h+2.0, cav_r+1.0, 1.1, cav_cx, Zc, body_d-1.0);
+        stand_register(0.15);   // ... and its local extension down the pocket
         // and the fastener holes last, so they go through the posts
         for(sp=scr_pos) translate([sp[0],body_d+0.1,sp[1]]) rotate([90,0,0])
             if (insert_fit) {
@@ -963,34 +918,83 @@ module lightening(){
         } }
 
 // ================================================================= cover
+// The cover's register plate stops at the cavity's footprint (z 8.15 up), but the
+// stand pocket runs below that, and down there the cover is nothing but its
+// cover_t skin - which a rec_shl-deep pocket removes entirely.  So the register is
+// extended locally, over the pocket's footprint only, and the frame is relieved to
+// match.  Called with extra>0 it grows, which is how the frame's relief is made
+// slightly larger than the plate that has to enter it.
+stand_reg_w = rec_w + 2*rec_wall;
+module stand_register(extra = 0){
+    translate([-(stand_reg_w/2 + extra), body_d - reg_step - extra, rec_z0 - 1.0 - extra])
+        cube([stand_reg_w + 2*extra,
+              reg_step + 2*extra,
+              (shl_z0 + 0.05) - (rec_z0 - 1.0) + extra]);
+}
+
+// THE SOLID THE POCKET IS BORED INTO.  Without this the pocket is not a pocket:
+// the cover's own skin plus register is 2.4 thick and the pocket is rec_dep = 4.5
+// deep, so the cut passes straight through into the interior wherever nothing else
+// happens to be behind it.
+//
+// It runs the whole DEEP length, so the floor is rec_floor everywhere rather than
+// only where the battery platform happens to reach.  chk="rec_floor_gap" is the
+// guard, and it tests each band at its own floor depth.
+module recess_boss(){
+    // Only where the INTERIOR is behind the cover.  Below shl_z0 there is solid
+    // frame back there, so a boss would drive straight into it - and it is not
+    // wanted anyway: the pocket steps to rec_shl there, which the register alone
+    // already floors.
+    translate([-(rec_w/2 + rec_wall), rec_back, shl_z0])
+        cube([rec_w + 2*rec_wall, depth - rec_back, rec_top - shl_z0]);
+}
+
+// The ribs that press the glass forward onto the front lip.  Nothing else holds
+// it back: the interior has to be open behind the glass or the glass could not get
+// in.  So these are structural, and their ROOT is what makes them work.
+//
+// A rib low enough to cross the stand pocket is split into two segments outboard of
+// it.  Drawn straight through, the pocket takes its root out over the pocket's full
+// width and leaves the middle cantilevered off one end.
+module glass_ribs(){
+    for (i = [0,1])
+        if (bare_panel && pad_z[i] < rec_top + pad_h)
+            for (sx = [-1,1])
+                translate([sx*(rec_w/2 + rib_pocket_c + rib_seg/2),
+                           mod_back+rib_gap, pad_z[i]])
+                    xzext(cov_in-mod_back-rib_gap)
+                        square([rib_seg, pad_h], center=true);
+        else
+            translate([pad_x[i], mod_back+rib_gap, pad_z[i]])
+                xzext(cov_in-mod_back-rib_gap)
+                    square([pad_w[i], bare_panel ? pad_h : 22.0], center=true);
+}
+
 module cover(){
+  difference(){
+   union(){
     difference(){
         union(){
-            prism(cav_w+1.7, cav_h+1.7, cav_r+1.0, cover_t+1.0, cav_cx, Zc, body_d-1.0);
+            prism(cav_w+1.7, cav_h+1.7, cav_r+1.0, cover_t+reg_step, cav_cx, Zc,
+                  body_d-reg_step);
             outer(cover_t, body_d);
-            // ---- module retention: full ribs top and bottom, two short
-            //      segments on +X so the cell can use the middle of that edge
-            for(i=[0,1])
-                translate([pad_x[i], mod_back+rib_gap, pad_z[i]])
-                    xzext(cov_in-mod_back-rib_gap)
-                        square([pad_w[i], bare_panel ? pad_h : 22.0],center=true);
+            recess_boss();
+            stand_register();
+            glass_ribs();
 
-            // ---- solid puck the stand pocket is bored into
-            cylY(pk_d+2*lug_out+6, depth-cov_in_pk, 0, hub_z, cov_in_pk);
-            // ---- driver carrier: four standoff pads at its corners.  The
+            // ---- driver carrier.  The
             // driver itself is not held by the case at all - it plugs into
             // female headers on the carrier and the carrier is what is held.
+            // The register prism IS the pad - it is flat and continuous across the
+            // whole cavity - so all that is needed is the locating peg, rising
+            // from that face.  Kept under 2*carrier_pin across so it cannot foul
+            // the first header pin row.
             if (carrier_fit)
                 for(sx=[-1,1],sz=[-1,1])
-                    translate([carrier_cx+sx*carrier_hx/2, cov_in,
-                               carrier_cz+sz*carrier_hz/2]) rotate([90,0,0]) {
-                        // the pad the board sits on...
-                        cylinder(d=carrier_pad+2.0, h=cov_in-carrier_back);
-                        // ...and the peg through its own hole, which locates it.
-                        // Kept under 2*carrier_pin across so it cannot foul the
-                        // first header pin row.
+                    translate([carrier_cx+sx*carrier_hx/2, elec_back,
+                               carrier_cz+sz*carrier_hz/2]) rotate([90,0,0])
                         cylinder(d=min(carrier_hole-carrier_peg, 2*carrier_pin),
-                                 h=cov_in-carrier_back+carrier_t+1.2); }
+                                 h=carrier_t+1.2);
             else {
                 translate([drv_cx + drv_w/2+drv_clr+drv_rail/2-1.0, drv_back-2.6, drv_cz])
                     xzext(cov_in-drv_back+2.6) square([drv_rail, drv_h-1.0],center=true);
@@ -1010,14 +1014,14 @@ module cover(){
             for(sx=[-1,1],sz=[-1,1])
                 translate([chg_x_c+sx*(chg_w/2-3.5), cov_in, chg_z+sz*(chg_h/2-3.5)])
                     rotate([90,0,0]) cylinder(d=6.0, h=cov_in-chg_back);
-            // ---- battery fence (cell is held by foam tape inside it)
-            // flat platform so the cell doesn't straddle the puck's step
-            translate([bat_cx, cov_in_pk, bat_cz])
-                xzext(cov_in-cov_in_pk+0.01)
-                    square([bat_w+2*bat_clr+2*bat_fence,
-                            bat_h+2*bat_clr],center=true);
+            // ---- battery platform + fence.  The cell spans x -7.65..36.35 and the
+            // leg recess runs x -8..8, so the cell DOES cross the recess band and
+            // would otherwise straddle its step.
+            // So the platform stays, re-datumed to rec_back.
+            translate([bat_cx, rec_back, bat_cz]) xzext(cov_in-rec_back+0.01)
+                square([bat_w+2*bat_clr+2*bat_fence, bat_h+2*bat_clr],center=true);
             for(sx=[-1,1])
-                translate([bat_cx+sx*(bat_w/2+bat_clr+bat_fence/2), cov_in_pk-bat_t, bat_cz])
+                translate([bat_cx+sx*(bat_w/2+bat_clr+bat_fence/2), rec_back-bat_t, bat_cz])
                     xzext(bat_t) square([bat_fence, bat_h-14],center=true);
             // ---- guide rails for a bare USB-C breakout board.  Not needed for
             // a pigtail that snaps into the skin on its own - that just wants a
@@ -1036,7 +1040,7 @@ module cover(){
             translate([drv_cx, drv_back-drv_t-0.15, (drv_z0+cav_z1+6)/2])
                 xzext(drv_t+0.3) square([drv_w+2*drv_clr, cav_z1+6-drv_z0],center=true);
 
-        pocket_cut();
+        recess_cut();
         rear_port_cut();
         // clear space for the pigtail body itself: anything printed in the cover
         // that strays into it - platform, ribs - gets relieved automatically
@@ -1054,195 +1058,186 @@ module cover(){
                 translate([sp[0], depth-scr_cb, sp[1]]) rotate([-90,0,0])
                     cylinder(d=scr_head, h=scr_cb+1); }
         usb_cut();
-    } }
+    }
+    // The ears live INSIDE the pocket, so they go back on after it is cut - the
+    // same reason frame()'s corner posts are added after the cavity.
+    piv_ears();
+   }
+   piv_sockets();
+  } }
 
-module pocket_cut(){
-    cylY(pk_d, pk_dep+0.02, 0, hub_z, pk_y0);                       // main bore
-    // bayonet groove, with a 45 deg lead-in on the outer side so it prints
-    cylY(pk_d+2*lug_out, 1.6, 0, hub_z, pk_y0+1.2);
-    translate([0, pk_y0+2.8-0.01, hub_z]) rotate([-90,0,0])
-        cylinder(d1=pk_d+2*lug_out, d2=pk_d, h=lug_out+0.02);
-    // entry gaps
-    for(a=[45,165,285])
-        translate([0, pk_y0+groove_y0, hub_z]) rotate([-90,0,0]) rotate([0,0,a])
-            linear_extrude(pk_dep) pie(pk_d/2+lug_out+0.2, -gap_ang/2, gap_ang/2);
-    // radial rotation detents at 0/90/180/270
-    for(a=[0,90,180,270])
-        translate([(pk_d/2+0.35)*sin(a), pk_y0+disc_t/2, hub_z+(pk_d/2+0.35)*cos(a)])
-            rotate([90,0,0]) sphere(d=2.9);
-}
+// ===================================================== the stand: recess + leg
+// The recess is drawn in COVER/WORLD coords - x across, z up the long axis, y the
+// depth with y = depth at the back face.  The leg is drawn leg-local with the pin
+// at the origin, so leg_placed() is the whole transform: there is no second offset
+// to get wrong, which is how the old leg_placed's translate went unnoticed.
+//
+// SIGN, because it was wrong once and every angle collided: the leg opens by
+// rotate([+theta]).  A point at leg-local (0,0,-leg_len) - the foot - goes to
+// y = +leg_len*sin(theta), i.e. OUT of the back face.  rotate([-theta]) swings it
+// the other way, into the cover, which is a collision at every angle including
+// the two end poses that a two-pose check would call clean.
 
-// ================================================================== disc
-// modelled in its own frame: plane = XZ, extruded +Y, y=0 at the pocket floor
-
-// The clamp land: material LEFT IN the slot on the near wall, at the pivot, so
-// the slot is line-to-line with the leg there instead of 0.4 loose.  45 deg
-// lead-ins at both ends along Z, so the leg presses in rather than jamming on a
-// square step.  Full disc thickness, because the leg's side face is what it
-// bears on and that face turns with the leg.
-module clamp_pad(){
-    // x0 reaches 0.01 INTO the wall, not onto its face.  Flush with the slot's
-    // own cut plane the two are coplanar, and CGAL leaves degenerate edges
-    // behind - it cost 17 non-manifold edges in disc.stl once.
-    x0 = -slot_w/2 - 0.01;   x1 = -slot_w/2 + clamp_pr;
-    z0 = -pivot_r - clamp_len/2;   z1 = -pivot_r + clamp_len/2;
-    translate([0, -0.02, 0]) xzext(disc_t + 0.04)
-        polygon([[x0, z0-clamp_pr], [x1, z0], [x1, z1], [x0, z1+clamp_pr]]);
-}
-
-// The tooth, and the stem carrying it back through the stop wall to the bridge.
-// ONE definition: the disc ADDS this solid and the leg SUBTRACTS the very same
-// solid transformed into leg-local coordinates, so the pocket cannot be
-// misaligned with the tooth - the alignment is construction, not arithmetic.
-// z layout behind the slot, front to back:
-//   det_zw1  the wall's front face - what the leg's stop lands on
-//   det_zw0  the wall's back face      (det_wall thick, SOLID across the slot)
-//   det_zb1  the bridge's front face   (det_gapf of air in front of it)
-//   det_zb0  the bridge's back face    (det_tt thick)
-//   det_zr0  the rear relief           (det_gap of air behind it)
-module det_solid(grow=0){
-    translate([-(det_w/2+grow), det_y0-grow, det_zb1-grow])
-        cube([det_w+2*grow, (det_y1-det_y0)+2*grow,
-              (det_zw1 + det_tooth - det_zb1)+2*grow]);
-}
-// The spring: a bridge across the disc's rear bulk, flexing along the long axis.
-module det_bridge(){
-    translate([-det_span/2, disc_t - det_h, det_zb0])   // top-aligned, so it
-        cube([det_span, det_h, det_tt]);                //   meets the tooth
-}
-// ...and the clearance it needs: a window through the stop wall for the stem,
-// and a relief behind the bridge so it has somewhere to flex into.
-module det_free(){
-    // window through the stop wall, only as wide as the stem needs
-    translate([-(det_w/2+det_clr), det_y0-det_clr, det_zb1])
-        cube([det_w+2*det_clr, (det_y1-det_y0)+2*det_clr, det_zw1-det_zb1]);
-    // air in FRONT of the bridge, across its whole span - this is what was
-    // missing, and it is why the bridge was only free over the window's width
-    translate([-det_span/2-0.01, disc_t - det_h, det_zb1])
-        cube([det_span+0.02, det_h, det_zw0-det_zb1]);
-    // ...and behind it
-    translate([-det_span/2-0.01, disc_t - det_h, det_zr0])
-        cube([det_span+0.02, det_h, det_gap]);
-}
-
-module disc(){
-    slot_z0 = -(pivot_r + stop_wall);
-    slot_z1 = leg_len - pivot_r + 3.5;
-    // where the foot sits when the leg is folded, and where the catch lip goes
-    foot_z = leg_len - pivot_r;
-    union(){
-    if (catch_snap)    // catch lip: the foot snaps under it when the leg closes
-        translate([0, disc_t - catch_t, foot_z - catch_p/2 + 0.01])
-            rotate([0,90,0]) rotate([0,0,45])
-                cylinder(d=catch_p*2*sqrt(2), h=slot_w+3.0, center=true, $fn=4);
+// The recess the leg folds into: the pocket, the pin sockets, the detent track and
+// seat, less the latch lip.  Deep where the interior is behind it; stepped SHALLOW
+// below cav_z0, because there the cover is backed by solid frame and a deep pocket
+// would leave no floor.  That step is the only reason the leg tapers.
+module recess_cut(){
     difference(){
         union(){
-            cylY(disc_d, disc_t, 0,0,0);
-            for(a=[0,120,240])                                    // bayonet lugs
-                translate([0, 1.45, 0]) rotate([-90,0,0]) rotate([0,0,a])
-                    linear_extrude(1.1) difference(){
-                        pie(disc_d/2+lug_out-0.3, -lug_ang/2, lug_ang/2);
-                        circle(d=disc_d-0.2); }
-            for(a=[90,270])                                       // radial detent bumps
-                translate([(disc_d/2-0.25)*sin(a), disc_t/2, (disc_d/2-0.25)*cos(a)])
-                    rotate([90,0,0]) sphere(d=2.4);
+            // deep section
+            translate([-rec_w/2, rec_y0, cav_z0 + 0.5])
+                cube([rec_w, rec_dep + 0.02, rec_top - (cav_z0 + 0.5)]);
+            // shallow section, over the frame's solid end wall
+            translate([-rec_w/2, rec_shl_y, rec_z0])
+                cube([rec_w, rec_shl + 0.02, (cav_z0 + 0.5) - rec_z0]);
+            // The nub track, as an ARC about the pin, so a nub at fixed radius
+            // rides it at CONSTANT depth.  Cut as a full cylinder: everything
+            // above rec_y0 is already recess void, so the arc bounds itself and
+            // only reaches det_trk_r - piv_h below the floor.
+            translate([0, piv_y, piv_z]) rotate([0,90,0])
+                cylinder(r=det_trk_r, h=leg_w + 1.0, center=true, $fn=96);
+            // THE SEAT - one pocket, directly below the pin.  Both nubs use it:
+            // whichever is pointing straight down is at the bottom of its arc.
+            translate([-(leg_w + 1.0)/2, piv_y - det_seat_r, piv_z - det_iw/2])
+                cube([leg_w + 1.0, det_seat_r - piv_h + 0.01, det_iw]);
         }
-        difference(){                       // the slot, less the clamp land
-            translate([-slot_w/2, -0.01, slot_z0])
-                cube([slot_w, disc_t+0.02, slot_z1-slot_z0]);
-            if (clamp_land) clamp_pad();
-        }
-        if (snap_det) det_free();       // window through the wall, relief behind
-        if (clamp_land && clamp_flex)   // relief slot behind the clamp land
-            prism(flex_gap, flex_len+1.0, flex_gap/2, disc_t+0.02,
-                  -(slot_w/2 + flex_t + flex_gap/2),
-                  -pivot_r + (flex_z1 - flex_z0 - 1.0)/2, -0.01);
-        if (pivot_screw) {
-            // clearance the whole way through the near wall and the leg
-            translate([-disc_d, disc_t/2, -pivot_r]) rotate([0,90,0])
-                cylinder(d=scr_free, h=disc_d);
-            // access channel in from the rim, flat-bottomed on the screw's axis
-            // at seat_x: that flat is what the head and its washer sit on.
-            // Only cut if it fits in disc_t - otherwise it is a trough, open on
-            // both faces, that fouls the pocket floor.  clamp_ok is the test.
-            if (clamp_ok)
-                translate([-disc_d, disc_t/2, -pivot_r]) rotate([0,90,0])
-                    cylinder(d=scr_head+0.8, h=disc_d + seat_x);
-            // insert bore in the far wall
-            translate([slot_w/2 - 0.01, disc_t/2, -pivot_r]) rotate([0,90,0])
-                cylinder(d=ins_d, h=ins_l+ins_relief);
-        } else
-            translate([-disc_d, disc_t/2, -pivot_r]) rotate([0,90,0])
-                cylinder(d=pin_d+pin_fit, h=2*disc_d);
-        // soften the outer edge
-        translate([0, disc_t-0.6, 0]) rotate([-90,0,0])
-            difference(){ cylinder(d=disc_d+2,h=0.7);
-                          cylinder(d1=disc_d-1.2,d2=disc_d+0.1,h=0.65); }
+        // ... less the latch lip: a bridge left across the mouth near the foot.
+        // The leg's tip tucks under it and bows leg_len away from the pin to
+        // release, which is why this and not a second pocket at the pivot.
+        translate([-rec_w/2 - 1, depth - lip_h, lip_z - lip_w/2])
+            cube([rec_w + 2, lip_h + 1, lip_w]);
     }
-    if (snap_det) { det_bridge(); det_solid(); }
-    } }
-
-// =================================================================== leg
-// leg-local: pin at the origin, leg along +Z, thickness in Y centred on 0
-module leg_shape(){
-    difference(){
-        rotate([90,0,0]) translate([0,0,-leg_t/2]) linear_extrude(leg_t)
-            hull(){ circle(d=leg_w); translate([0,leg_len-foot_r]) circle(r=foot_r); }
-        // heel flat: the pocket floor, seen from the leg at the deployed angle
-        rotate([theta_dep,0,0]) translate([-50,-60-disc_t/2,-200]) cube([100,60,400]);
-        // sweep relief: the rear of the hub, back to hub_r, over the sector that
-        // passes straight down during the stroke.  Without this the heel flat's
-        // far corner orbits 1.8 into the pocket floor and the leg jams.
-        if (hub_sweep) hub_sweep_cut();
-        // the detent pocket: the disc's own tooth, inverted into leg-local
-        // coordinates and grown by det_fit - small, so the tooth has to deflect.
-        // leg_placed does translate-then-rotate, so undoing it is
-        // rotate(+theta) after translate(-T) - in that order.
-        if (snap_det)
-            rotate([theta_dep,0,0]) translate([0, -disc_t/2, pivot_r])
-                det_solid(det_fit);
-        // axle.  A bearing fit on the screw shank: the clamp is what holds it,
-        // not the hole.
-        translate([-leg_w,0,0]) rotate([0,90,0])
-            cylinder(d=pivot_screw ? scr_free + 0.2 : pin_d+pin_fit, h=2*leg_w);
-        // nail chamfer on the tip
-        translate([0,leg_t/2,leg_len]) rotate([0,90,0])
-            translate([0,0,-leg_w]) cylinder(r=2.2,h=2*leg_w,$fn=4);
-    } }
-
-// Everything beyond hub_r, in the leg-local angular sector that swings through
-// 'straight down' somewhere in the stroke.  Local angle is measured from the
-// leg's own +Z axis; the sector runs from sweep_a (= 270 - theta_dep, which is
-// exactly where the heel flat touches the floor at the deployed angle) round to
-// 270.  Drawn in the swing plane and extruded along the pivot axis.
-module hub_sweep_cut(){
-    translate([-leg_w,0,0]) rotate([0,90,0]) linear_extrude(2*leg_w)
-        difference(){
-            pie(leg_len, -90, theta_dep - 90);   // 2D angle = 180 - local angle
-            circle(r=hub_r);
-        }
 }
 
-// The adapter is TAPED TO THE BACK OF THE GLASS, not mounted to the case.  That
-// is what makes it fit: at the glass's back face, in the band above the driver
-// board, there is 14.8 mm of clear depth against the 5 it needs.  The footprint
-// still overlaps the carrier in plan view, but they are 9.8 mm apart in DEPTH,
-// so it was never a real conflict - reading a plan-view overlap as a clash is
-// what made this look homeless for so long.
+// The pivot ears: two blocks standing INSIDE the pocket, inboard of its side
+// walls, from the pocket floor up to the back face.  They carry the pin sockets.
 //
-// It also lands on the right side of the split: taped to the glass, the adapter
-// stays with the FRAME, so the panel's short stiff tail never crosses the joint
-// and only the long FPC does.  That is exactly the service loop.
+// This is what keeps the back face unbroken.  Bored straight outward into the
+// pocket's walls instead, a socket can only be reached from OUTSIDE the part, so
+// its snap mouth has to break the back face - two more openings in a face that
+// should have none.  On an ear the mouth opens into the pocket, and the pocket is
+// a blind pocket, so the whole hinge is enclosed by the cover.
+//
+// They also set the leg's width, and the gap either side of it away from the pivot
+// is the finger access.
+module piv_ears(){
+    for (sx = [-1, 1])
+        translate([sx*ear_x0 - (sx < 0 ? ear_w : 0), rec_y0, piv_z - ear_len/2])
+            cube([ear_w, rec_dep, ear_len]);
+}
+
+// ... and the C-socket through each of them.  Bore, plus a MOUTH narrower than the
+// bore opening toward the back face: the pin presses past the lip and is retained.
+// Cut AFTER the ears are unioned on, or the pocket cut would take the ears away
+// and this would bore fresh air.
+module piv_sockets(){
+    bore = pin_d + pin_fit;
+    for (sx = [-1, 1]) {
+        translate([sx*(rec_w/2 + 0.1), piv_y, piv_z]) rotate([0, sx*-90, 0])
+            cylinder(d=bore, h=ear_w + 0.2, $fn=48);
+        translate([sx*ear_x0 - (sx < 0 ? ear_w : 0) - 0.05,
+                   piv_y - bore*ear_mouth/2, piv_z - bore*ear_mouth/2])
+            cube([ear_w + 0.1, depth - piv_y + bore, bore*ear_mouth]);
+    }
+}
+
+// ---------------------------------------------------------------------- the leg
+// leg-local: pin at the origin, body along -Z toward the foot, thickness in Y,
+// width in X.  At theta = 0 this frame IS the world frame, so -Y is toward the
+// recess floor and -Z is toward the bottom edge of the frame.
+// The leg's plan outline, used TWICE - once on the body and once on the nubs.  It
+// has to be the same solid both times: that is what makes their side faces the
+// same surface, so the union merges them instead of leaving three surfaces on one
+// edge (which is 23 non-manifold edges, invisible to every clash check).
+module leg_plan(){
+    translate([0, 50, 0]) rotate([90,0,0]) linear_extrude(100) hull(){
+        translate([-leg_w/2, 0]) square([leg_w, heel_z + 1]);
+        translate([-leg_w/2 + foot_r, -leg_len + foot_r]) circle(r=foot_r);
+        translate([ leg_w/2 - foot_r, -leg_len + foot_r]) circle(r=foot_r);
+    }
+}
+
+// The two detent nubs, at 0 and -dep_ang from straight down, each with its crest
+// at det_R.  Drawn OVERSIZE in x and trimmed by leg_plan().
+//
+// Each is HULLED back to a root inside the leg.  The crest circle alone sits at
+// det_R-2*nub_r = 2.15 from the pin while the front face is at leg_t/2 = 2.0, so a
+// bare cylinder floats 0.15 clear of the body and exports as its own loose solid.
+module leg_nubs(){
+    intersection(){
+        for (a = [0, -dep_ang])
+            rotate([a, 0, 0]) hull(){
+                translate([0, -(det_R - nub_r), 0]) rotate([0,90,0])
+                    cylinder(r=nub_r, h=leg_w + 2, center=true, $fn=96);
+                translate([0, -(leg_t/2 - nub_root), 0]) rotate([0,90,0])
+                    cylinder(r=nub_r, h=leg_w + 2, center=true, $fn=96);
+            }
+        leg_plan();
+    }
+}
+
+module leg_shape(){
+    difference(){
+        union(){
+            difference(){
+                intersection(){
+                    union(){
+                        // body: constant leg_t to tap_z, then a ONE-SIDED taper -
+                        // back face flush, front face rising - to leg_tf at the tip.
+                        // TWO hulls, not one: a single hull over four cross-sections
+                        // takes the CONVEX shortcut straight past the third, and the
+                        // front face then ran 2.04 into the shallow floor.
+                        hull(){
+                            translate([-leg_w/2, -leg_t/2, 0.01])
+                                cube([leg_w, leg_t, 0.02]);
+                            translate([-leg_w/2, -leg_t/2, -(piv_z - tap_z)])
+                                cube([leg_w, leg_t, 0.02]);
+                            translate([-leg_w/2, leg_t/2 - leg_tf, -(piv_z - shl_z0)])
+                                cube([leg_w, leg_tf, 0.02]);
+                        }
+                        translate([-leg_w/2, leg_t/2 - leg_tf, -leg_len])
+                            cube([leg_w, leg_tf, leg_len - (piv_z - shl_z0)]);
+                        // the heel, past the pin
+                        translate([-leg_w/2, -leg_t/2, 0])
+                            cube([leg_w, leg_t, heel_z]);
+                    }
+                    leg_plan();
+                }
+                // THE STOP: the recess floor, pulled back through the deployed
+                // rotation.  What is left of the heel is a flat that lands on that
+                // floor at exactly dep_ang - a face, not a tangent corner.
+                //
+                // The NUBS ARE ADDED AFTER THIS CUT, and must be.  Nub D sits at
+                // local z +1.43, on the heel side, and its crest is det_tot BEYOND
+                // the flat - which is the whole point of it.  Inside this cut the
+                // plane shaves that crest off flush and the deployed detent
+                // silently disappears.
+                rotate([-dep_ang, 0, 0])
+                    translate([-leg_w, -50 - piv_h, -50]) cube([2*leg_w, 50, 100]);
+            }
+            leg_nubs();
+        }
+        // the pin bore
+        translate([-leg_w, 0, 0]) rotate([0,90,0])
+            cylinder(d=pin_d + pin_fit, h=2*leg_w);
+        // (no relief is cut in the tip: at leg_tf it is too thin to take one.
+        //  What starts the leg is the nail dish in the COVER - see recess_cut.)
+    }
+}
+
+// theta = 0 folded, dep_ang deployed.  +theta swings the foot OUT - see the note
+// at the top of this section.
+module leg_placed(theta){
+    translate([0, piv_y, piv_z]) rotate([theta, 0, 0]) leg_shape(); }
+
+module leg(){ rotate([90,0,0]) leg_shape(); }
+
 module mock_adapter(){
     if (adapt_fit)
         color("#3f7f3f") translate([adapt_cx, mod_back, adapt_cz])
             xzext(adapt_env) square([adapt_w, adapt_h], center=true);
 }
-
-module leg_placed(theta){
-    translate([0, disc_t/2, -pivot_r]) rotate([-theta,0,0]) leg_shape(); }
-
-module leg(){ rotate([90,0,0]) leg_shape(); }
 
 // ============================================================== hardware
 module mod_conn(){
@@ -1301,7 +1296,7 @@ module drv_envelope(){
     translate([drv_cx, drv_back-drv_env, drv_cz])
         xzext(drv_env) square([drv_w, drv_h], center=true); }
 module mock_cell(){
-    color("#3b3b46") translate([bat_cx, cov_in_pk-bat_t, bat_cz])
+    color("#3b3b46") translate([bat_cx, rec_back-bat_t, bat_cz])
         xzext(bat_t) rrect(bat_w, bat_h, 2); }
 module mock_pcbs(){
     translate([drv_cx, drv_back-drv_t, drv_cz]) xzext(drv_t) square([drv_w,drv_h],center=true);
@@ -1312,33 +1307,25 @@ module mock_pcbs(){
         xzext(bare_panel ? chg_t : chg_t-proto_t) square([chg_w,chg_h],center=true); }
 
 // ============================================================== assembly
-module stand(rot=0, theta=0){
-    translate([0, pk_y0, hub_z]) rotate([0,rot,0]) {
-        color("#3a3d44") disc();
-        color("#2e3138") leg_placed(theta);
-    } }
+module stand(theta=0){ color("#2e3138") leg_placed(theta); }
 
-module device(rot=0, theta=0){
+module device(theta=0){
     color("#4c4f57") frame();
     color("#54575f") cover();
     mock_module(); mock_board();
-    stand(rot, theta); }
+    stand(theta); }
 
-module standing(land=false){
-    zp = hub_z - pivot_r;                // identical in both orientations
-    yp = pk_y0 + disc_t/2;
-    py = depth - rear_chf;               // contact edge of the flat bottom face
-    fy = yp + leg_len*sin(stop_ang);
-    fz = zp - leg_len*cos(stop_ang);
-    a  = atan2(fz, fy - py);
-    yc = 11.0;  zc = land ? W/2 : Zc;    // centre of mass estimate
-    com = -(py-yc)*cos(a) + zc*sin(a);
-    echo(str(land?"LANDSCAPE":"PORTRAIT"," lean ",a," deg | footprint ",
-             (fy-py)*cos(a)+fz*sin(a)," mm | CoM ",com," mm behind the contact edge"));
-    translate([0,0,py*sin(a)])
-    rotate([-a,0,0])
-        if (land) translate([-H/2,0,W/2]) rotate([0,90,0]) device(-90, theta_dep);
-        else device(0, theta_dep);
+// The lean and footprint are DERIVED at the top level now, so this consumes them
+// rather than re-deriving them.  tools/mkrenders.scad and mkdrawings.py used to
+// carry their own copies of this arithmetic; they read the derived values instead.
+module standing(){
+    com = -(py_edge - 11.0)*cos(lean) + Zc*sin(lean);   // centre of mass estimate
+    echo(str("STANCE: lean ",lean," deg | footprint ",footprint,
+             " mm | CoM ",com," mm behind the contact edge | foot tip folded at z ",
+             foot_z,", chamfer ends at ",rear_chf," -> ",
+             stand_ok ? "nothing overhangs" : "OVERHANGS THE BOTTOM EDGE"));
+    translate([0,0,py_edge*sin(lean)])
+    rotate([-lean,0,0]) device(dep_ang);
 }
 
 // ================================================================ output
@@ -1366,21 +1353,16 @@ module bezel_test(){
 if (part=="bezel_test") translate([0,H,0]) rotate([90,0,0]) bezel_test();
 else if (part=="frame")   translate([0,H,0]) rotate([90,0,0]) frame();
 else if (part=="cover")   translate([0,0,depth]) rotate([-90,0,0]) cover();
-else if (part=="disc")    rotate([-90,0,0]) disc();
 else if (part=="leg")     leg();
-else if (part=="standing_p") standing(false);
-else if (part=="standing_l") standing(true);
+else if (part=="standing") standing();
 else if (part=="exploded"){
-    frame(); translate([0,14,0]) cover();
-    translate([0,30,Zc]) rotate([-90,0,0]) disc(); }
+    frame(); translate([0,14,0]) cover(); translate([0,34,0]) leg(); }
 else if (part=="plate"){
     translate([-60,H,0]) rotate([90,0,0]) frame();
     translate([60,0,depth]) rotate([-90,0,0]) cover();
-    translate([60,-70,0]) rotate([-90,0,0]) disc();
     translate([0,-70,0]) leg(); }
-else if (part=="assembly") device(0, theta_dep);
-else if (part=="folded") device(0, 0);
-else if (part=="folded_l") device(-90, 0);
+else if (part=="assembly") device(dep_ang);
+else if (part=="folded") device(0);
 else if (part=="guts"){ color("#5a5e67") cover(); mock_board(); mock_adapter(); }
 
 echo(str("OUTER: short axis ",W," | long axis ",H," | depth ",depth));
@@ -1388,11 +1370,12 @@ echo(str("BEZEL: short-axis sides ",W/2-win_w/2,"  long-axis ends ",H/2-win_h/2,
          " | white shown: short ",white_show_short," long ",white_show_long));
 echo(str("walls: +X ",W/2-cav_x1,"  -X ",W/2+cav_x0,
          " | end walls ",cav_z0," / ",H-cav_z1));
-echo(str("interior behind PCB ",cov_in-mod_back,"  over stand pocket ",cov_in_pk-mod_back));
+echo(str("interior behind PCB ",cov_in-mod_back,"  over the leg recess ",elec_back-mod_back));
 echo(str("DRIVER BOARD outline ",drv_w," x ",drv_h," x ",drv_env," on its own",
          " | but the number that decides fit is drv_stack ",drv_stack,
-         " - see DEPTH BUDGET below | off the puck ",cov_in-mod_back," available"));
-echo(str("CLEARANCE in front of: cell ",cov_in_pk-bat_t-mod_back,
+         " - see DEPTH BUDGET below | off the recess band ",elec_back-mod_back,
+         " available"));
+echo(str("CLEARANCE in front of: cell ",rec_back-bat_t-mod_back,
          " | proto pcb ",proto_face-mod_back," | driver pcb ",drv_back-drv_t-mod_back));
 echo(str("module 8-pin header: ", mod_header
          ? str("allowance assumed ",conn_h," mm")
@@ -1424,10 +1407,10 @@ echo(str("CROSSING THE SPLIT: the glass is on the FRAME, the driver on the COVER
                  " service loop, and the long FPC is what crosses the split")));
 echo(str("ADAPTER DEPTH COST: driver stack ",drv_stack," + adapter ",adapt_env,
          " = ",drv_stack+adapt_env," in front of each other, against ",
-         cov_in_pk-mod_back," available -> ",
-         (drv_stack+adapt_env <= cov_in_pk-mod_back) ? "fits"
-           : str("SHORT by ",drv_stack+adapt_env-(cov_in_pk-mod_back),
-                 ".  depth ",depth," -> ",depth+(drv_stack+adapt_env-(cov_in_pk-mod_back)),
+         elec_back-mod_back," available -> ",
+         (drv_stack+adapt_env <= elec_back-mod_back) ? "fits"
+           : str("SHORT by ",drv_stack+adapt_env-(elec_back-mod_back),
+                 ".  depth ",depth," -> ",depth+(drv_stack+adapt_env-(elec_back-mod_back)),
                  " would cover it, or low-profile headers (hdr_h ",hdr_h,
                  " -> 5.5) buy back 3.0 of it")));
 echo(str("FPC ADAPTER: ", adapt_fit
@@ -1450,14 +1433,16 @@ echo(str("FPC ADAPTER: ", adapt_fit
                " | taped to the glass it stays with the FRAME, so only the long",
                " FPC crosses the split")
          : "not fitted"));
-echo(str("DEPTH BUDGET over the puck: stack ",drv_stack," measured (driver + female",
-         " sockets + carrier), room ",cov_in_pk-mod_back," -> ",
-         (drv_stack <= cov_in_pk-mod_back)
-           ? str("fits by ",cov_in_pk-mod_back-drv_stack)
-           : str("SHORT by ",drv_stack-(cov_in_pk-mod_back)),
-         " | every extra mm of disc_t comes straight off this: disc_t ",disc_t,
-         " -> ",disc_t+2," would leave ",cov_in_pk-mod_back-2,
-         ", which is ", ((cov_in_pk-mod_back-2) >= drv_stack) ? "still enough" : "NOT enough"));
+echo(str("DEPTH BUDGET in the driver column: stack ",drv_stack," measured (driver + female",
+         " sockets + carrier), room ",elec_back-mod_back," -> ",
+         (drv_stack <= elec_back-mod_back)
+           ? str("fits by ",elec_back-mod_back-drv_stack)
+           : str("SHORT by ",drv_stack-(elec_back-mod_back)),
+         " | the carrier misses the recess band (x +/-",rec_w/2," vs the carrier at ",
+         carrier_cx-carrier_w/2," to ",carrier_cx+carrier_w/2,
+         "), so it datums to the register face at ",elec_back,
+         " rather than to the recess floor's backing at ",rec_back,
+         " - worth ",elec_back-rec_back));
 rib_x = pan_px - (pan_w/2 + pan_clr_w) - rib_clr;   // outermost point of the notch
 echo(str("RIBBON RELIEF reaches x ",rib_x," | frame outer face ",-W/2,
          " | wall left ",rib_x-(-W/2)));
@@ -1516,65 +1501,119 @@ echo(str("FLASH PORT: ", (drv_z1 + 1.2 < cav_z1)
 echo(str("RELIEFS: pocket relief R",pan_rel," | cavity relief R",cav_rel,
          " (cav_r ",cav_r,", limit 1.707 for a sharp PCB corner)",
          " | wall left at a cavity corner ",wall-cav_rel));
-echo(str("HINGE: ", pivot_screw
-         ? str(insert_size," clamp screw in through the disc rim, into an insert",
-               " in the far slot wall | head seats ",head_seat," in from the slot",
-               " wall, ",disc_rim_x-head_seat-slot_w/2," down a dia ",scr_head+0.8,
-               " access channel | screw ",scr_reach," long, so ",insert_size," x ",
-               floor(scr_reach/5)*5," with a wave washer under the head, ",
-               floor(scr_reach/5)*5 - wash_t - (scr_reach-ins_l)," into the insert")
-         : str("plain dia ",pin_d," pin, ",pin_fit," fit - see below")));
-echo(str("HINGE SCREW FITS: ", clamp_ok ? "yes" : "NO",
-         " | head ",scr_head," across needs disc_t, which is ",disc_t,
-         " -> ",head_wall," a side | insert bore ",ins_d," -> ",ins_wall," a side",
-         clamp_ok ? "" : str(" | BOTH ends of the screw are bounded by disc_t, so",
-               " the adjustable clamp needs disc_t >= ",ceil(scr_head+0.8),
-               ".  Running the plain dia ",pin_d," pin instead")));
-echo(str("CLAMP TONGUE: ", (clamp_land && clamp_flex)
-         ? str(flex_t," thick x ",disc_t," x ",flex_len," long, fixed both ends,",
-               " loaded ",flex_z0," from one root -> ",flex_k," N/mm | at ",
-               clamp_pr-2*leg_slot_c," of interference that is ",
-               flex_k*(clamp_pr-2*leg_slot_c)," N, about ",
-               2*0.35*flex_k*(clamp_pr-2*leg_slot_c)*2," N.mm of hinge torque",
-               " vs ",0.35," N.mm of gravity on the leg | ",
-               flex_k*(clamp_pr-2*leg_slot_c)*2*0.35*2/leg_len," N at the foot")
-         : "none - the land bears on the bulk of the disc, so the fit is a lottery"));
-echo(str("HINGE FRICTION: ", clamp_land
-         ? str("clamp land - the slot is ",slot_w," but ",slot_w-clamp_pr,
-               " over ",clamp_len," at the pivot, against a ",leg_w," leg, so ",
-               clamp_pr-2*leg_slot_c," of interference and no free play. ",
-               pivot_screw ? "The screw sets the rest."
-                           : "PRINT-TUNE clamp_pr the way catch_p is tuned: it is the one number a drawing cannot give you.")
-         : "NONE - the leg swings on whatever the print gave it"));
-echo(str("SNAP DETENT: ", snap_det
-         ? str("tooth on the DISC, pocket in the LEG - the inversion is what makes",
-               " it possible while the leg still folds flush | engages at leg-local",
-               " z ",det_at,", which is disc y ",det_fy," z ",det_fz,
-               " - right at the stop wall | rides clear until 118.3 deg, so it only",
-               " meets the leg in the last 3.7 | bridge ",det_span," x ",det_tt,
-               " x ",det_h," -> ",det_k," N/mm | ",det_F," N at ",det_lift,
-               " of lift, arm ",det_arm," -> ",det_T," N.mm of detent (",
-               det_T/leg_len," N at the foot), ",det_sig," MPa at mid-span",
-               " | with the clamp's ",2*0.35*flex_k*(clamp_pr-2*leg_slot_c)*2,
-               " that is ",det_T + 2*0.35*flex_k*(clamp_pr-2*leg_slot_c)*2,
-               " N.mm holding it open")
-         : "not fitted - the leg holds on clamp friction alone"));
-echo(str("DEPLOYED STOP: rear wall ",stop_wall," behind the pivot | the leg reaches",
-         " that only at ",theta_dep," deg of swing (it is at 2.48 by 110), and past it",
-         " the interference grows about 0.07 mm/deg | the heel flat's own stop is a",
-         " tangency that saturates at 0.138, so this wall is what defines the lean"));
-echo(str("LEG SWEEP: pivot axis ",piv_h," above the pocket floor, so nothing on the",
-         " leg may orbit past that | hub rear cut back to ",hub_r,
-         " (clearance ",sweep_clr,") over local ",sweep_a," to 270 deg",
-         " | heel flat keeps its short side, ",
-         hub_sweep ? "which is the hard stop at " : "UNCUT - the leg jams at ",
-         hub_sweep ? stop_ang : 64, hub_sweep ? " deg" : " deg, 1.8 into the floor"));
+echo(str("STAND: lever leg, swings ",dep_ang," deg | leg ",leg_len," long, ",
+         leg_t," thick at the pivot tapering ONE-SIDED to ",leg_tf,
+         " so the back face stays flush | pin dia ",pin_d,
+         " snapped into sockets in the recess walls, mouth ",
+         (pin_d+pin_fit)*ear_mouth," across a ",pin_d+pin_fit," bore, through ",
+         ear_w," ears INSIDE the pocket -> a ",pin_d," x ",pin_len,
+         " pin, which is exactly rec_w, so the pocket walls cap it"));
+echo(str("STOP: the heel reaches ",heel_z," past the pin and is cut by the recess",
+         " floor pulled back through ",dep_ang," deg, so at ",dep_ang,
+         " a FLAT lands on the floor - a face, not a tangent corner |",
+         " load path leg -> heel -> cover, in COMPRESSION, and the display's own",
+         " weight pushes it INTO the stop | swing is ",dep_ang,
+         " < 90, which is what puts the heel ON the floor plane rather than",
+         " through it"));
+echo(str("DETENT: ONE seat at z ",piv_z," (directly below the pin), ",det_iw,
+         " wide, and TWO nubs on the leg at 0 and -",dep_ang," deg, both at r ",
+         det_R,".  A nub at a fixed leg angle is DEEPEST mid-stroke, so one nub",
+         " could never seat at both ends - two nubs sharing one seat can, because",
+         " whichever points straight down is at the bottom of its arc | track is an",
+         " ARC of r ",det_trk_r," about the pin, concentric with the nubs' own",
+         " sweep, so a nub rides it at CONSTANT depth and nub_pre ",nub_pre,
+         " is a chosen preload",
+         " | seat r ",det_seat_r," -> click ",det_click," against pin_fit ",pin_fit,
+         " of free play plus the socket lip -> ",
+         det_click <= pin_fit*2 ? "in range; det_seat and nub_pre tune it"
+                                : "TOO STIFF - drop det_seat"));
+echo(str("DETENT ENGAGEMENT: a nub is in the seat for the first and last ",det_th,
+         " deg of the ",dep_ang," deg stroke | relief reaches z ",piv_z-det_band,
+         " to ",piv_z+det_band," and ",det_trk_r-piv_h," below the recess floor,",
+         " leaving ",piv_y-det_seat_r-rec_back," under the seat"));
+echo(str("FINGER ACCESS: the ears are only ",ear_len," long, so away from the pivot",
+         " the leg sits in the full ",rec_w," with ",finger_g,
+         " open either side of it, the whole length, at the full ",rec_dep,
+         " depth - no separate notch band | pocket reaches x +/-",rec_w/2,
+         ", the driver carrier's near edge is ",carrier_cx+carrier_w/2,
+         " -> clears by ",abs(carrier_cx+carrier_w/2)-rec_w/2));
+echo(str("LEG WIDTH is DERIVED: rec_w ",rec_w," less two ears of ",ear_w,
+         " and ",rec_clr," clearance each -> leg_w ",leg_w,
+         " | the pin passes through both ears and its ends finish flush with the",
+         " pocket walls, so nothing else retains it sideways"));
+echo(str("FOLDED LATCH: a ",lip_w," lip across the recess mouth at z ",lip_z,
+         ", overhanging ",lip_h,".  The tip tucks under it, and that point is ",
+         piv_z-lip_z," from the pin, so releasing it asks the leg to bow only ",
+         lip_h," over that length"));
+echo(str("STANCE: lean ",lean," deg | footprint ",footprint,
+         " | folded foot tip at z ",foot_z," against a ",rear_chf," chamfer -> ",
+         stand_ok ? "clear, nothing overhangs the bottom edge"
+                  : "OVERHANGS THE BOTTOM EDGE - raise foot_z"));
+echo(str("RECESS: ",rec_dep," deep down to z ",cav_z0,", then ",rec_shl,
+         " below that because the cover is backed by SOLID FRAME there | floor",
+         " leaves ",rec_floor," to rec_back ",rec_back," | anything CROSSING the",
+         " band datums there; everything else datums to the register face ",
+         elec_back," (= cov_in ",cov_in," less the ",reg_step," register step),",
+         " so crossing the band costs ",elec_back-rec_back));
 echo(str("FASTENERS: ", insert_fit
          ? str(insert_size," heat-set inserts, bore dia ",ins_d," x ",ins_l+ins_relief,
                " deep into a ",scr_wall," mm end wall | ",insert_size,
                " countersunk screws, head ",scr_head,", cone ",scr_csk,
                " deep in a ",cover_t," cover")
          : str("self-tapping into a ",scr_pilot," pilot, ",scr_depth," deep")));
+// Gap between two axis-aligned rectangles in the back face, in plan (x, z).
+// Positive = that much material between them; negative = they overlap.
+function _sep(a0,a1,b0,b1) = max(a0-b1, b0-a1);
+function gap2d(ax0,ax1,az0,az1, bx0,bx1,bz0,bz1) =
+    let (sx = _sep(ax0,ax1,bx0,bx1), sz = _sep(az0,az1,bz0,bz1))
+    (sx > 0 && sz > 0) ? sqrt(sx*sx + sz*sz) : max(sx, sz);
+
+// THE STRUCTURAL CHECK ON THE BACK FACE.  Every opening in it, measured against
+// the port.  Openings that share a narrow band leave a rib between them, and a rib
+// is the thing that cracks - so this is echoed rather than left to be discovered.
+pw = snap_w + 2*snap_c;  ph = snap_h + 2*snap_c;
+px0 = ucb_x - pw/2;  px1 = ucb_x + pw/2;
+pz0 = ucb_z - ph/2;  pz1 = ucb_z + ph/2;
+g_rec  = gap2d(px0,px1,pz0,pz1, -rec_w/2, rec_w/2, rec_z0, rec_top);
+g_rib  = min([ for (i = [0,1])
+               gap2d(px0,px1,pz0,pz1, pad_x[i]-pad_w[i]/2, pad_x[i]+pad_w[i]/2,
+                                      pad_z[i]-pad_h/2,    pad_z[i]+pad_h/2) ]);
+g_scr  = min([ for (sp = scr_pos)
+               gap2d(px0,px1,pz0,pz1, sp[0]-scr_head/2, sp[0]+scr_head/2,
+                                      sp[1]-scr_head/2, sp[1]+scr_head/2) ]);
+g_min  = min(g_rec, g_scr);
+echo(str("POCKET FLOOR: recess_boss() runs x +/-",rec_w/2+rec_wall," and z ",shl_z0,
+         " to ",rec_top," (it starts at the shallow step - below that solid frame is",
+         " behind the cover), front face at ",rec_back,", so the floor is ",rec_floor,
+         " for the whole DEEP length | the cover's own skin+register is only ",
+         cover_t+reg_step," against a ",rec_dep,
+         " deep pocket, so without the boss the cut goes through | below the step",
+         " stand_register() extends the register down to z ",rec_z0-1.0,
+         " so the shallow band keeps ",reg_step," behind it, and the frame is",
+         " relieved to match | thinnest floor is ",rec_floor_min,
+         " under the detent seat | boss reaches x ",
+         -(rec_w/2+rec_wall),", carrier's near edge ",carrier_cx+carrier_w/2,
+         " -> clears by ",abs(carrier_cx+carrier_w/2)-(rec_w/2+rec_wall)));
+echo(str("GLASS RIBS: ", bare_panel
+         ? str("bottom rib SPLIT into two ",rib_seg," segments at x +/-",
+               rec_w/2+rib_pocket_c," to +/-",rec_w/2+rib_pocket_c+rib_seg,
+               " so the stand pocket cannot cut their root (it reaches x +/-",
+               rec_w/2,", leaving ",rib_pocket_c," of material) | top rib one piece,",
+               " x ",pad_x[1]-pad_w[1]/2," to ",pad_x[1]+pad_w[1]/2," at z ",pad_z[1],
+               ", clear of the pocket which ends at z ",rec_top)
+         : "module pads, not ribs", " | each stands ",cov_in-mod_back-rib_gap,
+         " off the cover face"));
+echo(str("PORT CLEARANCES in the back face: to the stand pocket ",g_rec,
+         ", to the nearest corner screw ",g_scr," | worst ",g_min," -> ",
+         g_min >= 8 ? "no two openings share a band"
+                    : g_min >= 4 ? "TIGHT - a thin rib between two openings"
+                                 : "TOO CLOSE - move the port"));
+echo(str("PORT vs GLASS RIBS: nearest rib root is ",g_rib,
+         " away -> ", g_rib >= 2 ? "the ribs keep their footing"
+                                 : "IT IS UNDERCUTTING A RIB"));
+echo(str("PORT WIRING: charger's near edge is x ",chg_x_c-chg_w/2," z ",
+         chg_z-chg_h/2," to ",chg_z+chg_h/2,", so the two wires run about ",
+         max(chg_x_c-chg_w/2-px1, 0)," mm"));
 echo(str("REAR PORT: ", port_snap
          ? str("snap-in pigtail, opening ",snap_w+2*snap_c," x ",snap_h+2*snap_c,
                " (part ",snap_w," x ",snap_h,", clearance ",snap_c," a side), centred x ",
@@ -1585,11 +1624,13 @@ echo(str("CARRIER MOUNT: four dia ",carrier_hole," holes at ",carrier_hx," x ",c
          " centres (",carrier_hx-carrier_hole," x ",carrier_hz-carrier_hole,
          " edge to edge), ",(carrier_w-carrier_hx)/2," in from each edge of the ",
          carrier_w," x ",carrier_h," board | pegs dia ",
-         min(carrier_hole-carrier_peg, 2*carrier_pin)," on pads dia ",carrier_pad+2,
+         min(carrier_hole-carrier_peg, 2*carrier_pin)," rising ",carrier_t+1.2,
+         " from the register face - the register IS the pad, it is flat right",
+         " across the cavity",
          " | first header pin is ",carrier_pin," from the hole, so nothing on the peg",
          " may exceed ",2*carrier_pin," across"));
 echo(str("DRIVER MOUNT: ", carrier_fit
-         ? str("carrier ",carrier_w," x ",carrier_h," on four pads, driver plugs into ",
+         ? str("carrier ",carrier_w," x ",carrier_h," on four pegs, driver plugs into ",
                hdr_h," female headers | driver face to glass plane ",
                drv_back - drv_t - mod_back, " for parts standing ",drv_env-drv_t," proud")
          : "printed side rails"));
@@ -1612,9 +1653,9 @@ echo(str("charger ",chg_part," ",chg_w," x ",chg_h," x ",chg_t,
          " | fits proto: ", (chg_w <= proto_w-2 && chg_h <= proto_h-2) ? "yes" : "NO",
          " | clear in front: ", proto_face - chg_t + proto_t - mod_back));
 if (mod_header) {
-  echo(str("HEADER vs CELL: needs ",conn_h,", has ",cov_in_pk-bat_t-mod_back,
-           " -> ", (conn_h > cov_in_pk-bat_t-mod_back)
-                   ? str("CLASH by ",conn_h-(cov_in_pk-bat_t-mod_back)," mm")
+  echo(str("HEADER vs CELL: needs ",conn_h,", has ",cov_in-bat_t-mod_back,
+           " -> ", (conn_h > cov_in-bat_t-mod_back)
+                   ? str("CLASH by ",conn_h-(cov_in-bat_t-mod_back)," mm")
                    : "clear"));
   echo(str("depth needed for a ",conn_h," mm header over the cell: ",
            conn_h + bat_t + mod_back + 5.95 + 0.5));
@@ -1631,35 +1672,23 @@ if (mod_header) {
 // SECOND TRAP: when an intersection is empty OpenSCAD writes NO FILE, so a script
 // that reuses output paths silently re-reads the PREVIOUS check's result.  Delete
 // the output before every run or you will chase a clash that is not there.
-// Measured state of all 19, by volume:
-//   10 genuinely empty | frame_cover + cover_board zero-volume touches (by design)
-//   NO unintended interference.  The two that used to be real were both consequences
-//   of hardware this build does not have: conn_cell (154 mm3) was a mated 8-pin
-//   header, drv_module (1050 mm3) was that header's cable inflating drv_env to 15.
-//   FOUR report geometry deliberately, and reading them as clashes wastes a day:
-//     disc_legf  catch lip over the folded foot - the snap interference
-//     disc_legd  clamp land against the deployed leg - the land is AT the pivot,
-//                so it bears at every angle, this one included.  At theta_dep it
-//                ALSO shows the leg on the slot's rear wall: that is the hard
-//                stop bearing, not a clash.
-//     disc_legs  the same land, at whatever angle chk_th asks for.  Reads 0.4
-//                rather than the designed 0.2 because the check draws the leg
-//                centred in its slot, while the land pushes it 0.2 onto the far
-//                wall.  Read it as clamp_pr less one side of leg_slot_c.
-//     frame_cover / cover_board  the zero-volume touches above
-//     adapt_board  the FPC adapter on the carrier - 18 x 32 landing on it for
-//                  31.25 of its length.  This one is a REAL conflict, not a
-//                  by-design touch: the adapter has no home yet.  See TODO.
-//     adapt_cover  zero-thickness - the adapter's back face is coplanar with
-//                  the pocket face, which is where it wants to sit.
-//   cover_legs is the one that must be empty, and empty at EVERY chk_th, not just
-//   at 0 and theta_dep.  Both ends were clear while the middle was 1.8 mm inside
-//   the cover; that is what the swept check exists to catch.
+// State of the checks after the stand redesign:
+//   frame_cover and cover_board are ZERO-VOLUME touches by design - the frame's
+//   rear face and the cover's front face are both at body_d, and the board sits
+//   exactly on its standoffs.  Chasing either as a clash is a dead end.
+//   Everything else must be genuinely EMPTY.
+//
+//   cover_legs is the one that matters, and it must be empty at EVERY chk_th, not
+//   just at 0 and dep_ang.  Both ends were clear once while the middle was 1.80 mm
+//   inside the cover; that is what the swept check exists to catch.
+//   stub_floor replaces the old wall_leg probe: it asks whether the stub is
+//   touching the recess floor at a given angle, which is how the stop and the two
+//   indents get verified rather than asserted.
+//   rec_frame is new and is the guard on the recess being too deep: the volume
+//   the recess needs must not reach into the frame.  frame_cover cannot
+//   substitute, because its by-design zero-volume touch would hide it.
 chk = "";
-chk_th = theta_dep;
-chk_d  = 3.2;                     // wall depth for the wall_leg probe               // sweep angle for the *_legs checks
-module disc_f(rot=0){ translate([0,pk_y0,hub_z]) rotate([0,rot,0]) disc(); }
-module leg_f(rot=0,th=0){ translate([0,pk_y0,hub_z]) rotate([0,rot,0]) leg_placed(th); }
+chk_th = dep_ang;                 // sweep angle for the swept checks
 if(chk=="frame_cover")  intersection(){ frame(); cover(); }
 if(chk=="frame_module") intersection(){ frame(); mock_module(); }
 if(chk=="cover_module") intersection(){ cover(); mock_module(); }
@@ -1669,29 +1698,43 @@ if(chk=="drv_module")   intersection(){ mock_module(); drv_envelope(); }
 if(chk=="conn_cell")    intersection(){ mod_conn(); mock_cell(); }
 if(chk=="conn_board")   intersection(){ mod_conn(); mock_pcbs(); }
 if(chk=="conn_cover")   intersection(){ mod_conn(); cover(); }
-if(chk=="cover_disc")   intersection(){ cover(); disc_f(0); }
-if(chk=="disc_legf")    intersection(){ disc(); leg_placed(0); }
-if(chk=="disc_legd")    intersection(){ disc(); leg_placed(theta_dep); }
-if(chk=="cover_legd")   intersection(){ cover(); leg_f(0,theta_dep); }
-if(chk=="cover_legf")   intersection(){ cover(); leg_f(0,0); }
-// mid-travel sweep.  The two poses above are the ends of the stroke; chk_th lets
-// the whole swing be walked, which is where a hub corner orbiting an axis only
-// disc_t/2 off the pocket floor gets you into trouble.
-// the detent tooth against the leg: empty early, ramp interference near the end,
-// and empty again at theta_dep because the pocket has swallowed it
-if(chk=="det_leg")      intersection(){ union(){ det_solid(); det_bridge(); }
-                                        leg_placed(chk_th); }
 if(chk=="adapt_board")  intersection(){ mock_adapter(); mock_board(); }
 if(chk=="adapt_cover")  intersection(){ mock_adapter(); cover(); }
-if(chk=="cover_legs")   intersection(){ cover(); leg_f(0,chk_th); }
-if(chk=="disc_legs")    intersection(){ disc(); leg_placed(chk_th); }
-// How far behind the pivot does the leg reach, while still inside the disc's
-// thickness?  That is what decides whether the slot's rear wall can be a stop.
-// chk_d = wall depth behind the pivot; non-empty means the leg touches it.
-if(chk=="wall_leg")     intersection(){
-    translate([-slot_w/2, 0, -200 - pivot_r - chk_d])
-        cube([slot_w, disc_t, 200]);
+// the leg through its whole stroke, against the cover.  MUST be empty at every
+// chk_th - the ends alone are not sufficient and have hidden a jam before.
+if(chk=="cover_legs")   intersection(){ cover(); leg_placed(chk_th); }
+// is the heel's flat on the floor?  This is the one that proves the STOP is real:
+// the intersection must be EMPTY below dep_ang and appear at dep_ang - a tangent
+// heel would show a hair of geometry all the way through instead.
+if(chk=="heel_floor")   intersection(){
+    translate([-rec_w/2, rec_y0 - 20, piv_z - 20]) cube([rec_w, 20, 40]);
     leg_placed(chk_th); }
+// IS THE POCKET ACTUALLY BLIND?  A slab just behind the floor, less the cover: if
+// the cover does not fill it, the pocket is a hole into the interior.  This is the
+// one that was missing - rec_frame only asks whether the pocket reaches the FRAME,
+// which it did not, so nothing complained while 7.75 mm of it was open.
+// Each band is tested at ITS OWN floor: the deep section against rec_floor_min
+// (the detent seat cuts into the floor on purpose, so the nominal rec_floor is not
+// what has to be solid), the shallow section against the register alone.  Anything
+// the cover does not fill is a hole into the interior.
+if(chk=="rec_floor_gap") difference(){
+    union(){
+        // max(...,0.1) on purpose: a non-positive slab would build no geometry and
+        // the check would read EMPTY, which is the same word as "passes".
+        translate([-rec_w/2, rec_back + 0.05, shl_z0 + 0.05])
+            cube([rec_w, max(rec_floor_min - 0.1, 0.1), rec_top - shl_z0 - 0.1]);
+        translate([-rec_w/2, body_d - reg_step + 0.05, rec_z0 + 0.05])
+            cube([rec_w, max(reg_step + cover_t - rec_shl - 0.1, 0.1),
+                  shl_z0 - rec_z0 - 0.1]);
+    }
+    cover();
+}
+// The glass ribs must keep their root: the pocket must not cut into them at all.
+// This is the check that was missing when the pocket took 20 of a 26 mm root and
+// left the rib cantilevered - nothing intersected, so no clash check saw it.
+if(chk=="rib_recess")   intersection(){ glass_ribs();  recess_cut(); }
+// the recess must not reach into the frame.  This is the depth guard.
+if(chk=="rec_frame")    intersection(){ recess_cut();   frame(); }
 
 // ------------------------------------------------- parameter dump for docs
 if (part=="params") {
@@ -1705,32 +1748,30 @@ if (part=="params") {
    ["bez_thin",bez_thin],["bez_thick",bez_thick],["half_cav",half_cav],["half_rib",half_rib],["act_w",act_w],["act_h",act_h],["act_off_x",act_off_x],["act_off_z",act_off_z],["pan_off_z",pan_off_z],
    ["mod_clr",mod_clr],["pcb_px",pcb_px],["pan_px",pan_px],
    ["cav_w",cav_w],["cav_h",cav_h],["cav_x0",cav_x0],["cav_x1",cav_x1],
-   ["cav_z0",cav_z0],["cav_z1",cav_z1],["Zc",Zc],["hub_z",hub_z],
+   ["cav_z0",cav_z0],["cav_z1",cav_z1],["Zc",Zc],
    ["win_w",win_w],["win_h",win_h],
    ["white_show_short",white_show_short],["white_show_long",white_show_long],
    ["tape_pad",tape_pad?1:0],["tape_len",tape_len],["tape_reach",tape_reach],["tape_dep",tape_dep],
    ["pcb_face_y",pcb_face_y],["mod_back",mod_back],
-   ["cov_in",cov_in],["cov_in_pk",cov_in_pk],["pk_y0",pk_y0],["pk_d",pk_d],
-   ["pk_dep",pk_dep],["pk_floor_t",pk_floor_t],["lug_out",lug_out],["lug_t",lug_t],
-   ["lug_ang",lug_ang],["gap_ang",gap_ang],
-   ["disc_d",disc_d],["disc_t",disc_t],["pocket_c",pocket_c],
-   ["pivot_r",pivot_r],["pin_d",pin_d],["leg_len",leg_len],["leg_w",leg_w],
-   ["leg_t",leg_t],["foot_r",foot_r],["stop_ang",stop_ang],["theta_dep",theta_dep],
-   ["leg_slot_c",leg_slot_c],["detent_d",detent_d],
-   ["slot_w",slot_w],["piv_h",piv_h],["hub_r",hub_r],["sweep_a",sweep_a],
-   ["snap_det",snap_det?1:0],["det_at",det_at],["det_lift",det_lift],["det_span",det_span],
-   ["det_tt",det_tt],["det_h",det_h],["det_w",det_w],["det_tooth",det_tooth],
-   ["det_wall",det_wall],["det_gapf",det_gapf],
-   ["det_zw1",det_zw1],["det_zw0",det_zw0],["det_zb1",det_zb1],["det_zb0",det_zb0],
-   ["det_y0",det_y0],["det_y1",det_y1],["det_clr",det_clr],["det_fit",det_fit],
-   ["det_k",det_k],["det_F",det_F],["det_T",det_T],["det_sig",det_sig],
-   ["hub_sweep",hub_sweep?1:0],["sweep_clr",sweep_clr],["stop_wall",stop_wall],
-   ["clamp_land",clamp_land?1:0],["clamp_pr",clamp_pr],["clamp_len",clamp_len],
-   ["head_seat",head_seat],["wash_t",wash_t],["seat_x",seat_x],
-   ["disc_rim_x",disc_rim_x],["scr_reach",scr_reach],
-   ["clamp_flex",clamp_flex?1:0],["flex_t",flex_t],["flex_gap",flex_gap],
-   ["flex_z0",flex_z0],["flex_z1",flex_z1],["flex_len",flex_len],["flex_k",flex_k],
-   ["head_wall",head_wall],["ins_wall",ins_wall],["clamp_ok",clamp_ok?1:0],
+   ["cov_in",cov_in],
+   ["pin_d",pin_d],["leg_len",leg_len],["leg_w",leg_w],
+   ["leg_t",leg_t],["foot_r",foot_r],
+   ["dep_ang",dep_ang],["leg_len",leg_len],["foot_z",foot_z],["leg_w",leg_w],
+   ["leg_t",leg_t],["leg_tf",leg_tf],["foot_r",foot_r],["pin_d",pin_d],
+   ["heel_z",heel_z],["tap_z",tap_z],
+   ["piv_h",piv_h],["piv_z",piv_z],["piv_y",piv_y],
+   ["det_tot",det_tot],["det_R",det_R],["det_trk_r",det_trk_r],
+   ["det_seat",det_seat],["det_seat_r",det_seat_r],["nub_pre",nub_pre],
+   ["det_click",det_click],["det_th",det_th],["det_band",det_band],
+   ["det_zc",det_zc],["nub_r",nub_r],["shl_z0",shl_z0],
+   ["lip_h",lip_h],["lip_z",lip_z],["lip_w",lip_w],["nub_root",nub_root],
+   ["rec_dep",rec_dep],["rec_shl",rec_shl],["rec_w",rec_w],["rec_clr",rec_clr],
+   ["rec_floor",rec_floor],["rec_wall",rec_wall],["rec_floor_min",rec_floor_min],["rec_y0",rec_y0],["rec_top",rec_top],["rec_z0",rec_z0],
+   ["rec_back",rec_back],["rec_shl_y",rec_shl_y],["py_edge",py_edge],
+   ["ear_w",ear_w],["ear_len",ear_len],["ear_x0",ear_x0],["ear_mouth",ear_mouth],
+   ["det_iw",det_iw],["pin_len",pin_len],["finger_g",finger_g],
+   ["elec_back",elec_back],["reg_step",reg_step],
+   ["lean",lean],["footprint",footprint],["stand_ok",stand_ok?1:0],
    ["bat_w",bat_w],["bat_h",bat_h],["bat_t",bat_t],["bat_x0",bat_x0],
    ["bat_cx",bat_cx],["bat_cz",bat_cz],["bat_clr",bat_clr],["bat_fence",bat_fence],["pad_w0",pad_w[0]],["pad_w1",pad_w[1]],["pad_h",pad_h],
    ["pad_x0",pad_x[0]],["pad_x1",pad_x[1]],["pad_z0",pad_z[0]],["pad_z1",pad_z[1]],
@@ -1757,8 +1798,8 @@ if (part=="params") {
    ["carrier_hole",carrier_hole],["carrier_hx",carrier_hx],["carrier_hz",carrier_hz],
    ["carrier_peg",carrier_peg],["carrier_pin",carrier_pin],
    ["carrier_cx",carrier_cx],["carrier_cz",carrier_cz],["carrier_z0",carrier_z0],["carrier_z1",carrier_z1],
-   ["catch_p",catch_p],["pin_fit",pin_fit],["snap_c",snap_c],
-   ["pivot_screw",pivot_screw?1:0],["leg_slot_c",leg_slot_c],["scr_wall",scr_wall],["carrier_t",carrier_t],["hdr_h",hdr_h],
+   ["pin_fit",pin_fit],["snap_c",snap_c],
+   ["scr_wall",scr_wall],["carrier_t",carrier_t],["hdr_h",hdr_h],
    ["port_snap",port_snap?1:0],["snap_w",snap_w],["snap_h",snap_h],["snap_d",snap_d],
    ["post_s",post_s],["post_y0",post_y0],
    ["insert_fit",insert_fit?1:0],["ins_d",ins_d],["ins_l",ins_l],["scr_csk",scr_csk],["cav_cx",cav_cx],["scr_cx",scr_cx],["scr_cz",scr_cz],

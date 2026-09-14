@@ -139,12 +139,14 @@ GROUPS = [
     ("Electronics - driver carrier", [
         "carrier_w", "carrier_h", "carrier_t", "hdr_h",
         "carrier_hole", "carrier_hx", "carrier_hz", "carrier_peg", "carrier_pin",
+        "carrier_pad", "carrier_lift",
     ]),
     ("Electronics - FPC adapter", [
         "adapt_w", "adapt_h", "adapt_env",
     ]),
     ("Electronics - charger, cell and port", [
         "chg_w", "chg_h", "chg_t",
+        "chg_hx", "chg_hz", "chg_boss_d", "chg_ins_d", "chg_ins_l", "chg_skin",
         "bat_w", "bat_h", "bat_t", "bat_clr", "bat_fence",
         "elec_clr", "col_gap",
     ]),
@@ -152,11 +154,10 @@ GROUPS = [
         "dep_ang", "leg_len", "foot_z", "leg_t", "leg_tf", "foot_r", "heel_z",
         "pin_d", "pin_fit", "rec_dep", "rec_shl", "rec_w", "rec_clr",
         "rec_wall", "rec_floor",
-        "det_tot", "det_iw", "det_seat", "nub_pre", "nub_r", "nub_root",
         "lip_h", "lip_z", "lip_w", "ear_w", "ear_mouth", "ear_len",
     ]),
     ("Measured, but not driving geometry in the OpenSCAD model", [
-        "fpc_w", "adapt_t", "adapt_hole", "adapt_inset", "carrier_pad", "usb_w",
+        "fpc_w", "adapt_t", "adapt_hole", "adapt_inset", "usb_w",
     ]),
 ]
 
@@ -193,8 +194,22 @@ NOTES = {
     "bat_fence": "fence rib thickness either side of the cell",
     "drv_clr":   "clearance between the driver board's edge and its rails",
     "fpc_w":     "the driver's 24-pin FPC socket body, along the board edge",
-    "carrier_pad": "standoff pad diameter under each carrier corner - the pads "
-                   "became locating pegs, so this no longer sets anything",
+    "carrier_pad": "pad diameter under each carrier corner. The pad holds the "
+                   "board carrier_lift off the register face and the peg rises "
+                   "from it; both are capped at 2*carrier_pin",
+    "carrier_lift": "air left under the carrier for the header solder joints on "
+                    "its underside. Spent out of the driver column's depth",
+    "chg_hx":     "ASSUMED insert centres on the charger breakout, 3.5 in from "
+                  "each edge. MEASURE THE BOARD",
+    "chg_hz":     "ASSUMED insert centres on the charger breakout. MEASURE THE "
+                  "BOARD",
+    "chg_boss_d": "charger screw post diameter, around a chg_ins_d bore",
+    "chg_ins_d":  "bore for an M2 heat-set insert (3.2 x 4.0): under the OD, so "
+                  "the knurl has wall to bite",
+    "chg_ins_l":  "M2 heat-set insert length. With chg_ins_rel it sets how deep "
+                  "the bore goes, and so how tall the post has to be",
+    "chg_skin":   "back-face skin left behind the insert bore. The bore is "
+                  "blind: the back face carries no opening for the charger",
     "usb_w":     "flash-port opening width. flash_port = false, so the port is "
                  "not cut",
     "adapt_hole":  "ASSUMED M2 clearance. The adapter is taped to the glass, so "
@@ -246,7 +261,7 @@ def build_rows(inputs, P):
                 note = FROM_DUMP[n]
             if n in NOTES and not note:
                 note = NOTES[n]
-            elif n in NOTES and n in ("adapt_t", "carrier_pad", "usb_w",
+            elif n in NOTES and n in ("adapt_t", "usb_w",
                                       "adapt_hole", "adapt_inset", "fpc_w"):
                 note = NOTES[n]
             unit = "deg" if n in DEG else ("" if n in UNITLESS else "mm")

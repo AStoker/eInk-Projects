@@ -422,6 +422,10 @@ def sheet2():
     s.rect(fx(-W/2), fz(H), W, H, "ghost", P["corner_r"])
     s.rect(fx(cav_x0), fz(cav_z1), cav_w, cav_h, "part", P["cav_r"])
     s.rect(fx(-rec_w/2), fz(rec_top), rec_w, rec_top-rec_z0, "hid", 1)
+    # the register extension: the plate that floors the shallow end of the pocket.
+    # It stops short of the bottom edge on purpose - see note 1.
+    s.rect(fx(-P["stand_reg_w"]/2), fz(P["shl_z0"]+0.05),
+           P["stand_reg_w"], (P["shl_z0"]+0.05)-P["reg_ext_z0"], "boss")
 
     # ---- the cell, bottom band, centred
     bx0, bz0 = P["bat_x0"], P["bat_cz"]-P["bat_h"]/2
@@ -451,7 +455,9 @@ def sheet2():
     if BARE:
         for sx in (-1, 1):
             for sz in (-1, 1):
-                s.circ(fx(cgx+sx*(P["chg_w"]/2-3.5)), fz(P["chg_z"]+sz*(P["chg_h"]/2-3.5)), 6.0, "boss")
+                cx_, cz_ = fx(cgx+sx*P["chg_hx"]/2), fz(P["chg_z"]+sz*P["chg_hz"]/2)
+                s.circ(cx_, cz_, P["chg_boss_d"], "boss")
+                s.circ(cx_, cz_, P["chg_ins_d"], "cut")
 
     if CARRIER:
         s.rect(fx(P["carrier_cx"]-P["carrier_w"]/2), fz(P["carrier_cz"]+P["carrier_h"]/2),
@@ -462,8 +468,10 @@ def sheet2():
               "divider on the spare", "cmpsub", size=2.3)
         for sx_ in (-1, 1):
             for sz in (-1, 1):
-                s.circ(fx(P["carrier_cx"]+sx_*(P["carrier_w"]/2-3.5)),
-                       fz(P["carrier_cz"]+sz*(P["carrier_h"]/2-3.5)), 6.5, "boss")
+                cx_ = fx(P["carrier_cx"]+sx_*P["carrier_hx"]/2)
+                cz_ = fz(P["carrier_cz"]+sz*P["carrier_hz"]/2)
+                s.circ(cx_, cz_, P["carrier_pad"], "boss")
+                s.circ(cx_, cz_, P["carrier_hole"]-P["carrier_peg"], "cut")
     s.rect(fx(P["drv_x0"]), fz(P["drv_z1"]), P["drv_w"], P["drv_h"], "pcb", 1.5)
     s.txt(fx(P["drv_cx"]), fz(P["drv_cz"])-3.4, "WAVESHARE", "cmp", size=2.9)
     s.txt(fx(P["drv_cx"]), fz(P["drv_cz"])+0.2, "ESP32 DRIVER", "cmp", size=2.9)
@@ -710,9 +718,11 @@ def sheet3():
         opts = [
             ("1", [f"board + tallest part, assumed {n(P['drv_env'])}. Measure it;",
                    "it is the only number holding this sheet up."]),
-            ("2", [f"the driver column has {n(P['elec_back']-P['mod_back'])}, against a measured",
-                   f"stack of {n(P['drv_stack'])} - it fits by {n(P['elec_back']-P['mod_back']-P['drv_stack'])}.",
-                   f"Crossing the recess band would cost {n(P['elec_back']-P['rec_back'])} of that."]),
+            ("2", [f"the register face gives {n(P['elec_back']-P['mod_back'])}, less the {n(P['carrier_lift'])} the",
+                   f"pads lift the board off it for its solder joints",
+                   f"-> {n(P['drv_room'])}, against a measured stack of {n(P['drv_stack'])}:",
+                   f"it fits by {n(P['drv_room']-P['drv_stack'])}. Crossing the recess band",
+                   f"would cost another {n(P['elec_back']-P['rec_back'])}."]),
             ("3", [f"the cell DOES cross the recess band, so it rides a",
                    f"platform level with the floor's back at {n(P['rec_back'])};",
                    f"it needs {n(P['bat_t'])} of the {n(clr)} in front of that."]),
@@ -870,6 +880,10 @@ def sheet5():
     # the stand recess, seen from inside the cover: it is a blind pocket in the
     # BACK face, so from here only its footprint and the pin sockets show
     s.rect(fx(-rec_w/2), fz(rec_top), rec_w, rec_top-rec_z0, "hid", 1)
+    # the register extension: the plate that floors the shallow end of the pocket.
+    # It stops short of the bottom edge on purpose - see note 1.
+    s.rect(fx(-P["stand_reg_w"]/2), fz(P["shl_z0"]+0.05),
+           P["stand_reg_w"], (P["shl_z0"]+0.05)-P["reg_ext_z0"], "boss")
     for sx_ in (-1, 1):   # the ears, inside the pocket, and their sockets
         s.rect(fx(sx_*P["ear_x0"] - (P["ear_w"] if sx_ < 0 else 0)),
                fz(piv_z + P["ear_len"]/2), P["ear_w"], P["ear_len"], "boss")
@@ -881,10 +895,6 @@ def sheet5():
            P["bat_cx"]+P["bat_w"]/2+P["bat_clr"]+P["bat_fence"]-(cav_x0+0.3),
            P["bat_h"]+2*P["bat_clr"]+2*P["bat_fence"], "plat", 1)
     if BARE:
-        for sx_ in (-1, 1):
-            for sz in (-1, 1):
-                s.circ(fx(P["chg_x_c"]+sx_*(P["chg_w"]/2-3.5)),
-                       fz(P["chg_z"]+sz*(P["chg_h"]/2-3.5)), 6.0, "boss")
         if PERF:
             s.rect(fx(P["perf_cx"]-P["perf_w"]/2), fz(P["perf_cz"]+P["perf_h"]/2),
                    P["perf_w"], P["perf_h"], "pcb", 1)
@@ -892,16 +902,35 @@ def sheet5():
                 for sz in (-1, 1):
                     s.circ(fx(P["perf_cx"]+sx_*(P["perf_w"]/2-2.5)),
                            fz(P["perf_cz"]+sz*(P["perf_h"]/2-2.5)), 4.0, "boss")
+        # board first, then the posts on top of it: they are the feature this
+        # sheet is called on to show, and the board's fill would bury them
         s.rect(fx(P["chg_x_c"]-P["chg_w"]/2), fz(P["chg_z"]+P["chg_h"]/2),
                P["chg_w"], P["chg_h"], "chg", 1)
+        for sx_ in (-1, 1):
+            for sz in (-1, 1):
+                cx_, cz_ = fx(P["chg_x_c"]+sx_*P["chg_hx"]/2), fz(P["chg_z"]+sz*P["chg_hz"]/2)
+                s.circ(cx_, cz_, P["chg_boss_d"], "boss")
+                s.circ(cx_, cz_, P["chg_ins_d"], "cut")
     else:
         for sz in (-1, 1):
             s.circ(fx(P["proto_cx"]), fz(P["proto_cz"]+sz*P["proto_hole_sp"]/2), 6.5, "boss")
         for sx_ in (-1, 1):
             for sz in (-1, 1):
                 s.circ(fx(P["proto_cx"]+sx_*(P["proto_w"]/2-4)), fz(P["proto_cz"]+sz*(P["proto_h"]/2-4)), 6.0, "boss")
-    for sx_ in (-1, 1):
-        s.rect(fx(P["drv_cx"]+sx_*(P["drv_w"]/2+P["drv_clr"]+0.3)-1.5), fz(P["drv_cz"]+(P["drv_h"]-1)/2), 3.0, P["drv_h"]-1, "boss")
+    if CARRIER:
+        # the carrier's footprint and the four pads that carry it - there are no
+        # printed rails when the driver rides a carrier
+        s.rect(fx(P["carrier_cx"]-P["carrier_w"]/2), fz(P["carrier_cz"]+P["carrier_h"]/2),
+               P["carrier_w"], P["carrier_h"], "hid", 1.0)
+        for sx_ in (-1, 1):
+            for sz in (-1, 1):
+                cx_ = fx(P["carrier_cx"]+sx_*P["carrier_hx"]/2)
+                cz_ = fz(P["carrier_cz"]+sz*P["carrier_hz"]/2)
+                s.circ(cx_, cz_, P["carrier_pad"], "boss")
+                s.circ(cx_, cz_, P["carrier_hole"]-P["carrier_peg"], "cut")
+    else:
+        for sx_ in (-1, 1):
+            s.rect(fx(P["drv_cx"]+sx_*(P["drv_w"]/2+P["drv_clr"]+0.3)-1.5), fz(P["drv_cz"]+(P["drv_h"]-1)/2), 3.0, P["drv_h"]-1, "boss")
     pw, ph = port_opening(s, fx, fz)
     if not BARE:
         for sz in (-1, 1):
@@ -914,8 +943,14 @@ def sheet5():
     s.dimh(fx(P["chg_x_c"]), fx(W/2), fz(0)+8, n(W/2-P["chg_x_c"]), ext_from=fz(P["chg_z"]))
     s.dimv(fz(P["chg_z"]), fz(0), fx(W/2)+7, n(P["chg_z"]), ext_from=fx(P["chg_x_c"]))
     s.bal(fx(rec_w/2), fz(piv_z), 1, fx(rec_w/2)+10, fz(piv_z)-8)
-    s.bal(fx(P["chg_x_c"]), fz(P["chg_z"]+P["chg_h"]/2-3.5), 2, fx(P["chg_x_c"])+12, fz(P["chg_z"])+6)
-    s.bal(fx(P["drv_cx"]+P["drv_w"]/2+2), fz(P["drv_cz"]), 3, fx(P["drv_cx"]+P["drv_w"]/2+2)+9, fz(P["drv_cz"])-6)
+    s.bal(fx(P["stand_reg_w"]/2), fz(P["reg_ext_z0"]+1.0), 8,
+          fx(P["stand_reg_w"]/2)+14, fz(P["reg_ext_z0"])-4)
+    s.bal(fx(P["chg_x_c"]), fz(P["chg_z"]+P["chg_hz"]/2), 2, fx(P["chg_x_c"])+12, fz(P["chg_z"])+6)
+    if CARRIER:
+        s.bal(fx(P["carrier_cx"]+P["carrier_hx"]/2), fz(P["carrier_cz"]-P["carrier_hz"]/2), 3,
+              fx(P["carrier_cx"]+P["carrier_w"]/2)+11, fz(P["carrier_cz"]-P["carrier_hz"]/2)-6)
+    else:
+        s.bal(fx(P["drv_cx"]+P["drv_w"]/2+2), fz(P["drv_cz"]), 3, fx(P["drv_cx"]+P["drv_w"]/2+2)+9, fz(P["drv_cz"])-6)
     s.bal(fx(P["ucb_x"]), fz(P["ucb_z"]+ph/2), 4, fx(P["ucb_x"])-13, fz(P["ucb_z"])-9)
     s.bal(fx(P["bat_cx"]-8), fz(P["bat_cz"]+P["bat_h"]/2+1), 5, fx(P["bat_cx"]-8)-9, fz(P["bat_cz"]+P["bat_h"]/2+9))
     if BARE and PERF:
@@ -925,34 +960,35 @@ def sheet5():
 
     s.notes(150, 22, [
         (1, f"stand recess in the BACK face - shown hidden because it does not break through: {n(rec_w)} wide x {n(P['rec_dep'])} deep, stepping to {n(P['rec_shl'])} below z {n(P['shl_z0'])} where solid frame is behind it. The two pin sockets are on EARS inside it, not bored through its walls, so nothing breaks the back face - see sheet 6"),
-        (2, f"four standoff pads under the {P['chg_part']} charger, {n(P['chg_w'])} x {n(P['chg_h'])}. Foam tape or a strap holds it - no screw posts, its hole spacing is not a measured number"
+        (2, f"four dia {n(P['chg_boss_d'])} screw posts under the {P['chg_part']} charger, at {n(P['chg_hx'])} x {n(P['chg_hz'])} centres, standing {n(P['chg_stand'])} off the register face. Each is bored dia {n(P['chg_ins_d'])} x {n(P['chg_bore'])} for an M2 heat-set insert, BLIND - {n(P['chg_skin'])} of skin left. Centres ASSUMED: measure the breakout"
             if BARE else
             f"2 x M2.5 posts, {n(P['proto_hole_sp'])} apart, plus four corner pads"),
-        (3, "driver-board rails - the board slides down from the top, stop at the bottom"),
-        (4, f"USB-C charge port, opening {n(P['snap_w']+2*P['snap_c'])} x {n(P['snap_h']+2*P['snap_c'])} through the skin at x {n(P['ucb_x'])} z {n(P['ucb_z'])} - a snap-in pigtail, so nothing is printed around it. Placed here to keep it out of a band with any other opening: nearest is {n(26.1)} away, against {n(4.35)} when it sat low beside the stand recess"
+        (3, f"four carrier mounts: a dia {n(P['carrier_pad'])} PAD {n(P['carrier_lift'])} tall - the air the header solder joints under the board need - carrying a dia {n(P['carrier_hole']-P['carrier_peg'])} PEG that drops through the board's hole and locates it. Nothing printed touches the driver board"
+            if CARRIER else
+            "driver-board rails - the board slides down from the top, stop at the bottom"),
+        (4, f"USB-C charge port, opening {n(P['snap_w']+2*P['snap_c'])} x {n(P['snap_h']+2*P['snap_c'])} through the skin at x {n(P['ucb_x'])} z {n(P['ucb_z'])} - a snap-in pigtail, so nothing is printed around it. Placed here to keep it out of a band with any other opening: nearest is {n(26.1)} away"
             if SNAP else
             "USB-C breakout rails; the port opening is through the skin below them"),
         (5, f"cell platform at depth {n(P['rec_back'])}, level with the back of the recess floor so the cell does not straddle the step, with a {n(P['bat_fence'])} fence"),
-        (7, f"divider / wiring perfboard {n(P['perf_w'])} x {n(P['perf_h'])} - 11 x 4 holes of 0.1 inch strip - on four standoff pads. The band above the driver board is {n(P['cav_z1']-P['drv_z1'])} tall"
-            if (BARE and PERF) else "not fitted"),
+        *([(7, f"divider / wiring perfboard {n(P['perf_w'])} x {n(P['perf_h'])} - 11 x 4 holes of 0.1 inch strip - on four standoff pads. The band above the driver board is {n(P['cav_z1']-P['drv_z1'])} tall")]
+          if (BARE and PERF) else []),
         (6, "the four corner screw holes, counterbored" if BARE else "module retention pad"),
-    ], cw=44)
+        (8, f"the register extension, {n(P['stand_reg_w'])} wide, FLOORS the shallow end of the recess. It plugs a relief in the frame {n(P['reg_fit'])} larger, so a gap runs all round it - which is why it STOPS at z {n(P['reg_ext_z0'])}, clear of the {n(P['chf_bite'])} the rear chamfer takes off the back face. Lower, and that gap opens through the chamfer into the frame's end wall"),
+    ], cw=50)
     s.titleblock(TBX, TBY, 96, 18, "BACK COVER", 5, 8, "1:1")
     return s.render("s5")
 
 
 # ============================================================ SHEET 6
 def sheet6():
-    """LEG & PIVOT.  Four views, because the stand's features span two orders of
-    magnitude: the leg is 55 long and the detent seat is 0.12 deep.  View D is
-    the one that carries the detent; nothing at 4:1 can show a 0.12 pocket."""
+    """LEG & PIVOT.  Three views: the leg flat, the pivot in section, and the pin
+    socket across the pocket.  The leg has no detent - the stop makes the deployed
+    pose and the latch lip holds the folded one - so the pocket floor in view B is
+    a plain flat face."""
     s = mk()
     bore = P["pin_d"]+P["pin_fit"]
     hw, hz = P["leg_w"]/2, P["heel_z"]
     fr, L  = P["foot_r"], P["leg_len"]
-    nr     = P["det_R"] - P["nub_r"]
-    tr     = P["det_trk_r"]
-    hb     = math.sqrt(max(tr*tr - piv_h*piv_h, 0.0))
 
     # ---------------------------------------------- A: the leg, printed flat
     lx, ly = 30, 32
@@ -964,20 +1000,14 @@ def sheet6():
            f'A{fr},{fr} 0 0 1 {lx-hw:.2f},{ly+L-fr:.2f} Z', "part")
     s.line(lx-hw, ly+(piv_z-P["shl_z0"]), lx+hw, ly+(piv_z-P["shl_z0"]), "hid")
     s.circ(lx, ly, bore, "cut")
-    # nub F sits on the pivot, nub D at -dep_ang from straight down - which puts it
-    # on the HEEL side, i.e. towards ly-, not down the leg
-    for a in (0.0, -DEP):
-        zn = nr*math.sin(math.radians(a))
-        s.line(lx-hw, ly+zn, lx+hw, ly+zn, "hid")
     s.line(lx, ly-hz-6, lx, ly+L+8, "cl")
     s.line(lx-hw-6, ly, lx+hw+6, ly, "cl")
     s.dimv(ly, ly+L, lx-hw-11, n(L), ext_from=lx)
     s.dimv(ly-hz, ly, lx+hw+9, n(hz), ext_from=lx)
     s.dimh(lx-hw, lx+hw, ly-hz-6, n(P["leg_w"]), ext_from=ly-hz)
-    s.bal(lx+P["pin_d"]/2, ly, 4, lx+hw+9, ly+10)
-    s.bal(lx, ly+L-1, 5, lx-hw-9, ly+L-4)
-    s.bal(lx-hw, ly-hz+1.6, 7, lx-hw-13, ly-hz-3)
-    s.bal(lx+hw, ly+(piv_z-P["shl_z0"]), 9, lx+hw+10, ly+(piv_z-P["shl_z0"])+7)
+    s.bal(lx+P["pin_d"]/2, ly, 3, lx+hw+9, ly+10)
+    s.bal(lx, ly+L-1, 4, lx-hw-9, ly+L-4)
+    s.bal(lx+hw, ly+(piv_z-P["shl_z0"]), 6, lx+hw+10, ly+(piv_z-P["shl_z0"])+7)
 
     # ------------------------------------- B: section at the pivot, 4:1
     SC6 = 4.0
@@ -997,8 +1027,6 @@ def sheet6():
     s.hatch(sx(P["rec_back"]), sy(zhi), (D6-P["rec_back"])*SC6, (zhi-rec_top)*SC6)
     s.line(sx(D6), sy(zhi), sx(D6), sy(zlo), "edge")
     s.txt(sx(D6)+3, sy(zhi)+4, "back face", "note", "start", 2.5)
-    s.path(f'M{sx(rec_y0):.2f},{sy(piv_z-hb):.2f} '
-           f'A{tr*SC6:.2f},{tr*SC6:.2f} 0 0 0 {sx(rec_y0):.2f},{sy(piv_z+hb):.2f}', "cut")
     t2 = P["leg_t"]/2
     zl_flat = (piv_h - math.cos(math.radians(DEP))*t2) / math.sin(math.radians(DEP))
     yl_heel = (math.sin(math.radians(DEP))*hz - piv_h) / math.cos(math.radians(DEP))
@@ -1022,14 +1050,11 @@ def sheet6():
           "dimtxt", "start", 3.2)
     s.dimh(sx(rec_y0), sx(piv_y), sy(zlo)+10, n(piv_h), ext_from=sy(piv_z))
     s.dimh(sx(rec_y0), sx(D6), sy(zlo)+19, n(P["rec_dep"]), ext_from=sy(zlo)+2)
-    s.bal(sx(rec_y0), sy(piv_z-2.2), 8, sx(rec_y0)-11, sy(zlo)-1)
-    # where view D magnifies
-    s.rect(sx(rec_y0-0.7), sy(piv_z+1.7), 0.7*SC6+2, 3.4*SC6, "warn")
-    s.txt(sx(rec_y0)-16, sy(piv_z+1.7)-2, "D", "vlabel", "start", 3.0)
+    s.bal(sx(rec_y0), sy(piv_z-2.2), 5, sx(rec_y0)-11, sy(zlo)-1)
 
     # ---------------------------- C: the pin socket, transverse, 3:1
     SCc = 3.0
-    cx, cy = 118, 114
+    cx, cy = 104, 138
     tx = lambda x: cx + x*SCc
     ty = lambda y: cy - (y - piv_y)*SCc
     s.txt(cx+10, cy-24, "C  ·  PIN SOCKET  ·  transverse at z "+n(piv_z)+"  ·  3:1", "vlabel")
@@ -1060,51 +1085,15 @@ def sheet6():
            ext_from=ty(P["rec_back"]))
     s.dimh(tx(-hw), tx(hw), ty(P["rec_back"])+17, n(P["leg_w"]), ext_from=ty(P["rec_back"]))
     s.bal(tx(P["ear_x0"]+P["ear_w"]/2), ty(piv_y-0.8), 1, tx(rec_w/2+wallx)-2, ty(piv_y)-13)
-    s.bal(tx(-hw+1), ty(piv_y+t2), 3, tx(-rec_w/2-wallx-5), ty(piv_y)-11)
-
-    # ------------------------- D: the detent, 20:1.  The whole point of it.
-    SCd = 16.0
-    dx, dy = 38, 150
-    ez = lambda z: dx + (z - piv_z)*SCd
-    ey = lambda y: dy - (y - rec_y0)*SCd
-    s.txt(dx, dy-32, "D  ·  DETENT  ·  16:1", "vlabel")
-    s.txt(dx, dy-27.5, "seat and arc track, leg FOLDED", "note", size=2.5)
-    zw = 1.35
-    # cover material below the floor / arc
-    s.path(f'M{ez(-zw+piv_z):.2f},{ey(rec_y0):.2f} '
-           f'L{ez(piv_z-hb):.2f},{ey(rec_y0):.2f} '
-           f'A{tr*SCd:.2f},{tr*SCd:.2f} 0 0 0 {ez(piv_z+hb):.2f},{ey(rec_y0):.2f} '
-           f'L{ez(zw+piv_z):.2f},{ey(rec_y0):.2f} '
-           f'L{ez(zw+piv_z):.2f},{ey(rec_y0-1.1):.2f} '
-           f'L{ez(-zw+piv_z):.2f},{ey(rec_y0-1.1):.2f} Z', "part")
-    s.hatch(ez(-zw+piv_z), ey(rec_y0-0.75), 2*zw*SCd, 0.35*SCd)
-    # the seat
-    s.rect(ez(piv_z-P["det_iw"]/2), ey(rec_y0-P["det_trk_r"]+piv_h),
-           P["det_iw"]*SCd, (P["det_seat_r"]-tr)*SCd, "cut")
-    # the nub sitting in it
-    s.circ(ez(piv_z), ey(piv_y-nr), 2*P["nub_r"]*SCd, "part")
-    s.line(ez(-zw+piv_z), ey(rec_y0), ez(zw+piv_z), ey(rec_y0), "hid")
-    s.line(ez(piv_z), dy-26, ez(piv_z), ey(rec_y0-1.1)+4, "cl")
-    s.dimv(ey(rec_y0), ey(rec_y0-(tr-piv_h)), ez(-zw+piv_z)-7, n(tr-piv_h),
-           ext_from=ez(piv_z-hb))
-    s.dimv(ey(rec_y0-(tr-piv_h)), ey(rec_y0-(P["det_seat_r"]-piv_h)),
-           ez(zw+piv_z)+8, n(P["det_seat_r"]-tr), ext_from=ez(piv_z+P["det_iw"]/2))
-    s.dimh(ez(piv_z-P["det_iw"]/2), ez(piv_z+P["det_iw"]/2), ey(rec_y0-1.1)+8,
-           n(P["det_iw"]), ext_from=ey(rec_y0-1.1))
-    s.bal(ez(piv_z+P["det_iw"]/2), ey(rec_y0-(tr-piv_h)), 6, ez(zw+piv_z)+15, ey(rec_y0-1.1)+2)
-    s.bal(ez(piv_z), ey(piv_y-nr-P["nub_r"]), 7, ez(zw+piv_z)+15, ey(rec_y0)-13)
-    s.bal(ez(piv_z-hb*0.8), ey(rec_y0-0.15), 2, ez(-zw+piv_z)-6, ey(rec_y0)-13)
+    s.bal(tx(-hw+1), ty(piv_y+t2), 2, tx(-rec_w/2-wallx-5), ty(piv_y)-11)
 
     s.notes(178, 18, [
-        (1, f"pin socket through each EAR, {n(P['ear_w'])} thick, standing inside the pocket. Bore dia {n(bore)}, mouth {n(bore*P['ear_mouth'])} across: the pin snaps past the lip. On ears, not bored through the pocket walls - outward, the mouth could only be reached from outside, which breaks the back face"),
-        (2, f"detent track: an ARC of R{n(tr)} about the pin, {n(tr-piv_h)} below the recess floor at its deepest, so a nub rides it at constant depth"),
-        (3, f"leg {n(P['leg_w'])} wide, set by the pocket: {n(rec_w)} less two {n(P['ear_w'])} ears and {n(P['rec_clr'])} each. Off the ears, {n(P['finger_g'])} is open either side the whole length - the finger access"),
-        (4, f"dia {n(bore)} axle hole through the leg"),
-        (5, f"foot R{n(P['foot_r'])} in plan"),
-        (6, f"THE SEAT - one pocket, {n(P['det_iw'])} wide, R{n(P['det_seat_r'])} from the pin, directly below it. Both nubs share it: whichever points straight down is at the bottom of its arc"),
-        (7, f"two nubs, R{n(P['nub_r'])} ridges across the full width, at 0 and -{n(DEP)} deg from straight down, crests at R{n(P['det_R'])}. Preload {n(P['nub_pre'])} is the friction, the {n(P['det_click'])} climb out of the seat is the click"),
-        (8, f"THE STOP: at {n(DEP)} deg a {n(3.07)} x {n(P['leg_w'])} flat on the heel lands on the recess floor. Load runs leg - heel - cover in COMPRESSION"),
-        (9, f"the taper is ONE-SIDED and finishes at z {n(P['shl_z0'])}: {n(P['leg_t'])} above, {n(P['leg_tf'])} below"),
+        (1, f"pin socket through each EAR, {n(P['ear_w'])} thick, standing inside the pocket. Bore dia {n(bore)}, mouth {n(bore*P['ear_mouth'])} across: the pin snaps past the lip and is then retained by it. On ears, not bored through the pocket walls - outward, the mouth could only be reached from outside, which breaks the back face"),
+        (2, f"leg {n(P['leg_w'])} wide, set by the pocket: {n(rec_w)} less two {n(P['ear_w'])} ears and {n(P['rec_clr'])} each. Off the ears, {n(P['finger_g'])} is open either side the whole length - the finger access"),
+        (3, f"dia {n(bore)} axle hole through the leg"),
+        (4, f"foot R{n(P['foot_r'])} in plan"),
+        (5, f"THE STOP: at {n(DEP)} deg a {n(3.07)} x {n(P['leg_w'])} flat on the heel lands on the recess floor. Load runs leg - heel - cover in COMPRESSION. There is no detent: the floor is a plain flat face and the leg swings free between the poses"),
+        (6, f"the taper is ONE-SIDED and finishes at z {n(P['shl_z0'])}: {n(P['leg_t'])} above, {n(P['leg_tf'])} below"),
     ], cw=42)
     s.titleblock(TBX, TBY, 96, 18, "LEG & PIVOT", 6, 8, "SEE VIEWS")
     return s.render("s6")

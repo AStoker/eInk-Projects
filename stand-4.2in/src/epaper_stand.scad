@@ -207,6 +207,22 @@ chg_part = "bq25185";
 chg_w = (chg_part == "bq25185") ? 32.0 : 25.4;
 chg_h = (chg_part == "bq25185") ? 26.3 : 20.3;
 chg_t = 7.2;                                   // board + USB-C jack, off the proto face
+// ---- the charger's four standoffs.  They are SCREW POSTS: an M2 heat-set
+// insert goes into each, so the post's height is DERIVED from the insert it has
+// to swallow plus the skin left behind it - see chg_stand.  The pads they
+// replaced stood 0.5 proud of the register face, which is nothing to melt into.
+chg_ins_d   = 2.9;    // bore for a 3.2 x 4.0 M2 insert: under the OD, so the
+                      //   knurl has wall to bite.  MEASURE YOURS
+chg_ins_l   = 4.0;    // ... its length
+chg_ins_rel = 1.0;    // extra bore past it, for the plastic the insert displaces
+chg_skin    = 1.2;    // back-face skin left behind the bore.  The bore is blind:
+                      //   the back face carries no opening for the charger
+chg_boss_d  = 6.5;    // post diameter -> 1.8 of wall around the bore
+// ASSUMED, like adapt_hole: 3.5 in from each edge of the board.  MEASURE THE
+// ACTUAL BREAKOUT - inserts are unforgiving about hole spacing in a way that
+// foam tape was not.
+chg_hx = chg_w - 7.0;   // insert centres, across the short axis
+chg_hz = chg_h - 7.0;   // ... and along the long axis
 // ---- module 8-pin header keep-out.  NOT FITTED on this build (confirmed by
 // Andy and by the Rev 3 schematic): the panel's own 24-pin FPC goes straight
 // into the socket on the driver board, so nothing stands off the back of the
@@ -301,28 +317,12 @@ rib_seg      = 15.0;  // segment length, each side
 // the swing stays inside a right angle; past 90 it would rotate through the plane
 // instead, and the deepest point of its arc would be inside the cover.
 //
-// ON TOP of the stop there is a detent, and its geometry is worth stating because
-// the obvious version does not work.  A single nub at a fixed leg angle traces an
-// arc about the pin, so it is DEEPEST MID-STROKE and shallowest at both ends: it
-// can never drop into a pocket at each end.  So instead:
+// THE LEG SWINGS FREE between the two poses.  There is no detent: the stop is what
+// makes the deployed pose, gravity and the display's weight are what hold the leg
+// in it, and the pocket floor is left flat and unbroken - one seat, one arc track
+// and two nubs less to print and tune.
 //
-//   ONE SEAT, TWO NUBS.  The seat is a single pocket in the recess floor directly
-//   below the pin.  The leg carries two nubs, at 0 and -dep_ang from straight-down,
-//   each at radius det_R.  Whichever nub is pointing straight down is at the bottom
-//   of its arc and sits in that one pocket - nub F when folded, nub D when deployed.
-//
-//   AND THE TRACK BETWEEN THEM IS AN ARC, not a flat.  This is not a detail: a nub
-//   at fixed radius sweeps a circle about the pin, so against a FLAT floor it is
-//   interfering everywhere except at one angle - the swept check showed exactly that,
-//   a 0.09 mm rub at every step of the stroke.  Cut the track as a cylinder about the
-//   pin and the nub rides at constant depth, so nub_pre is a chosen preload rather
-//   than an accident of where in the stroke you happen to be.
-//
-//   det_click = det_seat + nub_pre is then the climb out of the seat, and the
-//   compliance that allows it is the pin's free play plus the socket lip, so
-//   det_click wants to stay near pin_fit.
-//
-// And what holds the leg SHUT is lip_h: a small lip across the mouth of the recess
+// What holds the leg SHUT is lip_h: a small lip across the mouth of the recess
 // near the foot.  The tip tucks under it, and because that is piv_z - lip_z from the
 // pin, releasing it only asks the leg to bow lip_h over that length.
 //
@@ -340,9 +340,9 @@ leg_tf   = 1.0;     // thickness at the tip.  The taper is ONE-SIDED - the back 
 foot_r   = 4.0;     // foot corner radius, in plan
 heel_z   = 4.0;     // how far the heel reaches past the pin.  Longer = more flat to
                     //   bear on, but it must stay inside rec_top through the sweep.
-pin_d    = 2.0;     // pin, snapped into sockets in the recess side walls
-pin_fit  = 0.10;    // ... and its clearance.  ALSO the detent's compliance budget:
-                    //   this is how far the leg can lift to let a nub out of the seat.
+pin_d    = 2.0;     // pin, snapped into sockets on ears inside the pocket
+pin_fit  = 0.10;    // ... and its clearance: a running fit, on the leg's bore and
+                    //   on the sockets alike
 rec_dep  = 4.5;     // recess depth below the back face
 rec_shl  = 1.4;     // ... where solid frame is behind it (below cav_z0), where a
                     //   deep recess would leave no floor at all
@@ -363,22 +363,6 @@ rec_floor= 1.8;     // THE POCKET'S FLOOR, and it has to be built: see recess_bo
                     //   and the platform's start there was a 7.75 mm band of pure
                     //   hole.  Sets rec_back, and so the depth the boards get across
                     //   the pocket band.
-det_tot  = 0.35;    // how far a nub crest reaches past the heel's flat.  Keep it
-                    //   SMALL: the flat is meant to take the load, and a nub that
-                    //   bottoms before the flat lands would lift the flat off.
-det_iw   = 0.9;     // seat width along the long axis.  Sets how many degrees either
-                    //   end of the stroke the detent is engaged over.
-det_seat = 0.12;    // how much DEEPER the seat is than the track.  THE CLICK.
-                    //   PRINT-TUNE: no click, raise it; too stiff to fold, drop it.
-nub_pre  = 0.05;    // nub interference against the track, i.e. THE FRICTION that
-                    //   holds the leg wherever it is put.  PRINT-TUNE.  Won't move,
-                    //   drop it; flops around, raise it 0.02 at a time.
-nub_r    = 0.35;    // nub ridge radius.  Also sets how far apart the two nubs land,
-                    //   which must stay wider than det_iw or they act as one ridge.
-                    //   Must stay under det_iw/2 or the nub cannot enter the seat.
-nub_root = 0.5;     // how far INSIDE the leg's front face each nub is rooted.  A
-                    //   nub whose crest circle clears that face exports as its own
-                    //   loose solid, so this is not cosmetic.
 // FINGER ACCESS comes free now.  The ears are only ear_len long, so away from the
 // pivot the leg sits in the full rec_w with (rec_w - leg_w)/2 open either side of
 // it, the whole length, at the full pocket depth.  There is no separate notch band
@@ -408,7 +392,14 @@ pk_floor_t_legacy = 1.8;   // (retired: the old pocket floor)
 carrier_fit = true;
 carrier_w = 30.0; carrier_h = 70.0; carrier_t = 1.6;
 hdr_h = 8.5;        // female header body: driver's underside to the carrier face
-carrier_pad = 4.5;  // standoff pad diameter under each carrier corner
+// THE BOARD STANDS OFF THE COVER.  The female headers are soldered from the far
+// side, so clipped pin tails and their solder fillets stand proud of the face
+// that lands on the cover.  carrier_lift is the air left under the board for
+// them; the pad carries the board and the peg carries on through its hole.
+// It is spent out of the driver column's depth budget - see DEPTH BUDGET.
+carrier_lift = 2.5; // air under the board, for the solder joints
+carrier_pad = 4.0;  // standoff pad diameter under each carrier corner.  Bounded
+                    //   by the same keep-out as the peg: 2*carrier_pin
 // MEASURED off the board: four dia 2.0 mounting holes, 24 x 64 edge-to-edge,
 // which is 26 x 66 CENTRE to centre and lands 2.0 in from each edge of the
 // 30 x 70 board - so the board the model already assumed is the board in hand.
@@ -556,8 +547,12 @@ elec_z0 = cav_z0 + pad_h + 2.0;
 carrier_z0 = elec_z0;
 carrier_z1 = carrier_z0 + carrier_h;
 carrier_cz = (carrier_z0 + carrier_z1)/2;
-carrier_back = elec_back;                         // rests on the register face
+carrier_back = elec_back - carrier_lift;          // on its four pads
 carrier_face = carrier_back - carrier_t;
+// THE ROOM THE DRIVER COLUMN HAS: from the glass plane back to the face the
+// carrier lands on.  carrier_lift is spent out of it, so it is this and not
+// elec_back - mod_back that drv_stack has to fit inside.
+drv_room = (carrier_fit ? carrier_back : elec_back) - mod_back;
 // ---- driver board, on the carrier, positioned so the 24-pin socket on its -X
 // edge lines up with the middle of the ribbon slot.  Then the tail plugs
 // straight in and no FPC extension is needed.
@@ -621,7 +616,13 @@ bat_x0 = bat_cx - bat_w/2;
 // the charger is narrow enough to sit inboard of the corner posts, so it can
 // run past them in Z
 chg_x_c = cav_x1 - chg_w/2 - 1.0;
-chg_back = elec_back - 0.5;
+// The post height is not chosen, it is what is left once the insert bore and the
+// skin behind it have been taken out of the depth: bore from the board's seat
+// toward the back face, stop chg_skin short of it, and chg_back is wherever that
+// puts the seat.
+chg_bore  = chg_ins_l + chg_ins_rel;          // blind bore depth
+chg_back  = depth - chg_skin - chg_bore;      // the face the charger lands on
+chg_stand = elec_back - chg_back;             // ... how far that is off the register
 proto_x0 = chg_x_c - chg_w/2;  proto_x1 = chg_x_c + chg_w/2;   // kept for the docs
 proto_z0 = bat_cz + bat_h/2 + bat_clr + col_gap;
 proto_z1 = proto_z0 + chg_h;
@@ -688,9 +689,9 @@ scr_pos = bare_panel
   : [[scr_x, 14.0], [scr_x, Zc], [scr_x, H-14.0]];
 scr_z = [14.0, Zc, H - 14.0];            // legacy, still used by the drawings
 // ---- the stand.  Everything here is DERIVED: piv_y from leg_t (flushness),
-// piv_z from leg_len and foot_z, the whole detent from dep_ang and det_tot, the lean
-// from all of them.  Two parameters in this file have already drifted from what they
-// were meant to equal (rib_off, det_span), so nothing about the stand is typed twice.
+// piv_z from leg_len and foot_z, the heel's flat from dep_ang, the lean from all of
+// them.  A parameter in this file has already drifted from what it was meant to
+// equal (rib_off), so nothing about the stand is typed twice.
 piv_z    = leg_len + foot_z;           // pin, up from the bottom edge
 piv_y    = depth - leg_t/2;            // ... and its depth: FLUSH folded leg
 piv_h    = piv_y - rec_y0;             // pin above the recess floor (= rec_dep-leg_t/2)
@@ -704,26 +705,27 @@ tap_z    = shl_z0 + 7.5;                // ... so the taper must be FINISHED by
 // back through the deployed rotation.  Nothing else needs to be said about it: the
 // cut in leg_shape() is that sentence in geometry.
 rec_top  = piv_z + heel_z + 1.5;       // recess, top end: clears the heel's sweep
-rec_z0   = foot_z - rec_clr - 1.0;     // ... and its bottom end
+rec_z0   = foot_z - rec_clr;           // ... and its bottom end: the folded foot
+                                       //   tip stops at foot_z, so this is rec_clr
+                                       //   below it and no lower.  Every mm further
+                                       //   down is a mm nearer the rear chamfer -
+                                       //   see reg_ext_z0.
+// THE POCKET'S FLOOR PLATE MUST DIE IN SOLID FRAME.  It is a plug: the cover
+// carries it and the frame is relieved reg_fit larger to receive it, so there is a
+// reg_fit gap all round it.  Run it down to the bottom edge and that gap comes out
+// through the REAR CHAMFER, which has already taken chf_bite off both parts' back
+// faces there - and the gap then leads straight into the frame's hollow end wall.
+// So the plate stops chf_bite + margin short, and the frame closes its end.
+chf_bite   = rear_chf - cover_t;       // what the chamfer takes off the frame's
+                                       //   back face at the bottom edge
+reg_fit    = 0.15;                     // the plate's clearance in its relief
+reg_ext_z0 = rec_z0 - 0.6;             // the plate's bottom end
+stand_reg_w = rec_w + 2*rec_wall;      // ... and its width: the pocket plus its walls
+reg_seal   = (reg_ext_z0 - reg_fit) - chf_bite;   // frame left below the relief
 leg_w    = rec_w - 2*(ear_w + rec_clr);   // the leg fits BETWEEN the ears
 pin_len  = rec_w;                      // ... and the pin spans the whole pocket
 ear_x0   = rec_w/2 - ear_w;            // ear inner face
 finger_g = (rec_w - leg_w)/2;          // open either side of the leg, off the ears
-// The detent.  det_R is the nub crest radius; a nub pointing straight down bottoms
-// det_tot into the seat, and one at dep_ang/2 off vertical rides det_trk, which is
-// the relieved track.  det_click is the difference at the seat's edge - the climb.
-det_R    = piv_h + det_tot;            // nub crest radius about the pin
-det_trk_r= det_R - nub_pre;            // ARC track radius - tighter by the preload
-det_seat_r=det_R + det_seat;           // ... and the seat, deeper still
-det_click= det_seat + nub_pre;         // THE snap: the climb out of the seat
-det_th   = asin(det_iw/(2*det_R));     // leg angle at which a nub leaves the seat
-det_band = sqrt(det_trk_r*det_trk_r - piv_h*piv_h);  // where the arc meets rec_y0,
-                                       //   which bounds the relief on its own
-det_zc   = det_R*sin(dep_ang/2);       // where a nub sits at mid-stroke (drawings)
-// The pocket floor is thinnest under the detent SEAT, not under the pocket floor -
-// the seat is the deepest thing cut into it.  This is what must stay solid, and it
-// is defined here rather than with rec_z0 because it needs det_seat_r.
-rec_floor_min = (piv_y - det_seat_r) - rec_back;
 // stance, by the same maths standing() uses: py is the contact edge
 py_edge  = depth - rear_chf;
 foot_zd  = piv_z - leg_len*cos(dep_ang);          // deployed foot, up from the edge
@@ -874,7 +876,7 @@ module frame(){
             }
         }
         prism(cav_w+2.0, cav_h+2.0, cav_r+1.0, 1.1, cav_cx, Zc, body_d-1.0);
-        stand_register(0.15);   // ... and its local extension down the pocket
+        stand_register(reg_fit);   // ... and its local extension down the pocket
         // and the fastener holes last, so they go through the posts
         for(sp=scr_pos) translate([sp[0],body_d+0.1,sp[1]]) rotate([90,0,0])
             if (insert_fit) {
@@ -907,14 +909,29 @@ module corner_posts(){
 // has to dodge them.
 lgt_w  = cav_w - 8.0;
 lgt_y0 = mod_back + 2.0;
+// ... and it STOPS EITHER SIDE OF THE STAND BAND.  The bottom pocket's z band is
+// the band the leg recess runs through, and the recess's floor there is the 1.0 mm
+// register plate on the cover.  Hollowed out behind that plate, the plate is the
+// only thing between the open pocket and the inside of the frame; left solid, the
+// frame backs it.  lgt_rib is the material kept between the pocket and the band.
+lgt_rib = 2.0;
+lgt_band = stand_reg_w/2 + reg_fit + lgt_rib;
+module lgt_pocket(z0, z1, x0, x1){
+    if (z1 - z0 > 3.0 && x1 - x0 > 3.0)
+        translate([(x0+x1)/2, lgt_y0, (z0+z1)/2]) xzext(body_d - lgt_y0 + 0.1)
+            rrect(x1 - x0, z1 - z0, 1.5);
+}
 module lightening(){
     if (bare_panel)
         for (sz=[-1,1]) {
             z0 = sz > 0 ? cav_z1 + 2.0 : 2.5;
             z1 = sz > 0 ? H - 2.5      : cav_z0 - 2.0;
-            if (z1 - z0 > 3.0)
-                translate([cav_cx, lgt_y0, (z0+z1)/2]) xzext(body_d - lgt_y0 + 0.1)
-                    rrect(lgt_w, z1 - z0, 1.5);
+            x0 = cav_cx - lgt_w/2;  x1 = cav_cx + lgt_w/2;
+            if (z0 < shl_z0 + 0.05 && z1 > reg_ext_z0 - reg_fit) {
+                lgt_pocket(z0, z1, x0, -lgt_band);   // split either side of the band
+                lgt_pocket(z0, z1,  lgt_band, x1);
+            } else
+                lgt_pocket(z0, z1, x0, x1);
         } }
 
 // ================================================================= cover
@@ -924,12 +941,11 @@ module lightening(){
 // extended locally, over the pocket's footprint only, and the frame is relieved to
 // match.  Called with extra>0 it grows, which is how the frame's relief is made
 // slightly larger than the plate that has to enter it.
-stand_reg_w = rec_w + 2*rec_wall;
 module stand_register(extra = 0){
-    translate([-(stand_reg_w/2 + extra), body_d - reg_step - extra, rec_z0 - 1.0 - extra])
+    translate([-(stand_reg_w/2 + extra), body_d - reg_step - extra, reg_ext_z0 - extra])
         cube([stand_reg_w + 2*extra,
               reg_step + 2*extra,
-              (shl_z0 + 0.05) - (rec_z0 - 1.0) + extra]);
+              (shl_z0 + 0.05) - reg_ext_z0 + extra]);
 }
 
 // THE SOLID THE POCKET IS BORED INTO.  Without this the pocket is not a pocket:
@@ -985,16 +1001,18 @@ module cover(){
             // ---- driver carrier.  The
             // driver itself is not held by the case at all - it plugs into
             // female headers on the carrier and the carrier is what is held.
-            // The register prism IS the pad - it is flat and continuous across the
-            // whole cavity - so all that is needed is the locating peg, rising
-            // from that face.  Kept under 2*carrier_pin across so it cannot foul
-            // the first header pin row.
+            // Each corner is a PAD carrying a PEG: the pad holds the board
+            // carrier_lift off the register face, which is the air the header
+            // solder joints on its underside need, and the peg carries on
+            // through the hole to locate it.  Both are kept under 2*carrier_pin
+            // across so neither can foul the first header pin row.
             if (carrier_fit)
                 for(sx=[-1,1],sz=[-1,1])
                     translate([carrier_cx+sx*carrier_hx/2, elec_back,
-                               carrier_cz+sz*carrier_hz/2]) rotate([90,0,0])
+                               carrier_cz+sz*carrier_hz/2]) rotate([90,0,0]) {
+                        cylinder(d=min(carrier_pad, 2*carrier_pin), h=carrier_lift);
                         cylinder(d=min(carrier_hole-carrier_peg, 2*carrier_pin),
-                                 h=carrier_t+1.2);
+                                 h=carrier_lift+carrier_t+1.2); }
             else {
                 translate([drv_cx + drv_w/2+drv_clr+drv_rail/2-1.0, drv_back-2.6, drv_cz])
                     xzext(cov_in-drv_back+2.6) square([drv_rail, drv_h-1.0],center=true);
@@ -1008,12 +1026,12 @@ module cover(){
                 for(sx=[-1,1],sz=[-1,1])
                     translate([perf_cx+sx*(perf_w/2-2.5), cov_in, perf_cz+sz*(perf_h/2-2.5)])
                         rotate([90,0,0]) cylinder(d=4.0, h=cov_in-perf_back);
-            // ---- charger breakout: four standoff pads, foam tape or a strap
-            //      holds it.  No screw posts: the board's hole spacing is not
-            //      one of the numbers this model has measured.
+            // ---- charger breakout: four screw posts, each deep enough to
+            //      swallow an M2 heat-set insert and still leave chg_skin of
+            //      back face behind it.
             for(sx=[-1,1],sz=[-1,1])
-                translate([chg_x_c+sx*(chg_w/2-3.5), cov_in, chg_z+sz*(chg_h/2-3.5)])
-                    rotate([90,0,0]) cylinder(d=6.0, h=cov_in-chg_back);
+                translate([chg_x_c+sx*chg_hx/2, cov_in, chg_z+sz*chg_hz/2])
+                    rotate([90,0,0]) cylinder(d=chg_boss_d, h=cov_in-chg_back);
             // ---- battery platform + fence.  The cell spans x -7.65..36.35 and the
             // leg recess runs x -8..8, so the cell DOES cross the recess band and
             // would otherwise straddle its step.
@@ -1040,6 +1058,11 @@ module cover(){
             translate([drv_cx, drv_back-drv_t-0.15, (drv_z0+cav_z1+6)/2])
                 xzext(drv_t+0.3) square([drv_w+2*drv_clr, cav_z1+6-drv_z0],center=true);
 
+        // the insert bores, drilled from the seat toward the back face.  Blind:
+        // chg_skin of skin is left, so the back face stays unbroken.
+        for(sx=[-1,1],sz=[-1,1])
+            translate([chg_x_c+sx*chg_hx/2, chg_back - 0.01, chg_z+sz*chg_hz/2])
+                rotate([-90,0,0]) cylinder(d=chg_ins_d, h=chg_bore + 0.01);
         recess_cut();
         rear_port_cut();
         // clear space for the pigtail body itself: anything printed in the cover
@@ -1091,16 +1114,6 @@ module recess_cut(){
             // shallow section, over the frame's solid end wall
             translate([-rec_w/2, rec_shl_y, rec_z0])
                 cube([rec_w, rec_shl + 0.02, (cav_z0 + 0.5) - rec_z0]);
-            // The nub track, as an ARC about the pin, so a nub at fixed radius
-            // rides it at CONSTANT depth.  Cut as a full cylinder: everything
-            // above rec_y0 is already recess void, so the arc bounds itself and
-            // only reaches det_trk_r - piv_h below the floor.
-            translate([0, piv_y, piv_z]) rotate([0,90,0])
-                cylinder(r=det_trk_r, h=leg_w + 1.0, center=true, $fn=96);
-            // THE SEAT - one pocket, directly below the pin.  Both nubs use it:
-            // whichever is pointing straight down is at the bottom of its arc.
-            translate([-(leg_w + 1.0)/2, piv_y - det_seat_r, piv_z - det_iw/2])
-                cube([leg_w + 1.0, det_seat_r - piv_h + 0.01, det_iw]);
         }
         // ... less the latch lip: a bridge left across the mouth near the foot.
         // The leg's tip tucks under it and bows leg_len away from the pin to
@@ -1146,34 +1159,14 @@ module piv_sockets(){
 // leg-local: pin at the origin, body along -Z toward the foot, thickness in Y,
 // width in X.  At theta = 0 this frame IS the world frame, so -Y is toward the
 // recess floor and -Z is toward the bottom edge of the frame.
-// The leg's plan outline, used TWICE - once on the body and once on the nubs.  It
-// has to be the same solid both times: that is what makes their side faces the
-// same surface, so the union merges them instead of leaving three surfaces on one
-// edge (which is 23 non-manifold edges, invisible to every clash check).
+// The leg's plan outline: the body is drawn oversize in x and trimmed by this, so
+// every side face on the leg is the same surface and the union merges cleanly
+// instead of leaving three surfaces on one edge (invisible to every clash check).
 module leg_plan(){
     translate([0, 50, 0]) rotate([90,0,0]) linear_extrude(100) hull(){
         translate([-leg_w/2, 0]) square([leg_w, heel_z + 1]);
         translate([-leg_w/2 + foot_r, -leg_len + foot_r]) circle(r=foot_r);
         translate([ leg_w/2 - foot_r, -leg_len + foot_r]) circle(r=foot_r);
-    }
-}
-
-// The two detent nubs, at 0 and -dep_ang from straight down, each with its crest
-// at det_R.  Drawn OVERSIZE in x and trimmed by leg_plan().
-//
-// Each is HULLED back to a root inside the leg.  The crest circle alone sits at
-// det_R-2*nub_r = 2.15 from the pin while the front face is at leg_t/2 = 2.0, so a
-// bare cylinder floats 0.15 clear of the body and exports as its own loose solid.
-module leg_nubs(){
-    intersection(){
-        for (a = [0, -dep_ang])
-            rotate([a, 0, 0]) hull(){
-                translate([0, -(det_R - nub_r), 0]) rotate([0,90,0])
-                    cylinder(r=nub_r, h=leg_w + 2, center=true, $fn=96);
-                translate([0, -(leg_t/2 - nub_root), 0]) rotate([0,90,0])
-                    cylinder(r=nub_r, h=leg_w + 2, center=true, $fn=96);
-            }
-        leg_plan();
     }
 }
 
@@ -1207,16 +1200,9 @@ module leg_shape(){
                 // THE STOP: the recess floor, pulled back through the deployed
                 // rotation.  What is left of the heel is a flat that lands on that
                 // floor at exactly dep_ang - a face, not a tangent corner.
-                //
-                // The NUBS ARE ADDED AFTER THIS CUT, and must be.  Nub D sits at
-                // local z +1.43, on the heel side, and its crest is det_tot BEYOND
-                // the flat - which is the whole point of it.  Inside this cut the
-                // plane shaves that crest off flush and the deployed detent
-                // silently disappears.
                 rotate([-dep_ang, 0, 0])
                     translate([-leg_w, -50 - piv_h, -50]) cube([2*leg_w, 50, 100]);
             }
-            leg_nubs();
         }
         // the pin bore
         translate([-leg_w, 0, 0]) rotate([0,90,0])
@@ -1407,10 +1393,10 @@ echo(str("CROSSING THE SPLIT: the glass is on the FRAME, the driver on the COVER
                  " service loop, and the long FPC is what crosses the split")));
 echo(str("ADAPTER DEPTH COST: driver stack ",drv_stack," + adapter ",adapt_env,
          " = ",drv_stack+adapt_env," in front of each other, against ",
-         elec_back-mod_back," available -> ",
-         (drv_stack+adapt_env <= elec_back-mod_back) ? "fits"
-           : str("SHORT by ",drv_stack+adapt_env-(elec_back-mod_back),
-                 ".  depth ",depth," -> ",depth+(drv_stack+adapt_env-(elec_back-mod_back)),
+         drv_room," available -> ",
+         (drv_stack+adapt_env <= drv_room) ? "fits"
+           : str("SHORT by ",drv_stack+adapt_env-drv_room,
+                 ".  depth ",depth," -> ",depth+(drv_stack+adapt_env-drv_room),
                  " would cover it, or low-profile headers (hdr_h ",hdr_h,
                  " -> 5.5) buy back 3.0 of it")));
 echo(str("FPC ADAPTER: ", adapt_fit
@@ -1434,10 +1420,12 @@ echo(str("FPC ADAPTER: ", adapt_fit
                " FPC crosses the split")
          : "not fitted"));
 echo(str("DEPTH BUDGET in the driver column: stack ",drv_stack," measured (driver + female",
-         " sockets + carrier), room ",elec_back-mod_back," -> ",
-         (drv_stack <= elec_back-mod_back)
-           ? str("fits by ",elec_back-mod_back-drv_stack)
-           : str("SHORT by ",drv_stack-(elec_back-mod_back)),
+         " sockets + carrier), room ",drv_room," (the register face at ",elec_back,
+         " less the ",carrier_lift," the pads lift the board for its solder joints",
+         ", back to the glass plane at ",mod_back,") -> ",
+         (drv_stack <= drv_room)
+           ? str("fits by ",drv_room-drv_stack)
+           : str("SHORT by ",drv_stack-drv_room),
          " | the carrier misses the recess band (x +/-",rec_w/2," vs the carrier at ",
          carrier_cx-carrier_w/2," to ",carrier_cx+carrier_w/2,
          "), so it datums to the register face at ",elec_back,
@@ -1507,7 +1495,9 @@ echo(str("STAND: lever leg, swings ",dep_ang," deg | leg ",leg_len," long, ",
          " snapped into sockets in the recess walls, mouth ",
          (pin_d+pin_fit)*ear_mouth," across a ",pin_d+pin_fit," bore, through ",
          ear_w," ears INSIDE the pocket -> a ",pin_d," x ",pin_len,
-         " pin, which is exactly rec_w, so the pocket walls cap it"));
+         " pin, which is exactly rec_w, so the pocket walls cap it",
+         " | NO DETENT: the leg swings free between the poses, the stop makes the",
+         " deployed one and the latch lip holds the folded one"));
 echo(str("STOP: the heel reaches ",heel_z," past the pin and is cut by the recess",
          " floor pulled back through ",dep_ang," deg, so at ",dep_ang,
          " a FLAT lands on the floor - a face, not a tangent corner |",
@@ -1515,22 +1505,6 @@ echo(str("STOP: the heel reaches ",heel_z," past the pin and is cut by the reces
          " weight pushes it INTO the stop | swing is ",dep_ang,
          " < 90, which is what puts the heel ON the floor plane rather than",
          " through it"));
-echo(str("DETENT: ONE seat at z ",piv_z," (directly below the pin), ",det_iw,
-         " wide, and TWO nubs on the leg at 0 and -",dep_ang," deg, both at r ",
-         det_R,".  A nub at a fixed leg angle is DEEPEST mid-stroke, so one nub",
-         " could never seat at both ends - two nubs sharing one seat can, because",
-         " whichever points straight down is at the bottom of its arc | track is an",
-         " ARC of r ",det_trk_r," about the pin, concentric with the nubs' own",
-         " sweep, so a nub rides it at CONSTANT depth and nub_pre ",nub_pre,
-         " is a chosen preload",
-         " | seat r ",det_seat_r," -> click ",det_click," against pin_fit ",pin_fit,
-         " of free play plus the socket lip -> ",
-         det_click <= pin_fit*2 ? "in range; det_seat and nub_pre tune it"
-                                : "TOO STIFF - drop det_seat"));
-echo(str("DETENT ENGAGEMENT: a nub is in the seat for the first and last ",det_th,
-         " deg of the ",dep_ang," deg stroke | relief reaches z ",piv_z-det_band,
-         " to ",piv_z+det_band," and ",det_trk_r-piv_h," below the recess floor,",
-         " leaving ",piv_y-det_seat_r-rec_back," under the seat"));
 echo(str("FINGER ACCESS: the ears are only ",ear_len," long, so away from the pivot",
          " the leg sits in the full ",rec_w," with ",finger_g,
          " open either side of it, the whole length, at the full ",rec_dep,
@@ -1590,10 +1564,21 @@ echo(str("POCKET FLOOR: recess_boss() runs x +/-",rec_w/2+rec_wall," and z ",shl
          " deep pocket, so without the boss the cut goes through | below the step",
          " stand_register() extends the register down to z ",rec_z0-1.0,
          " so the shallow band keeps ",reg_step," behind it, and the frame is",
-         " relieved to match | thinnest floor is ",rec_floor_min,
-         " under the detent seat | boss reaches x ",
+         " relieved to match | the floor is flat and unbroken at ",rec_floor,
+         " the whole deep length - nothing is cut into it | boss reaches x ",
          -(rec_w/2+rec_wall),", carrier's near edge ",carrier_cx+carrier_w/2,
          " -> clears by ",abs(carrier_cx+carrier_w/2)-(rec_w/2+rec_wall)));
+echo(str("POCKET FLOOR PLATE: the cover's register extension runs z ",reg_ext_z0,
+         " to ",shl_z0+0.05," and the frame is relieved ",reg_fit,
+         " larger to take it, so there is a ",reg_fit," gap all round the plug",
+         " | the rear chamfer takes ",chf_bite," off the frame's back face at the",
+         " bottom edge, so the plate has to STOP ABOVE THAT or the gap comes out",
+         " through the chamfer and leads into the frame's end wall -> ",
+         reg_seal >= 0.5
+           ? str("ends in solid frame, ",reg_seal," of it below the relief")
+           : str("OPEN - only ",reg_seal," left; raise reg_ext_z0 or rec_z0"),
+         " | and the bottom lightening pocket is split either side of x +/-",
+         lgt_band," so the plate is backed by solid frame, not by a void"));
 echo(str("GLASS RIBS: ", bare_panel
          ? str("bottom rib SPLIT into two ",rib_seg," segments at x +/-",
                rec_w/2+rib_pocket_c," to +/-",rec_w/2+rib_pocket_c+rib_seg,
@@ -1623,12 +1608,13 @@ echo(str("REAR PORT: ", port_snap
 echo(str("CARRIER MOUNT: four dia ",carrier_hole," holes at ",carrier_hx," x ",carrier_hz,
          " centres (",carrier_hx-carrier_hole," x ",carrier_hz-carrier_hole,
          " edge to edge), ",(carrier_w-carrier_hx)/2," in from each edge of the ",
-         carrier_w," x ",carrier_h," board | pegs dia ",
-         min(carrier_hole-carrier_peg, 2*carrier_pin)," rising ",carrier_t+1.2,
-         " from the register face - the register IS the pad, it is flat right",
-         " across the cavity",
-         " | first header pin is ",carrier_pin," from the hole, so nothing on the peg",
-         " may exceed ",2*carrier_pin," across"));
+         carrier_w," x ",carrier_h," board | a dia ",min(carrier_pad, 2*carrier_pin),
+         " PAD ",carrier_lift," tall under each corner, carrying a dia ",
+         min(carrier_hole-carrier_peg, 2*carrier_pin)," PEG that stands ",
+         carrier_t+1.2," past the board face - so the board sits at ",carrier_back,
+         " with ",carrier_lift," of air under it for the header solder joints",
+         " | first header pin is ",carrier_pin," from the hole, so nothing on pad or",
+         " peg may exceed ",2*carrier_pin," across"));
 echo(str("DRIVER MOUNT: ", carrier_fit
          ? str("carrier ",carrier_w," x ",carrier_h," on four pegs, driver plugs into ",
                hdr_h," female headers | driver face to glass plane ",
@@ -1652,6 +1638,17 @@ echo(str("GLASS POCKET ",pan_w+2*pan_clr_w," x ",pan_h+2*pan_clr_h,
 echo(str("charger ",chg_part," ",chg_w," x ",chg_h," x ",chg_t,
          " | fits proto: ", (chg_w <= proto_w-2 && chg_h <= proto_h-2) ? "yes" : "NO",
          " | clear in front: ", proto_face - chg_t + proto_t - mod_back));
+echo(str("CHARGER POSTS: four dia ",chg_boss_d," posts at ",chg_hx," x ",chg_hz,
+         " centres (ASSUMED - measure the breakout), standing ",chg_stand,
+         " off the register face so the board lands at ",chg_back,
+         " | each takes an M2 heat-set insert: bore dia ",chg_ins_d," x ",chg_bore,
+         " (insert ",chg_ins_l," plus ",chg_ins_rel," relief), reaching depth ",
+         chg_back+chg_bore," against a back face at ",depth," -> ",
+         (depth - (chg_back+chg_bore) >= 1.0)
+           ? str(depth-(chg_back+chg_bore)," of skin left, the bore stays blind")
+           : "IT BREAKS THE BACK FACE - raise chg_skin",
+         " | wall round the bore ",(chg_boss_d-chg_ins_d)/2,
+         " | clear in front of the board: ",chg_back-chg_t-mod_back));
 if (mod_header) {
   echo(str("HEADER vs CELL: needs ",conn_h,", has ",cov_in-bat_t-mod_back,
            " -> ", (conn_h > cov_in-bat_t-mod_back)
@@ -1663,27 +1660,31 @@ if (mod_header) {
 
 // ---------------------------------------------------------------- checks
 // Render one of these and look for solid geometry.  READ THIS FIRST: the test is
-// POSITIVE VOLUME, not "is the result empty".  Two of these pairs share a face by
-// design, and intersection() returns that shared face as a zero-thickness sheet -
-// real geometry in the STL, real vertices, zero volume, no interference:
-//   frame_cover  - frame rear face and cover front face are both at y = body_d
-//   cover_board  - the board sits exactly on its standoffs
+// POSITIVE VOLUME, not "is the result empty", and two of these pairs report
+// geometry BY DESIGN:
+//   frame_cover  - the frame's rear face and the cover's front face are both at
+//                  y = body_d, so the intersection is a zero-thickness sheet:
+//                  real vertices, ZERO volume, no interference
+//   cover_board  - 16.70 mm3, which is the four carrier pegs standing through the
+//                  four holes they are there to fill.  mock_board() draws the
+//                  carrier as a plain slab, so the holes are not in the model and
+//                  the pegs read as solid.  Watch the NUMBER: 16.70 is the pegs,
+//                  anything above it is something else touching the boards.
 // Chasing either as a clash is a dead end (it cost a while once).
 // SECOND TRAP: when an intersection is empty OpenSCAD writes NO FILE, so a script
 // that reuses output paths silently re-reads the PREVIOUS check's result.  Delete
 // the output before every run or you will chase a clash that is not there.
-// State of the checks after the stand redesign:
-//   frame_cover and cover_board are ZERO-VOLUME touches by design - the frame's
-//   rear face and the cover's front face are both at body_d, and the board sits
-//   exactly on its standoffs.  Chasing either as a clash is a dead end.
-//   Everything else must be genuinely EMPTY.
+// State of the checks:
+//   frame_cover and cover_board report by design - see above.  Everything else
+//   must be genuinely EMPTY.
 //
 //   cover_legs is the one that matters, and it must be empty at EVERY chk_th, not
 //   just at 0 and dep_ang.  Both ends were clear once while the middle was 1.80 mm
-//   inside the cover; that is what the swept check exists to catch.
-//   stub_floor replaces the old wall_leg probe: it asks whether the stub is
-//   touching the recess floor at a given angle, which is how the stop and the two
-//   indents get verified rather than asserted.
+//   inside the cover; that is what the swept check exists to catch.  With no
+//   detent it is empty at every angle but 0, where it reports 6.91 mm3 - the latch
+//   lip's bite on the folded leg's tip, which is the interference the leg bows past.
+//   heel_floor is the one that proves the STOP: empty up to dep_ang, then linear in
+//   the over-travel, which is the signature of a FACE rotating into a plane.
 //   rec_frame is new and is the guard on the recess being too deep: the volume
 //   the recess needs must not reach into the frame.  frame_cover cannot
 //   substitute, because its by-design zero-volume touch would hide it.
@@ -1713,16 +1714,15 @@ if(chk=="heel_floor")   intersection(){
 // the cover does not fill it, the pocket is a hole into the interior.  This is the
 // one that was missing - rec_frame only asks whether the pocket reaches the FRAME,
 // which it did not, so nothing complained while 7.75 mm of it was open.
-// Each band is tested at ITS OWN floor: the deep section against rec_floor_min
-// (the detent seat cuts into the floor on purpose, so the nominal rec_floor is not
-// what has to be solid), the shallow section against the register alone.  Anything
-// the cover does not fill is a hole into the interior.
+// Each band is tested at ITS OWN floor: the deep section against rec_floor, the
+// shallow section against the register alone.  Anything the cover does not fill is
+// a hole into the interior.
 if(chk=="rec_floor_gap") difference(){
     union(){
         // max(...,0.1) on purpose: a non-positive slab would build no geometry and
         // the check would read EMPTY, which is the same word as "passes".
         translate([-rec_w/2, rec_back + 0.05, shl_z0 + 0.05])
-            cube([rec_w, max(rec_floor_min - 0.1, 0.1), rec_top - shl_z0 - 0.1]);
+            cube([rec_w, max(rec_floor - 0.1, 0.1), rec_top - shl_z0 - 0.1]);
         translate([-rec_w/2, body_d - reg_step + 0.05, rec_z0 + 0.05])
             cube([rec_w, max(reg_step + cover_t - rec_shl - 0.1, 0.1),
                   shl_z0 - rec_z0 - 0.1]);
@@ -1760,16 +1760,15 @@ if (part=="params") {
    ["leg_t",leg_t],["leg_tf",leg_tf],["foot_r",foot_r],["pin_d",pin_d],
    ["heel_z",heel_z],["tap_z",tap_z],
    ["piv_h",piv_h],["piv_z",piv_z],["piv_y",piv_y],
-   ["det_tot",det_tot],["det_R",det_R],["det_trk_r",det_trk_r],
-   ["det_seat",det_seat],["det_seat_r",det_seat_r],["nub_pre",nub_pre],
-   ["det_click",det_click],["det_th",det_th],["det_band",det_band],
-   ["det_zc",det_zc],["nub_r",nub_r],["shl_z0",shl_z0],
-   ["lip_h",lip_h],["lip_z",lip_z],["lip_w",lip_w],["nub_root",nub_root],
+   ["shl_z0",shl_z0],
+   ["lip_h",lip_h],["lip_z",lip_z],["lip_w",lip_w],
    ["rec_dep",rec_dep],["rec_shl",rec_shl],["rec_w",rec_w],["rec_clr",rec_clr],
-   ["rec_floor",rec_floor],["rec_wall",rec_wall],["rec_floor_min",rec_floor_min],["rec_y0",rec_y0],["rec_top",rec_top],["rec_z0",rec_z0],
+   ["rec_floor",rec_floor],["rec_wall",rec_wall],["rec_y0",rec_y0],["rec_top",rec_top],["rec_z0",rec_z0],
    ["rec_back",rec_back],["rec_shl_y",rec_shl_y],["py_edge",py_edge],
+   ["reg_ext_z0",reg_ext_z0],["reg_fit",reg_fit],["chf_bite",chf_bite],
+   ["reg_seal",reg_seal],["stand_reg_w",stand_reg_w],["lgt_band",lgt_band],
    ["ear_w",ear_w],["ear_len",ear_len],["ear_x0",ear_x0],["ear_mouth",ear_mouth],
-   ["det_iw",det_iw],["pin_len",pin_len],["finger_g",finger_g],
+   ["pin_len",pin_len],["finger_g",finger_g],
    ["elec_back",elec_back],["reg_step",reg_step],
    ["lean",lean],["footprint",footprint],["stand_ok",stand_ok?1:0],
    ["bat_w",bat_w],["bat_h",bat_h],["bat_t",bat_t],["bat_x0",bat_x0],
@@ -1791,6 +1790,9 @@ if (part=="params") {
    ["ucb_x",ucb_x],["ucb_z",ucb_z],["ucb_w",ucb_w],["ucb_l",ucb_l],["ucb_t",ucb_t],
    ["port_w",port_w],["port_h",port_h],
    ["chg_part",chg_part],["chg_w",chg_w],["chg_h",chg_h],["chg_t",chg_t],["chg_z",chg_z],["chg_x",proto_x0+chg_w/2+1],
+   ["chg_hx",chg_hx],["chg_hz",chg_hz],["chg_boss_d",chg_boss_d],["chg_ins_d",chg_ins_d],
+   ["chg_ins_l",chg_ins_l],["chg_bore",chg_bore],["chg_back",chg_back],["chg_stand",chg_stand],
+   ["chg_skin",chg_skin],
 ["flash_port",flash_port?1:0],["flash_wall",flash_wall],["flash_x",flash_x],["flash_y0",flash_y0],["flash_y1",flash_y1],["usb_w",usb_w],
    ["bare_panel",bare_panel?1:0],["perf_fit",perf_fit?1:0],["perf_w",perf_w],["perf_h",perf_h],
    ["perf_cx",perf_cx],["perf_cz",perf_cz],["perf_t",perf_t],
@@ -1799,6 +1801,7 @@ if (part=="params") {
    ["carrier_peg",carrier_peg],["carrier_pin",carrier_pin],
    ["carrier_cx",carrier_cx],["carrier_cz",carrier_cz],["carrier_z0",carrier_z0],["carrier_z1",carrier_z1],
    ["carrier_back",carrier_back],["carrier_face",carrier_face],["carrier_pad",carrier_pad],
+   ["carrier_lift",carrier_lift],["drv_room",drv_room],
    ["pin_fit",pin_fit],["snap_c",snap_c],
    ["scr_wall",scr_wall],["carrier_t",carrier_t],["hdr_h",hdr_h],
    ["port_snap",port_snap?1:0],["snap_w",snap_w],["snap_h",snap_h],["snap_d",snap_d],

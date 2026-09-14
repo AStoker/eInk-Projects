@@ -115,13 +115,15 @@ Three of them are deliberately larger than the part:
 
 The whole stack has one tight dimension and it is the depth budget: the driver
 board, its female sockets and the carrier measure **16.0** back-face to tallest
-point, against 19.95 available. Everything else has room.
+point, against **17.45** available — the register face gives 19.95 and
+`carrier_lift` takes 2.5 of it to clear the solder joints under the carrier.
+Everything else has room.
 
 ## Parameters
 
 The two CSVs are split on purpose.
 
-**[`parameters.csv`](parameters.csv)** — 105 rows, and every one of them is a
+**[`parameters.csv`](parameters.csv)** — 106 rows, and every one of them is a
 number that was measured or chosen. Nothing in the file is computed from
 anything else in it, so each row is a value to type in once and then own. Rows
 beginning `#` are group headings; drop them if an importer objects.
@@ -142,7 +144,7 @@ make the add-in drop the first parameter.
 
 Parameters the OpenSCAD source carries but that drive no geometry in it — the
 FPC socket's own width, the adapter's PCB thickness and screw holes, the
-carrier's standoff pads, the flash-port opening — are collected in the last
+carrier's pads, the flash-port opening — are collected in the last
 group, marked as such. They are real measurements of real parts and may well
 drive geometry in a Fusion rebuild even though they no longer do here.
 
@@ -213,13 +215,12 @@ better**, and re-exporting it will not produce the same triangles.
 
 Two honest caveats:
 
-- **The detent numbers are print-tuning knobs, not fixed geometry.** `det_seat`
-  0.12, `nub_pre` 0.05 and `lip_h` 0.35 are all expected to move once the leg
-  has been printed and felt — see [TODO.md](../TODO.md). Reproduce them, then
-  change them.
+- **`lip_h` 0.35 is a print-tuning knob, not fixed geometry.** It is expected to
+  move once the leg has been printed and felt — see [TODO.md](../TODO.md).
+  Reproduce it, then change it.
 - **The cover is roughly three times the frame's work.** Twenty-odd features,
-  and the pivot ears, C-sockets and arc-shaped detent track are the hardest
-  geometry in the build. Do the frame first.
+  and the pivot ears and their C-sockets are the hardest geometry in the build.
+  Do the frame first.
 
 ### Before you start
 
@@ -301,16 +302,33 @@ Order matters: several of these rely on material a previous step left behind.
 | 3 | Glass pocket | Y 1.4 | −3.2 (`pan_px`) | 55.25 | 77.5 | 91.5 | 0.5 (`pan_r`) | 1.26 |
 | 4 | Ribbon relief | Y 1.4 | −43.45 | 65.25 (`rib_cz`) | 3.0 (`rib_clr`) | 49.0 (`rib_w`) | — | 4.05 |
 | 5 | PCB cavity | Y 2.65 | −1.65 (`cav_cx`) | 55.25 | 81.6 (`cav_w`) | 92.5 (`cav_h`) | 1.5 (`cav_r`) | 20.95 |
-| 6 | Lightening, bottom | Y 4.65 | −1.65 | 4.75 | 73.6 (`lgt_w`) | 4.5 | 1.5 | 18.95 |
+| 6a | Lightening, bottom −X | Y 4.65 | −25.05 | 4.75 | 24.8 | 4.5 | 1.5 | 18.95 |
+| 6b | Lightening, bottom +X | Y 4.65 | 24.40 | 4.75 | 23.5 | 4.5 | 1.5 | 18.95 |
 | 7 | Lightening, top | Y 4.65 | −1.65 | 105.75 | 73.6 | 4.5 | 1.5 | 18.95 |
 | 8 | −X wall slot, lower | Y 21.1 | −43.15 | 23.25 | 1.6 | 10.0 | — | 2.1 |
 | 9 | −X wall slot, upper | Y 21.1 | −43.15 | 87.25 | 1.6 | 10.0 | — | 2.1 |
+
+**Step 6 is two pockets, not one, and the gap between them is the point.** The
+bottom lightening pocket runs through the band the stand recess crosses, and the
+recess's floor there is nothing but the cover's 1.0 mm register extension. Hollow
+the frame out behind that plate and the plate is the only thing between an open
+pocket on the outside of the case and the inside of the frame; leave x ±12.65
+(`lgt_band`) solid and the frame backs it. Run it as one pocket and you have
+deleted the backing.
+
+**Step 10 must not reach the bottom edge.** It is the relief the cover's register
+extension plugs, and it is `reg_fit` 0.15 larger than the plug all round, so a
+0.15 gap runs round the plate. The rear chamfer has already taken 0.6
+(`rear_chf − cover_t`) off this face at the bottom edge — so a relief that
+reaches below z 0.6 puts that gap out in the chamfer, where it becomes a 21 mm
+slot straight into the hollow end wall. It starts at z 1.75 and leaves 1.15 of
+solid frame below it. Do not extend it "to be safe".
 
 Steps 8 and 9 are what the **cover's two tongues hook into** — the cover carries
 a 1.4 × 1.6 × 9 tongue at each of those positions, so the slot is 0.1 wider a
 side and 0.5 longer at each end. Cut them undersize and the cover will not
 close.
-| 10 | Stand register relief | Y 22.45 | 0 | 4.95 | 21.3 | 9.2 | — | 1.15 |
+| 10 | Stand register relief | Y 22.45 | 0 | 5.73 | 21.3 | 7.95 | — | 1.15 |
 | 11 | Cover register relief | Y 22.6 | −1.65 | 55.25 | 83.6 | 94.5 | 2.5 | 1.0 |
 | 12 | Insert bores, ×4 | back face | ±40.45 (`scr_cx`) | 5.5 and 105.0 | Ø3.6 (`ins_d`) | — | — | 5.0 |
 
@@ -413,14 +431,27 @@ Start with C1, then Join the rest onto it.
 | C1 | Register plate | −1.65 | 55.25 | 83.3 | 94.2 | 2.5 | 22.6 | 25.0 |
 | C2 | Outer skin | 0 | 55.25 | 91.9 | 110.5 | 5 | 23.6 | 25.0 |
 | C3 | Recess boss | 0 | 36.5 | 21.0 | 54.0 | — | 18.7 | 25.0 |
-| C4 | Stand register extension | 0 | 5.03 | 21.0 | 9.05 | — | 22.6 | 23.6 |
+| C4 | Stand register extension | 0 | 5.73 | 21.0 | 7.65 | — | 22.6 | 23.6 |
 | C5 | Glass rib, bottom, ×2 | ±17.5 | 11.75 | 15.0 | 3.5 | — | 2.90 | 23.6 |
 | C6 | Glass rib, top | −11.0 | 98.75 | 20.0 | 3.5 | — | 2.90 | 23.6 |
-| C7 | Carrier pegs, ×4 | −39.45 and −13.45 | 16.5 and 82.5 | Ø1.85 | — | — | 19.8 | 22.6 |
-| C8 | Charger pads, ×4 | 9.65 and 34.65 | 73.35 and 92.65 | Ø6.0 | — | — | 22.1 | 23.6 |
+| C7a | Carrier pads, ×4 | −39.45 and −13.45 | 16.5 and 82.5 | Ø4.0 | — | — | 20.1 | 22.6 |
+| C7b | Carrier pegs, ×4 | −39.45 and −13.45 | 16.5 and 82.5 | Ø1.85 | — | — | 17.3 | 22.6 |
+| C8 | Charger posts, ×4 | 9.65 and 34.65 | 73.35 and 92.65 | Ø6.5 | — | — | 18.8 | 23.6 |
 | C9 | Battery platform | 14.35 | 42.55 | 47.6 | 50.6 | — | 18.7 | 23.6 |
 | C10 | Battery fences, ×2 | −8.95 and 37.65 | 42.55 | 1.0 | 35.0 | — | 11.8 | 18.7 |
 | C11 | Tongues, ×2 | −43.15 | 23.25 and 87.25 | 1.4 | 9.0 | — | 21.2 | 22.8 |
+
+**C7 is a pad carrying a peg, and both matter.** The pad holds the carrier 2.5
+(`carrier_lift`) off the register face, which is the air the header solder joints
+on the board's underside need; the peg rises from the top of that pad, through
+the board's hole, and locates it. The first header pin is only 2.0 from each
+hole, so neither may exceed Ø4.0 across.
+
+**C8 takes an M2 heat-set insert**, which is what makes it a post and not a pad:
+bore each one **Ø2.9 × 5.0 deep** from its top face (Y 18.8) toward the back
+face, so it stops at Y 23.8 and leaves 1.2 (`chg_skin`) of skin. It is a blind
+bore — the back face carries no opening for the charger. The centres are
+**assumed**: measure the breakout before you commit to them.
 
 **C3 is the reason the stand pocket is a pocket.** The cover's own skin is only
 1.4 thick and the pocket is 4.5 deep, so without this boss behind it the cut goes
@@ -439,27 +470,16 @@ clear of the pocket, is a single 20 mm pad.
 | # | Cut | Centre X | Centre Z | Width | Height | Y from | Y to |
 |---|---|---|---|---|---|---|---|
 | C12 | Stand pocket, deep | 0 | 36.5 | 18.0 | 54.0 | 20.5 | 25.0 |
-| C13 | Stand pocket, shallow | 0 | 5.5 | 18.0 | 8.0 | 23.6 | 25.0 |
-| C14 | Nub track | *an arc — see below* | | | | | |
-| C15 | Detent seat | 0 | 58.0 | 14.0 | 0.9 | 20.03 | 20.51 |
-| C16 | Pigtail clearance | −5.0 | 92.0 | 15.5 | 6.0 | 13.6 | 23.8 |
-| C17 | Port opening | −5.0 | 92.0 | 14.3 | 4.8, R0.6 | 23.5 | 25.0 |
-| C18 | Screw holes, ×4 | ±40.45 | 5.5 and 105.0 | Ø2.9 | — | 23.5 | 25.0 |
+| C13 | Stand pocket, shallow | 0 | 6.0 | 18.0 | 7.0 | 23.6 | 25.0 |
+| C14 | Pigtail clearance | −5.0 | 92.0 | 15.5 | 6.0 | 13.6 | 23.8 |
+| C15 | Port opening | −5.0 | 92.0 | 14.3 | 4.8, R0.6 | 23.5 | 25.0 |
+| C16 | Screw holes, ×4 | ±40.45 | 5.5 and 105.0 | Ø2.9 | — | 23.5 | 25.0 |
+
+**The pocket floor stays flat.** Nothing is cut into it: the leg swings free
+between its two poses, so there is no seat and no track, and the floor is a plain
+face 1.8 (`rec_floor`) thick the whole deep length.
 
 Then three things that are not rectangles.
-
-**C14, the nub track.** Cut a **cylinder of radius 2.8** (`det_trk_r`), 14 long,
-lying along X, centred on the pin at **Y 23, Z 58**. Sketch the circle on the YZ
-plane and extrude it symmetrically 7 each way.
-
-This has to be an arc and not a flat, and the reason is worth knowing: a nub at a
-fixed radius sweeps a circle about the pin, so against a flat floor it interferes
-everywhere except at one angle. Cut as a cylinder about the pin, the nub rides at
-constant depth the whole stroke, and `nub_pre` becomes a preload you chose rather
-than an accident of where in the stroke you are.
-
-**C15, the seat**, is the one pocket both nubs drop into — whichever nub is
-pointing straight down is at the bottom of its arc. One seat, two nubs.
 
 **The latch lip — put material back.** After C12 and C13, **Join** a block
 spanning X ±9, Z 4.7 to 6.3, Y 24.65 to 25.0. It bridges the mouth of the pocket
@@ -528,20 +548,10 @@ Build it as its own component and position it last.
    That flat is the whole stand. Deployed, the display's weight pushes the leg
    further open, the flat lands on the recess floor, and the load runs leg → heel
    → cover in compression. It is not friction and it is not a spring.
-5. **The two nubs, after the stop cut.** Each is a rounded ridge lying along X: a
-   R0.35 (`nub_r`) round-ended rib whose crest sits at radius **2.85**
-   (`det_R`) from the pin, rooted 0.5 (`nub_root`) inside the leg's front face.
-   Draw one at 0° from straight-down and one at −35°, then trim both to the plan
-   outline from step 1.
+5. **The pin bore.** Ø2.1 through the width at the origin.
 
-   **They must come after step 4.** The deployed nub sits on the heel side and its
-   crest reaches 0.35 (`det_tot`) *beyond* the stop flat — which is the point of
-   it. Cut the flat afterwards and it shaves the crest off, and the deployed
-   detent silently disappears.
-6. **The pin bore.** Ø2.1 through the width at the origin.
-
-Print it with supports: the heel's stop flat is a 35° overhang and the two nubs
-want a clean underside. It is the only part in the build that needs them.
+Print it with supports: the heel's stop flat is a 35° overhang. It is the only
+part in the build that needs them.
 
 ## What the DXFs are for, then
 

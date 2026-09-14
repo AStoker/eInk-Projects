@@ -19,7 +19,7 @@ TITLES = [
     ("Depth stack-up", "The tight axis. Section A&ndash;A with the depth magnified &times;5.2."),
     ("Frame", "The printed front shell &mdash; cavity, screw pilots, and the stepped module pocket."),
     ("Back cover", "The printed back &mdash; stand recess, board mounts, cell platform, port."),
-    ("Leg &amp; pivot", "The one moving part, and the pivot section that carries the stop and the detent."),
+    ("Leg &amp; pivot", "The one moving part, and the pivot section that carries the stop."),
     ("Stand kinematics", "How the deployed leg sets the lean, and why it stops where it does."),
     ("Power wiring", "Charging the cell and running the board from it, off one USB-C port."),
 ]

@@ -172,9 +172,10 @@ split with enough slack to open the case.
 Two placements were costed and both fail, which is worth recording because the answer is
 neither of them:
 
-- **In front of the driver.** Stacks 5 mm onto 16 against 19.95 mm of room — 1.05 short, and
-  the driver's own USB-C shell and WROOM module already take most of what is left there. It
-  would cost `depth` 25 → 26.05, or low-profile headers (`hdr_h` 8.5 → 5.5 buys back 3.0).
+- **In front of the driver.** Stacks 5 mm onto 16 against the 17.45 mm the driver column has —
+  3.55 short, and the driver's own USB-C shell and WROOM module already take most of what is
+  left there. It would cost `depth` 25 → 28.55, or low-profile headers (`hdr_h` 8.5 → 5.5 buys
+  back 3.0).
 - **On the carrier board.** Driver 48.25 + adapter 32 = 80.25 against 70, and overhanging fails
   too because the adapter's corner holes are 28 apart, so the far pair lands off the board.
 
@@ -190,12 +191,12 @@ short stiff tail never crosses the joint and only the long FPC does.
 |---|---|
 | Outline | 18 × 32 × **5 mm** (depth with both connectors, confirmed) |
 | Where | against the glass's back face, x −40.45 … −22.45, z 65.75 … 97.75 |
-| Depth there | glass back 2.65 to the carrier's face 17.45 = **14.8 mm**, so it clears by 9.8 |
+| Depth there | glass back 2.65 to the carrier's face 18.5 = **15.85 mm**, so it clears by 10.85 |
 | Clear of the driver's parts by | 2.0 mm (`adapt_gap`; 1.0 still caught them by 0.2) |
 | Leg 3 | turns at z 75.25 and runs **10 mm** inboard, ending between x −35.2 and −26.2 — **lands on the adapter** |
 | Holding force | 18 × 32 = 5.8 cm² of foam tape ≈ 46 N in shear against a 0.02 N part |
 
-It overlaps the carrier by 18.75 mm **in plan view**, and that is not a clash — they are 9.8 mm
+It overlaps the carrier by 18.75 mm **in plan view**, and that is not a clash — they are 10.85 mm
 apart in depth. Reading that plan-view overlap as a conflict is what made the adapter look
 homeless for so long, and it was never real.
 
@@ -426,7 +427,7 @@ the ribbon arrives at — and the cell with the charger above it on the +X side.
 
 | | Size | Where |
 |---|---|---|
-| Carrier perfboard | 30 × 70 | −X column, z 14.5…84.5, on four standoff pads |
+| Carrier perfboard | 30 × 70 | −X column, z 14.5…84.5, on four pads that hold it 2.5 mm off the cover |
 | Driver board | 29.46 × 48.25 | plugged into the carrier, **z 15.5…63.75 — low**, because the adapter frees it from the ribbon |
 | 24-pin FPC socket | 16 wide, 12.5 from the board's near end | on the board's −X edge, centred at z 28.0 |
 | FPC adapter | 18 × 32 × ~5 | at leg 3's turn, centred z 75.25 — **overlaps the carrier, no home yet, and may not be needed** |
@@ -446,15 +447,22 @@ no adapter at all — see above.
 
 The Waveshare board has **no mounting holes** — but it does have its two 19-pin male headers
 soldered on. So it plugs into female headers on a **carrier perfboard**, and the carrier is
-what the case holds, on four standoff pads. Nothing printed touches the driver board itself.
+what the case holds, on four pads. Nothing printed touches the driver board itself.
 
 A 30 × 70 cut of double-sided 0.1″ prototype board does it. The driver takes 48.25 of the
 70, which leaves **about 14 mm × 30 of spare board below it** — that is where the battery
 divider goes, so there is no separate scrap of perfboard any more.
 
-The stack is the number to watch: carrier 1.6 + female header 8.5 + driver PCB 1.6 leaves
-**4.7 mm** in front of the driver for parts that stand about 4.4 proud. That is 0.3 mm of
-margin on two assumptions (`hdr_h`, `drv_env`), and low-profile sockets buy 3 mm of it back.
+The stack is the number to watch: `carrier_lift` 2.5 + carrier 1.6 + female header 8.5 +
+driver PCB 1.6 leaves **5.75 mm** in front of the driver for parts that stand about 4.4 proud.
+That is 1.35 mm of margin on two assumptions (`hdr_h`, `drv_env`), and low-profile sockets buy
+3 mm of it back.
+
+**The headers are soldered from the far side**, so clipped pin tails and their solder fillets
+stand proud of the face that lands on the cover. `carrier_lift` is the air left under the
+board for them: each corner pad holds the board **2.5 mm off the register face**, and the
+locating peg carries on through the hole from the top of that pad. It is spent out of the
+driver column's depth budget, which is why that budget is stated below rather than assumed.
 
 ### Why not the half-size Perma-Proto
 
@@ -464,7 +472,7 @@ is a 28.7 mm-wide column and a 79.5 × 22.7 strip, and the cell is 44 × 49. So 
 with a much narrower cell (roughly 28 × 90 × 7, ~1500–1800 mAh) or a bigger frame.
 
 The quarter-size board is gone too, for the same reason the corners needed: it was the
-widest thing in the box. The charger now sits on four standoff pads of its own.
+widest thing in the box. The charger now sits on four screw posts of its own.
 
 ### The ribbon relief sets the frame width
 
@@ -512,8 +520,10 @@ measured as a whole rather than guessed in three parts:
 | | |
 |---|---|
 | Driver board + female sockets + carrier PCB | **16.0 mm**, measured, back face to tallest point |
-| Room in the driver column | **19.95 mm** |
-| Spare | **3.95 mm** |
+| Register face to the glass plane | **19.95 mm** |
+| less `carrier_lift`, the air under the board for its solder joints | −2.5 mm |
+| Room in the driver column | **17.45 mm** |
+| Spare | **1.45 mm** |
 
 `drv_stack = 16.0` is the number that decides fit, and it supersedes adding up `drv_env`,
 `hdr_h` and `carrier_t` — those still exist for the features that need them individually, but
@@ -521,22 +531,32 @@ their sum is no longer the test.
 
 The carrier datums to the **register face** at depth 22.6 — `cov_in` (23.6) is the skin datum,
 but `cover()` lays a register prism 1.0 mm proud of it across the whole cavity, and that is the
-face anything inside actually lands on. It clears the stand's recess entirely: the recess is a
+face the pads stand on, putting the board itself at 20.1. It clears the stand's recess entirely: the recess is a
 16 mm band on the centreline and the carrier sits at x −41.45…−11.45. Only the **cell** crosses
 the band, and it rides a platform level with the back of the recess floor at 18.7 — worth
 3.9 mm to everything that misses it.
 
 ### Mounting
 
-- **Carrier board** — four **Ø1.85 pegs on Ø6.5 pads**, at the board's own hole pattern:
-  four Ø2.0 holes at **26 × 66 centres** (24 × 64 edge to edge), 2.0 mm in from each edge of
-  the 30 × 70 board. The holes drop onto the pegs and locate it, instead of it floating on
-  four blank pads. The first header pin is only 2.0 mm from each hole, so nothing on a peg may
-  exceed 4.0 mm across — which is why they are pegs and not screw bosses.
-  `cover_board` reports geometry here by design: `mock_board` is a plain slab with no holes in
-  it, so the pegs necessarily pass through it.
-- **Charger** — four standoff pads. No screw posts: the breakout's hole spacing is not a
-  number this model has measured. Foam tape or a strap holds it.
+- **Carrier board** — four **Ø1.85 pegs on Ø4.0 pads 2.5 mm tall**, at the board's own hole
+  pattern: four Ø2.0 holes at **26 × 66 centres** (24 × 64 edge to edge), 2.0 mm in from each
+  edge of the 30 × 70 board. The pad carries the board and leaves `carrier_lift` = 2.5 mm of
+  air under it for the header solder joints; the peg carries on through the hole and locates
+  it. The first header pin is only 2.0 mm from each hole, so **nothing on a pad or a peg may
+  exceed 4.0 mm across** — which is why they are pegs and not screw bosses, and why the pad is
+  4.0 and not wider.
+  `cover_board` reports 16.70 mm³ here by design: `mock_board` is a plain slab with no holes in
+  it, so the pegs necessarily pass through it. Watch the number — anything above 16.70 is
+  something else touching the boards.
+- **Charger** — four **Ø6.5 screw posts** standing 3.8 mm off the register face, each bored
+  Ø2.9 × 5.0 for an **M2 heat-set insert** (3.2 × 4.0, plus 1.0 of relief for the plastic it
+  displaces). The bore is **blind**: it reaches depth 23.8 against a back face at 25.0, so
+  1.2 mm of skin is left and the back face carries no opening for the charger. The post height
+  is derived from the insert and that skin rather than chosen — `chg_back` follows from it, and
+  the board ends up at depth 18.8 with 8.95 mm clear in front of it.
+  **The hole centres are assumed**, 3.5 mm in from each edge of the board (25 × 19.3): measure
+  the breakout before printing. Inserts are unforgiving about hole spacing in a way that foam
+  tape was not — it is on the [TODO](TODO.md).
 - **Driver board** — plugs into female headers on the carrier perfboard; the case holds the
   carrier, not the board. (`drv_rail` still exists for the no-carrier fallback.)
 - **FPC adapter** — **foam double-sided tape, onto the back of the glass.** The case owes it
@@ -613,11 +633,11 @@ That is the easel hinge of [US4515338A](https://patents.google.com/patent/US4515
 *"flat stop faces … at an obtuse angle equal to the desired open angle plus 90°."*
 
 The swept check measures the stop rather than asserting it — the leg intersected with a floor
-half-space, nubs suppressed so only the heel shows:
+half-space, so only the heel shows:
 
 | Over-travel past 35° | at 35° | +0.5° | +1° | +2° | +5° |
 |---|---|---|---|---|---|
-| Immersed volume | **empty** | 0.60 mm³ | 1.20 | 2.39 | 5.96 |
+| Immersed volume | **empty** | 0.56 mm³ | 1.11 | 2.22 | 5.54 |
 
 Empty right up to the stop angle and then linear in the over-travel: that is the signature of a
 face rotating into a plane. A corner grazing a plane saturates instead.
@@ -626,32 +646,17 @@ face rotating into a plane. A corner grazing a plane saturates instead.
 right angle; the same geometry also keeps every point on the leg out of the cover through the
 whole stroke, which the swept `cover_legs` check confirms at every angle, not just at the ends.
 
-### The detent: one seat, two nubs
+### The leg swings free, and holds two positions
 
-The leg carries **two nubs** — R0.35 ridges across its full width, at 0° and −35° from
-straight-down, crests 2.85 mm from the pin. The cover carries **one seat**: a single 0.9 mm
-pocket in the recess floor, directly below the pin.
+There is **no detent**. The leg holds the two positions that matter and nothing in between:
+**deployed** on the stop, where the display's own weight seats it, and **folded** under the
+latch lip. The recess floor is a **plain flat face** the whole deep length, and the leg is a
+plain tapered blade with a heel on it.
 
-Whichever nub is pointing straight down sits at the bottom of its own arc, and that is exactly
-where the seat is. So **nub F seats when the leg is folded and nub D seats when it is deployed**,
-and one pocket serves both positions. A single nub cannot do this: at a fixed leg angle a nub is
-deepest at mid-stroke, so its arc has one lowest point, not two.
-
-Between the seats the nubs ride an **arc track** — a cylindrical relief of R2.8 cut about the
-pin axis, 0.3 mm below the recess floor at its deepest. Because the track is concentric with the
-nubs' own sweep, a nub rides it at **constant depth**, which is what makes `nub_pre` a chosen
-preload rather than a function of where in the stroke the leg happens to be.
-
-| | | |
-|---|---|---|
-| `nub_pre` | 0.05 mm | interference on the track — **the friction** that holds the leg wherever it is put |
-| `det_seat` | 0.12 mm | how much deeper the seat is than the track |
-| → `det_click` | 0.17 mm | the climb out of the seat — **the click** |
-| `pin_fit` | 0.10 mm | the pin's free play in its socket, which is the compliance that allows it |
-| `det_iw` | 0.9 mm | seat width, so a nub is engaged over the first and last 9.1° of the stroke |
-
-`det_seat` and `nub_pre` are the two print-tuning numbers: no click, raise `det_seat`; too stiff
-to fold, drop it. Won't hold position, raise `nub_pre` 0.02 at a time.
+Neither position depends on friction, which is why nothing is lost: the stop is a face taking
+load in compression, and the lip is a mechanical catch. And with nothing riding the floor,
+`cover_legs` is empty at **every** angle but θ = 0, where the 6.91 mm³ it reports is the latch
+lip's bite — the interference the leg bows past to snap shut.
 
 ### What holds it shut, and what starts it
 
@@ -669,10 +674,13 @@ position lived. It undercut the rib and crowded the port at once.
 
 ### The pin snaps into ears inside the pocket
 
-Two **ears** stand inside the pocket, 2.0 mm thick, inboard of its side walls, from the pocket
-floor up to the back face. Each carries a Ø2.1 bore on the pivot axis whose **mouth** is only
-1.51 mm across; the pin presses past that lip and is then retained by it. Nothing else holds
-it — no head, clip or glue.
+The hinge is **one Ø2 × 18 mm steel rod**, and it goes in **from the back face**, through the
+open mouth of the recess, under tension: two **ears** stand inside the pocket, 2.0 mm thick,
+inboard of its side walls, from the pocket floor up to the back face, and each carries a Ø2.1
+bore on the pivot axis whose **mouth** is only 1.51 mm across. The rod presses past that lip
+and is then retained by it. Nothing else holds it — no head, clip or glue.
+
+`pin_fit` = 0.10 mm is the running clearance, on the leg's bore and on the sockets alike.
 
 **The ears are what keep the back face unbroken.** Bored straight outward into the pocket's side
 walls instead, a socket can only be reached from *outside* the part, so its snap mouth has to
@@ -685,9 +693,9 @@ with the pocket's side walls, so the walls themselves cap it and nothing has to 
 sideways. `leg_w` follows from the same arithmetic — `rec_w − 2 × (ear_w + rec_clr)` = 13.0 —
 so the leg cannot be set inconsistently with the pocket that holds it.
 
-**Assembly order matters here:** push the pin through the leg first (3.0 mm proud each side),
-then press that subassembly into the pocket so both pin ends snap into their ears. The pin
-cannot be fitted afterwards — the leg's bore is a closed hole, not a slot.
+**Assembly order matters here:** push the rod through the leg first (2.5 mm proud each side),
+then press that subassembly into the pocket from the back so both rod ends snap into their
+ears. The rod cannot be fitted afterwards — the leg's bore is a closed hole, not a slot.
 
 ### The pocket is a pocket, and that has to be built
 
@@ -704,9 +712,33 @@ there) and `stand_register()` extends the register plate down the pocket's footp
 with a matching relief in the frame, so that band keeps 1.0 mm behind it.
 
 `chk="rec_floor_gap"` is the guard: a slab immediately behind the floor, less the cover. Anything
-the cover does not fill is a hole. It tests each band at its own floor depth, and against
-`rec_floor_min` = **1.33 mm** rather than the nominal 1.8 — the detent seat cuts into the floor
-on purpose, so it is the seat, not the floor, that sets what must stay solid.
+the cover does not fill is a hole. It tests each band at its own floor depth — the deep section
+against the full `rec_floor` = **1.8 mm**, since nothing is cut into the floor, and the shallow
+section against the register plate alone.
+
+### The floor plate has to die in solid frame
+
+That register extension is a **plug**: the cover carries it, the frame is relieved `reg_fit` =
+0.15 mm larger to receive it, and so a 0.15 mm gap runs all the way round it. Where that gap
+comes out decides whether the case is sealed, and it is the one place on the part where the
+answer is not obvious.
+
+The **rear chamfer takes `rear_chf − cover_t` = 0.6 mm off the frame's back face** at the bottom
+edge — it has to, or the frame and cover would not meet flush there. A plug that reaches below
+that line is no longer plugging anything: both parts have been chamfered away around it, the
+0.15 mm gap surfaces in the chamfer, and it leads **straight into the hollow bottom end wall**.
+A 21 × 1.3 mm slot into the inside of the frame, right where the folded leg's foot sits.
+
+So the plate stops at `reg_ext_z0` = **z 1.9**, which leaves `reg_seal` = **1.15 mm** of solid
+frame below the relief, and `rec_z0` is derived as `foot_z − rec_clr` = **2.5** rather than a
+millimetre lower than it needs to be — every millimetre the pocket runs down is a millimetre
+nearer that chamfer. The `POCKET FLOOR PLATE` echo states both numbers and says which way the
+test came out.
+
+**And the bottom end wall is not hollowed behind the plate.** `lightening()` splits its bottom
+pocket into two, either side of `lgt_band` = x ±12.65, so the plate is backed by solid frame
+rather than cantilevered over a void — a second line of defence behind a 1.0 mm floor that is
+also an outside surface.
 
 ### The glass ribs keep their root
 
@@ -735,28 +767,29 @@ the tip, so the thin end matches the shallow section instead of standing proud o
 
 | | Qty | Notes |
 |---|---|---|
-| **Leg** `stl/leg.stl` | 1 | 2.75 cm³, ~3.4 g. Carries the heel and its flat, the two detent nubs, and the axle hole |
+| **Leg** `stl/leg.stl` | 1 | 2.59 cm³, ~3.2 g. Carries the heel and its flat, and the axle hole |
 | **Pin, Ø2 × 18.0 mm** | 1 | = the pocket width, so its ends finish flush with the pocket walls. Steel rod, or a turned-down 1.75 mm filament offcut |
 | Fasteners | **none** | no screws, no inserts, no clips |
 
-**Printing.** The leg goes on the bed as exported — flat, the face carrying the nubs upward.
-Print it **with supports**: the heel's stop flat is an overhang at 35°, and the two nubs are
-small ridges that want a clean underside. This is the one part in the build that needs them.
+**Printing.** The leg goes on the bed as exported — flat, its front face upward. Print it
+**with supports**: the heel's stop flat is an overhang at 35°. That is the only part of it that
+needs them, and it is the only part in the build that does.
 
 **Assembly**, in order:
 
-1. Lay the leg into the recess, axle hole on the pivot axis.
-2. Press the **pin** in through one socket mouth, across the leg, and into the far socket. It
-   snaps past both lips.
+1. Push the **rod** through the leg's axle hole, 2.5 mm proud each side.
+2. Press that subassembly into the recess from the back, so both rod ends snap past the ears'
+   socket lips.
 3. Fold the leg down until the tip tucks under the latch lip.
 
-**Taking it apart** is the reverse: press the pin back out through a socket mouth.
+**Taking it apart** is the reverse: lever the leg back out and the rod comes with it.
 
 ### Where the recess costs nothing
 
 The recess is a 16 mm band on the centreline. The **driver carrier spans x −41.45…−11.45 and
 misses it entirely**, so it datums to the cover's register face at depth 22.6 and the driver
-column has **19.95 mm against a measured 16.0 mm stack — 3.95 mm spare**.
+column has **17.45 mm against a measured 16.0 mm stack — 1.45 mm spare**, once `carrier_lift`
+has taken its 2.5.
 
 The **cell does** cross the band, so it rides a platform level with the back of the recess floor
 at depth 18.7 rather than straddling the step.
@@ -795,7 +828,7 @@ they land on the bed:
 |---|---|---|---|---|
 | Frame | `stl/frame.stl` | front face down | big flat first layer, and the interior opens upward. The other way up, the 1.4 mm front plate has to bridge the whole interior | ~63 g |
 | Back cover | `stl/cover.stl` | outer back face down | big flat first layer, standoffs and ribs build upward | ~35 g |
-| Leg | `stl/leg.stl` | flat, nub face up | **the one part that wants supports** — the heel's stop flat is a 35° overhang and the two nubs want a clean underside. Flat also puts the leg's bending load across the layers rather than along them | ~3.4 g |
+| Leg | `stl/leg.stl` | flat, front face up | **the one part that wants supports** — the heel's stop flat is a 35° overhang. Flat also puts the leg's bending load across the layers rather than along them | ~3.2 g |
 | Bezel test tile | `stl/bezel_test.stl` | front face down — **print this first** | same as the frame | ~23 g |
 
 PLA or PETG, 0.2 mm layers, 4 perimeters, 15–20% infill. On the frame and cover only the
@@ -804,7 +837,9 @@ that surface finish is most of the look.
 
 The end walls are hollowed from the cover side (`lightening()`), leaving 2 mm of floor
 behind the glass shelf, a rim, and the screw bosses. Without it the two ends are solid
-frame and the part is 24 cm³ heavier for nothing.
+frame and the part is 24 cm³ heavier for nothing. The **bottom** one is two pockets rather
+than one, split either side of the stand band so the leg pocket's floor plate lands on solid
+frame — see *The floor plate has to die in solid frame*.
 
 ### Hardware
 
@@ -863,22 +898,18 @@ reason — they were consequences of hardware this build does not have:
 | `drv_module` | 1050 mm³ — a 15 mm driver stack against a module PCB | empty: no module PCB to hit |
 
 `cover_legs` is the one that must stay clean, and it must stay clean **through the whole
-stroke**, not just at the two ends. Two things in it are interferences **by design**, so the
-sweep is run with them suppressed (`-D lip_h=0 -D nub_pre=0`) and read as empty at every angle:
+stroke**, not just at the two ends. **One** thing in it is an interference by design:
 
 | At | Volume | What it is |
 |---|---|---|
-| θ = 0 | 4.23 mm³ | the latch lip's 0.35 mm bite on the folded leg's tip — the interference the leg bows past to snap shut |
-| θ = 5…30 | 0.015…0.37 mm³ | the two nubs' 0.05 mm preload on the arc track — the hinge friction |
-| θ = 35 | empty | deployed: the nub has relaxed into its seat and the heel's flat is tangent to the floor |
+| θ = 0 | 6.91 mm³ | the latch lip's 0.35 mm bite on the folded leg's tip — the interference the leg bows past to snap shut |
+| θ = 2…35 | empty | the leg swings clear of the cover the whole way |
 
-With both suppressed the sweep is clean at every angle from 0 to 35: a zero-volume touch at
-θ = 0 where the leg's back face is coplanar with the cover's, and 0.0014 mm³ mid-stroke where
-the nubs' 96-gon meets the arc track's — both inscribed, so a vertex meets a facet 0.0005 mm
-proud. That is forty times below one layer.
+Suppress the lip with `-D lip_h=0` and the sweep is empty at **every** angle from 0 to 35 —
+nothing at all is left over anywhere in the stroke, because nothing on the leg rides the floor.
 
 `heel_floor` is the check that proves the stop, and it is read as a *transition* rather than as
-a pass: empty at every angle up to and including 35°, then 0.60 mm³ at 35.5° growing linearly.
+a pass: empty at every angle up to and including 35°, then 0.56 mm³ at 35.5° growing linearly.
 
 `rec_frame` is the depth guard — the volume the recess needs against `frame()`. It comes back
 zero-volume, a coplanar touch where the shallow recess floor meets the frame's face, which is
@@ -1013,8 +1044,9 @@ datasheet and CAD model published for each part in the build.
 | Different lean | `dep_ang` — it sets the lean and nothing else; `leg_len` sets the footprint |
 | Rear port position | `ucb_x` / `ucb_z`; `port_w` / `port_h` for the opening. Watch `PORT CLEARANCES` — it must not end up in a band with another opening |
 | Deeper/shallower back bevel | `rear_chf` — 2.0 is the ceiling before it eats the 2.2 mm walls |
-| Firmer/softer detent click | `det_seat` (0.12); `nub_pre` (0.05) for the hinge friction |
 | Firmer/softer folded latch | `lip_h` (0.35) |
+| More/less air under the carrier for its solder joints | `carrier_lift` (2.5) — it comes straight out of the driver column's 1.45 mm of spare |
+| The charger's real hole spacing | `chg_hx` / `chg_hz`; `chg_ins_d` / `chg_ins_l` for a different insert, `chg_skin` for the material left behind the bore |
 | Looser/tighter leg in its recess | `rec_clr` (0.35 a side) |
 | Open the flash port again | `flash_port = true` |
 
@@ -1029,10 +1061,11 @@ travel against the cover, and `heel_floor` asks whether the heel has reached the
 at a given angle, which is what proves the stop.
 
 **An empty intersection writes no file at all**, so `rm -f` the output before every run or a
-stale result gets read back as a clash. Two of the checks are *meant* to report volume:
-`frame_cover` and `cover_board` are zero-volume touches by design, and `cover_legs` sees the
-latch lip's 0.35 mm bite at θ = 0 and the nubs' 0.05 mm preload mid-stroke. Suppress those with
-`-D lip_h=0 -D nub_pre=0` when you want the sweep to be clean:
+stale result gets read back as a clash. Three of the checks are *meant* to report volume:
+`frame_cover` is a zero-volume touch (both faces at `y = body_d`), `cover_board` is 16.70 mm³ —
+the four carrier pegs through holes `mock_board` does not model — and `cover_legs` sees the
+latch lip's 0.35 mm bite at θ = 0. Suppress the lip with `-D lip_h=0` when you want the sweep
+to be clean:
 
 ```bash
 openscad -o /tmp/chk.stl -D 'part="none"' -D 'chk="cover_board"' src/epaper_stand.scad
@@ -1041,7 +1074,7 @@ openscad -o /tmp/chk.stl -D 'part="none"' -D 'chk="cover_board"' src/epaper_stan
 for t in 0 5 10 17.5 25 30 35; do
   rm -f /tmp/chk.stl
   openscad -o /tmp/chk.stl -D 'part="none"' -D 'chk="cover_legs"' -D "chk_th=$t" \
-    -D 'lip_h=0' -D 'nub_pre=0' src/epaper_stand.scad 2>/dev/null
+    -D 'lip_h=0' src/epaper_stand.scad 2>/dev/null
   [ -f /tmp/chk.stl ] && echo "theta $t CLASHES"
 done
 

@@ -69,26 +69,34 @@ nothing downstream is constrained. Nothing to design; two things to do at assemb
 
 ## 4. Still open from the relayout
 
-- [ ] Confirm the charger's four standoff pads land on board, not on components. Its hole
-      spacing is deliberately not modelled.
+- [ ] **Measure the charger breakout's mounting holes.** The four posts now take **M2 heat-set
+      inserts**, so the hole centres have to be right: `chg_hx` / `chg_hz` are assumed at
+      25 × 19.3 (3.5 in from each edge of the 32 × 26.3 board) and that is a guess. Foam tape
+      forgave a guess; screws do not. Check the posts land on board rather than on components
+      while you are there, and that the charger's own holes take M2 clearance.
+- [ ] **Confirm the M2 inserts you have.** The posts are bored Ø2.9 × 5.0 for a 3.2 × 4.0
+      insert. Set `chg_ins_d` / `chg_ins_l` if yours differ — the post height and `chg_back`
+      follow from them, and so does whether the board still clears the glass in front of it.
 - [ ] Solder two 19-pin female headers to the carrier to match the driver's pin rows. The
       board's own mounting holes are now modelled (Ø2.0 at 26 × 66 centres) and the cover has
       pegs for them, so it does not need cutting to size — the adapter is taped to the glass
       and never competes with it for board area.
-- [ ] The driver stack has **3.95 mm of margin** now (16.0 measured against 19.95) — the
-      carrier misses the stand recess entirely, so it datums to the cover's register face at
-      22.6 rather than to the recess floor's backing at 18.7. Still worth confirming the 16.0
-      before committing to the frame, but it is no longer the tight one.
+- [ ] The driver stack has **1.45 mm of margin** (16.0 measured against 17.45) — the carrier
+      misses the stand recess entirely, so it datums to the cover's register face at 22.6
+      rather than to the recess floor's backing at 18.7, less the 2.5 `carrier_lift` holds it
+      off that face for its solder joints. **Confirm the 16.0 before committing to the frame**,
+      and measure how far the header joints actually stand proud of the carrier's underside: if
+      they need less than 2.5, dropping `carrier_lift` hands the margin straight back.
 
-## 5. Test-print the leg (~3.4 g, ~12 min) — the whole stand is one part
+## 5. Test-print the leg (~3.2 g, ~12 min) — the whole stand is one part
 
-Push a Ø2 × 18 pin through the printed leg (3.0 proud each side), then press that subassembly
-into the cover's pocket so both pin ends snap into their ears. The pin cannot go in afterwards. Parts, print
-orientation and the assembly order are in the README under **The stand subassembly**. It needs
-one pin and nothing else — no screws, no inserts, no clips.
+Push the Ø2 × 18 rod through the printed leg (2.5 proud each side), then press that subassembly
+into the cover's pocket from the back so both rod ends snap into their ears. The rod cannot go
+in afterwards. Parts, print orientation and the assembly order are in the README under **The
+stand subassembly**. It needs one rod and nothing else — no screws, no inserts, no clips.
 
-**Print it with supports.** The heel's stop flat is a 35° overhang and the two nubs want a clean
-underside. It is the only part in the build that needs them.
+**Print it with supports.** The heel's stop flat is a 35° overhang. It is the only part in the
+build that needs them.
 
 **The travel.** Walk the *whole* stroke, not just the two ends.
 
@@ -102,12 +110,8 @@ underside. It is the only part in the build that needs them.
 - [ ] Folded, the leg should sit **flush with the back face** and nothing should overhang the
       bottom edge.
 
-**The detent.** Two numbers tune it, and they do different jobs:
+**The catch.** One number tunes it now — the leg swings free and holds only the two ends:
 
-- [ ] **`det_seat` (0.12) is the click.** Expect a distinct seat at both ends of the stroke. No
-      click, raise it 0.03 at a time; too stiff to fold, drop it.
-- [ ] **`nub_pre` (0.05) is the friction** — whether the leg holds wherever it is put. Flops
-      around, raise it 0.02 at a time; won't move at all, drop it.
 - [ ] **`lip_h` (0.35) is the folded latch.** It should take a deliberate pull to open and a
       firm push to close. Won't close, drop it; won't stay shut, raise it.
 - [ ] **Check the finger access actually works.** Off the ears there is 2.5 open either side of
@@ -118,16 +122,26 @@ underside. It is the only part in the build that needs them.
       no daylight through its floor, and the two ears must be solid with their C-mouths open
       into the pocket, not through the back face. `chk="rec_floor_gap"` and `chk="rib_recess"`
       both pass in the model, but a thin floor can still print through.
+- [ ] **Check the bottom of the pocket once frame and cover are screwed together.** The floor
+      plate stops 1.15 mm clear of the rear chamfer so its fit gap cannot surface there — look
+      along the bottom edge and there should be no slot into the frame. The model is sealed
+      (`POCKET FLOOR PLATE` echo); what a print does with a 0.15 mm fit gap and a 1.15 mm
+      ledge is the thing to confirm.
 
 **The pin socket.** This is the one feature that could fail on the first assembly:
 
-- [ ] The pin should **snap past the socket mouth** (1.51 across a 2.1 bore) and then be
-      retained. If the lip shears instead of flexing, drop `ear_mouth` toward 0.8 so there is
+- [ ] The rod should **snap past the socket mouth** (1.51 across a 2.1 bore) and then be
+      retained. If the lip shears instead of flexing, raise `ear_mouth` toward 0.8 so there is
       less to deflect, and check the cover printed the mouth open rather than bridged over.
+- [ ] **This is the only way the rod goes in.** Nothing can be threaded along the pivot axis
+      from inside the cover: at depth 23.0 the register plate fills the depth either side of
+      the recess boss, so there is no straight run for an 18 mm rod. Tension from the back
+      face is the route, which is why the sockets keep their C-mouths.
 
 **After a few dozen cycles:**
 
-- [ ] Check the two nubs for wear — they are the only sliding contact in the stand.
+- [ ] Check the pin and its two sockets for wear — they are the only sliding contact left in
+      the stand.
 - [ ] Check the heel's contact patch. It is a 3.07 × 14 face, so bearing stress is negligible;
       if it is visibly rounding over, the flat is not seating square.
 

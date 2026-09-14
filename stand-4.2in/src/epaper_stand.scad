@@ -1798,6 +1798,7 @@ if (part=="params") {
    ["carrier_hole",carrier_hole],["carrier_hx",carrier_hx],["carrier_hz",carrier_hz],
    ["carrier_peg",carrier_peg],["carrier_pin",carrier_pin],
    ["carrier_cx",carrier_cx],["carrier_cz",carrier_cz],["carrier_z0",carrier_z0],["carrier_z1",carrier_z1],
+   ["carrier_back",carrier_back],["carrier_face",carrier_face],["carrier_pad",carrier_pad],
    ["pin_fit",pin_fit],["snap_c",snap_c],
    ["scr_wall",scr_wall],["carrier_t",carrier_t],["hdr_h",hdr_h],
    ["port_snap",port_snap?1:0],["snap_w",snap_w],["snap_h",snap_h],["snap_d",snap_d],

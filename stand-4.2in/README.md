@@ -30,8 +30,9 @@ gets.
 
 ![Sheet 1 — assembly and envelope](drawings/sheet1.svg)
 
-Open [`drawings/index.html`](drawings/index.html) for all eight sheets on one page, and
-[TODO.md](TODO.md) for what is still open.
+Open [`drawings/index.html`](drawings/index.html) for all eight sheets on one page,
+[TODO.md](TODO.md) for what is still open, and [`fusion/README.md`](fusion/README.md) to
+pick the model up in Autodesk Fusion.
 
 ---
 
@@ -977,6 +978,24 @@ or the pictures will show the previous revision:
 ```bash
 sh tools/mkrenders.sh           # renders/*.png, all of it from stl/
 ```
+
+### The Fusion hand-off
+
+[`fusion/`](fusion/) carries the same model as an Autodesk Fusion starting
+point: the measured inputs as user parameters, the eight component envelopes as
+named keep-out bodies, eight DXF section profiles, reference meshes in model
+orientation, and the vendor solid models that exist. All of it is generated, in
+the model's own coordinate system rather than print orientation, so everything
+lands on one origin — and all of it works on the **Personal** licence, which is
+why the meshes are written as STL as well as 3MF.
+
+```bash
+sh tools/mkfusion.sh            # fusion/*, all of it from src/epaper_stand.scad
+```
+
+[`fusion/README.md`](fusion/README.md) is the way in, and
+[`fusion/vendor/SOURCES.md`](fusion/vendor/SOURCES.md) lists every drawing,
+datasheet and CAD model published for each part in the build.
 
 | Want | Change |
 |---|---|

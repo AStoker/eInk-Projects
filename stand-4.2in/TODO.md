@@ -14,10 +14,12 @@ for p in frame cover leg bezel_test; do
   openscad -o stl/$p.stl -D "part=\"$p\"" src/epaper_stand.scad
 done
 sh tools/mkrenders.sh
+sh tools/mkfusion.sh
 ```
 
 The renders import `stl/*.stl`, so re-export the STLs before re-rendering or the pictures
-will show the previous revision.
+will show the previous revision. `tools/mkfusion.sh` reads the model directly and rebuilds
+everything in [`fusion/`](fusion/) — parameters, keep-outs, DXF sections and meshes.
 
 ---
 

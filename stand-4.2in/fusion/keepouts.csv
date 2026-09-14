@@ -1,0 +1,9 @@
+name,x_min,x_max,y_min,y_max,z_min,z_max,x_size,y_size,z_size,note
+PANEL_GLASS,-41.2,34.8,1.55,2.6,10.25,100.25,76,1.05,90,"bare glass, 76 x 90 sharp corners, measured"
+FPC_HOLLOW,-44.95,-41.95,1.4,5.45,40.75,89.75,3,4.05,49,"the ribbon's 180 deg fold. Oversized on purpose"
+DRIVER_BOARD,-41.18,-11.72,6.5,12.5,15.5,63.75,29.46,6,48.25,"Waveshare e-Paper ESP32 Driver Board Rev 3, full component envelope"
+DRIVER_CARRIER,-41.45,-11.45,21,22.6,14.5,84.5,30,1.6,70,"0.1in perfboard, 30 x 70, four dia 2.0 holes at 26 x 66 centres"
+FPC_ADAPTER,-40.45,-22.45,2.65,7.65,65.75,97.75,18,5,32,"Waveshare FPC adapter, taped to the back of the glass"
+CHARGER,6.15,38.15,14.9,22.1,69.85,96.15,32,7.2,26.3,"Adafruit bq25185 (6091), board + USB-C jack"
+CELL,-7.65,36.35,11.8,18.7,18.05,67.05,44,6.9,49,"2000 mAh LiPo, 694449 pouch. Squared off - the real pouch has R2 corners"
+USB_C_PIGTAIL,-12,2,13.6,23.6,89.75,94.25,14,10,4.5,"snap-in rear port, two wires, no data"

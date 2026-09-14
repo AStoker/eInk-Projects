@@ -34,6 +34,8 @@ bat_x0,-7.65,mm
 bez_thick,9.4,mm
 bez_thin,3,mm
 body_d,23.6,mm
+boss_z0,9.5,mm
+boss_z1,65.3,mm
 bt_h,110.5,mm
 btn_d,4.2,mm
 btn_n,0,mm
@@ -141,12 +143,9 @@ leg_len,55,mm
 leg_t,4,mm
 leg_tf,1,mm
 leg_w,13,mm
-lgt_band,12.65,mm
+lgt_gain,6.2762,mm
 lgt_w,73.6,mm
 lgt_y0,4.65,mm
-lip_h,0.35,mm
-lip_w,1.6,mm
-lip_z,5.5,mm
 mod_back,2.65,mm
 mod_clr,0.5,mm
 mod_header,0,mm
@@ -241,7 +240,7 @@ scr_x,41.55,mm
 scr_z0,14,mm
 scr_z1,55.25,mm
 scr_z2,96.5,mm
-shl_z0,9.5,mm
+shl_z0,11.3,mm
 side_wall,3,mm
 snap_c,0.15,mm
 snap_d,10,mm
@@ -249,7 +248,7 @@ snap_h,4.5,mm
 snap_w,14,mm
 stand_ok,1,mm
 stand_reg_w,21,mm
-tap_z,17,mm
+tap_z,18.8,mm
 tape_at,46.25,mm
 tape_dep,0.3,mm
 tape_len,40,mm

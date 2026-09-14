@@ -982,9 +982,9 @@ def sheet5():
 # ============================================================ SHEET 6
 def sheet6():
     """LEG & PIVOT.  Three views: the leg flat, the pivot in section, and the pin
-    socket across the pocket.  The leg has no detent - the stop makes the deployed
-    pose and the latch lip holds the folded one - so the pocket floor in view B is
-    a plain flat face."""
+    socket across the pocket.  The pocket is a plain blind hollow - no detent, no
+    seat, no lip across its mouth - so the floor in view B is a flat face and the
+    only things standing in it are the two ears."""
     s = mk()
     bore = P["pin_d"]+P["pin_fit"]
     hw, hz = P["leg_w"]/2, P["heel_z"]
@@ -1092,7 +1092,7 @@ def sheet6():
         (2, f"leg {n(P['leg_w'])} wide, set by the pocket: {n(rec_w)} less two {n(P['ear_w'])} ears and {n(P['rec_clr'])} each. Off the ears, {n(P['finger_g'])} is open either side the whole length - the finger access"),
         (3, f"dia {n(bore)} axle hole through the leg"),
         (4, f"foot R{n(P['foot_r'])} in plan"),
-        (5, f"THE STOP: at {n(DEP)} deg a {n(3.07)} x {n(P['leg_w'])} flat on the heel lands on the recess floor. Load runs leg - heel - cover in COMPRESSION. There is no detent: the floor is a plain flat face and the leg swings free between the poses"),
+        (5, f"THE STOP: at {n(DEP)} deg a {n(3.07)} x {n(P['leg_w'])} flat on the heel lands on the recess floor. Load runs leg - heel - cover in COMPRESSION. The pocket is otherwise a plain blind hollow - no detent seat, no track, nothing bridging its mouth - and the leg swings free between the poses"),
         (6, f"the taper is ONE-SIDED and finishes at z {n(P['shl_z0'])}: {n(P['leg_t'])} above, {n(P['leg_tf'])} below"),
     ], cw=42)
     s.titleblock(TBX, TBY, 96, 18, "LEG & PIVOT", 6, 8, "SEE VIEWS")

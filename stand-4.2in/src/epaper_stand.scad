@@ -322,10 +322,6 @@ rib_seg      = 15.0;  // segment length, each side
 // in it, and the pocket floor is left flat and unbroken - one seat, one arc track
 // and two nubs less to print and tune.
 //
-// What holds the leg SHUT is lip_h: a small lip across the mouth of the recess
-// near the foot.  The tip tucks under it, and because that is piv_z - lip_z from the
-// pin, releasing it only asks the leg to bow lip_h over that length.
-//
 // PORTRAIT ONLY, which is what lets the leg run straight down the centreline - and
 // that is what clears the corner screws by 32.4 and misses the driver carrier.
 dep_ang  = 35.0;    // swing from folded.  The stance knob.
@@ -368,10 +364,6 @@ rec_floor= 1.8;     // THE POCKET'S FLOOR, and it has to be built: see recess_bo
 // it, the whole length, at the full pocket depth.  There is no separate notch band
 // - and it was that band, sharing z 9.5..17.5 with the bottom glass rib and with
 // the old port position, that undercut the rib and crowded the port.
-lip_h    = 0.35;    // folded-latch lip overhang. PRINT-TUNE: too much and the leg
-                    //   will not close, none and it will not stay closed.
-lip_z    = 5.5;     // ... its height, over the leg near the tip
-lip_w    = 1.6;     // ... and its width along the long axis
 // THE SOCKETS LIVE ON EARS INSIDE THE POCKET, not bored through its side walls.
 // Bored outward they had to be reached from outside, which broke the back face into
 // two more openings; on ears the C-mouth opens into the pocket, and the pocket is
@@ -695,7 +687,18 @@ scr_z = [14.0, Zc, H - 14.0];            // legacy, still used by the drawings
 piv_z    = leg_len + foot_z;           // pin, up from the bottom edge
 piv_y    = depth - leg_t/2;            // ... and its depth: FLUSH folded leg
 piv_h    = piv_y - rec_y0;             // pin above the recess floor (= rec_dep-leg_t/2)
-shl_z0   = cav_z0 + 0.5;               // where the recess steps to rec_shl
+// THE BOSS HAS TO OVERRUN THE DEEP POCKET AT BOTH ENDS.  An end wall needs
+// material behind it exactly as a floor does, and the pocket's two end walls are
+// the ones easy to forget: they face along z, not along y, so a check that probes
+// "behind the floor" never sees them.
+//
+// boss_z0 is as low as the boss may go - below it the frame's solid end wall is
+// behind the cover and a boss would drive into it.  So the DEEP section starts
+// rec_floor above that, and the boss runs rec_floor past rec_top at the other end.
+// Start them on the same plane, as they were, and the deep pocket's lower end wall
+// is a rec_w x (elec_back - rec_y0) hole straight into the electronics bay.
+boss_z0  = cav_z0 + 0.5;               // the boss starts where the interior does
+shl_z0   = boss_z0 + rec_floor;        // where the recess steps to rec_shl
 tap_z    = shl_z0 + 7.5;                // ... so the taper must be FINISHED by
                                         //   shl_z0, not merely started: the leg
                                         //   was 2.04 into the shallow floor when
@@ -705,6 +708,7 @@ tap_z    = shl_z0 + 7.5;                // ... so the taper must be FINISHED by
 // back through the deployed rotation.  Nothing else needs to be said about it: the
 // cut in leg_shape() is that sentence in geometry.
 rec_top  = piv_z + heel_z + 1.5;       // recess, top end: clears the heel's sweep
+boss_z1  = rec_top + rec_floor;        // ... and the boss overruns it by a floor
 rec_z0   = foot_z - rec_clr;           // ... and its bottom end: the folded foot
                                        //   tip stops at foot_z, so this is rec_clr
                                        //   below it and no lower.  Every mm further
@@ -909,30 +913,21 @@ module corner_posts(){
 // has to dodge them.
 lgt_w  = cav_w - 8.0;
 lgt_y0 = mod_back + 2.0;
-// ... and it STOPS EITHER SIDE OF THE STAND BAND.  The bottom pocket's z band is
-// the band the leg recess runs through, and the recess's floor there is the 1.0 mm
-// register plate on the cover.  Hollowed out behind that plate, the plate is the
-// only thing between the open pocket and the inside of the frame; left solid, the
-// frame backs it.  lgt_rib is the material kept between the pocket and the band.
-lgt_rib = 2.0;
-lgt_band = stand_reg_w/2 + reg_fit + lgt_rib;
-module lgt_pocket(z0, z1, x0, x1){
-    if (z1 - z0 > 3.0 && x1 - x0 > 3.0)
-        translate([(x0+x1)/2, lgt_y0, (z0+z1)/2]) xzext(body_d - lgt_y0 + 0.1)
-            rrect(x1 - x0, z1 - z0, 1.5);
-}
+// ONLY THE TOP END IS HOLLOWED.  The bottom end wall is the one the stand pocket
+// lies against, and the pocket's floor there is the cover's 1.0 mm register plate -
+// an OUTSIDE surface.  That end stays solid, so the leg's pocket is a blind hollow
+// in a solid block with nothing behind it to get into.  It costs lgt_gain of
+// filament and it is worth every gram of it.
 module lightening(){
-    if (bare_panel)
-        for (sz=[-1,1]) {
-            z0 = sz > 0 ? cav_z1 + 2.0 : 2.5;
-            z1 = sz > 0 ? H - 2.5      : cav_z0 - 2.0;
-            x0 = cav_cx - lgt_w/2;  x1 = cav_cx + lgt_w/2;
-            if (z0 < shl_z0 + 0.05 && z1 > reg_ext_z0 - reg_fit) {
-                lgt_pocket(z0, z1, x0, -lgt_band);   // split either side of the band
-                lgt_pocket(z0, z1,  lgt_band, x1);
-            } else
-                lgt_pocket(z0, z1, x0, x1);
-        } }
+    if (bare_panel) {
+        z0 = cav_z1 + 2.0;
+        z1 = H - 2.5;
+        if (z1 - z0 > 3.0)
+            translate([cav_cx, lgt_y0, (z0+z1)/2]) xzext(body_d - lgt_y0 + 0.1)
+                rrect(lgt_w, z1 - z0, 1.5);
+    } }
+// what leaving the bottom end solid costs, for the record
+lgt_gain = lgt_w * (cav_z0 - 2.0 - 2.5) * (body_d - lgt_y0) / 1000;   // cm3
 
 // ================================================================= cover
 // The cover's register plate stops at the cavity's footprint (z 8.15 up), but the
@@ -945,7 +940,7 @@ module stand_register(extra = 0){
     translate([-(stand_reg_w/2 + extra), body_d - reg_step - extra, reg_ext_z0 - extra])
         cube([stand_reg_w + 2*extra,
               reg_step + 2*extra,
-              (shl_z0 + 0.05) - reg_ext_z0 + extra]);
+              (boss_z0 + 0.05) - reg_ext_z0 + extra]);
 }
 
 // THE SOLID THE POCKET IS BORED INTO.  Without this the pocket is not a pocket:
@@ -961,8 +956,8 @@ module recess_boss(){
     // frame back there, so a boss would drive straight into it - and it is not
     // wanted anyway: the pocket steps to rec_shl there, which the register alone
     // already floors.
-    translate([-(rec_w/2 + rec_wall), rec_back, shl_z0])
-        cube([rec_w + 2*rec_wall, depth - rec_back, rec_top - shl_z0]);
+    translate([-(rec_w/2 + rec_wall), rec_back, boss_z0])
+        cube([rec_w + 2*rec_wall, depth - rec_back, boss_z1 - boss_z0]);
 }
 
 // The ribs that press the glass forward onto the front lip.  Nothing else holds
@@ -1105,21 +1100,17 @@ module cover(){
 // seat, less the latch lip.  Deep where the interior is behind it; stepped SHALLOW
 // below cav_z0, because there the cover is backed by solid frame and a deep pocket
 // would leave no floor.  That step is the only reason the leg tapers.
+// NOTHING BRIDGES ITS MOUTH and nothing is cut into its floor.  The pocket is a
+// plain blind hollow: two steps in depth, two ears at the pivot, and that is all.
 module recess_cut(){
-    difference(){
-        union(){
-            // deep section
-            translate([-rec_w/2, rec_y0, cav_z0 + 0.5])
-                cube([rec_w, rec_dep + 0.02, rec_top - (cav_z0 + 0.5)]);
+    union(){
+            // deep section - it starts rec_floor ABOVE the boss, so its lower
+            // end wall has boss behind it
+            translate([-rec_w/2, rec_y0, shl_z0])
+                cube([rec_w, rec_dep + 0.02, rec_top - shl_z0]);
             // shallow section, over the frame's solid end wall
             translate([-rec_w/2, rec_shl_y, rec_z0])
-                cube([rec_w, rec_shl + 0.02, (cav_z0 + 0.5) - rec_z0]);
-        }
-        // ... less the latch lip: a bridge left across the mouth near the foot.
-        // The leg's tip tucks under it and bows leg_len away from the pin to
-        // release, which is why this and not a second pocket at the pivot.
-        translate([-rec_w/2 - 1, depth - lip_h, lip_z - lip_w/2])
-            cube([rec_w + 2, lip_h + 1, lip_w]);
+                cube([rec_w, rec_shl + 0.02, shl_z0 - rec_z0]);
     }
 }
 
@@ -1496,8 +1487,9 @@ echo(str("STAND: lever leg, swings ",dep_ang," deg | leg ",leg_len," long, ",
          (pin_d+pin_fit)*ear_mouth," across a ",pin_d+pin_fit," bore, through ",
          ear_w," ears INSIDE the pocket -> a ",pin_d," x ",pin_len,
          " pin, which is exactly rec_w, so the pocket walls cap it",
-         " | NO DETENT: the leg swings free between the poses, the stop makes the",
-         " deployed one and the latch lip holds the folded one"));
+         " | THE POCKET IS A PLAIN BLIND HOLLOW: no detent, no seat, no latch lip",
+         " across its mouth.  The stop makes the deployed pose; folded, the leg just",
+         " lies in the pocket and nothing holds it there"));
 echo(str("STOP: the heel reaches ",heel_z," past the pin and is cut by the recess",
          " floor pulled back through ",dep_ang," deg, so at ",dep_ang,
          " a FLAT lands on the floor - a face, not a tangent corner |",
@@ -1515,10 +1507,6 @@ echo(str("LEG WIDTH is DERIVED: rec_w ",rec_w," less two ears of ",ear_w,
          " and ",rec_clr," clearance each -> leg_w ",leg_w,
          " | the pin passes through both ears and its ends finish flush with the",
          " pocket walls, so nothing else retains it sideways"));
-echo(str("FOLDED LATCH: a ",lip_w," lip across the recess mouth at z ",lip_z,
-         ", overhanging ",lip_h,".  The tip tucks under it, and that point is ",
-         piv_z-lip_z," from the pin, so releasing it asks the leg to bow only ",
-         lip_h," over that length"));
 echo(str("STANCE: lean ",lean," deg | footprint ",footprint,
          " | folded foot tip at z ",foot_z," against a ",rear_chf," chamfer -> ",
          stand_ok ? "clear, nothing overhangs the bottom edge"
@@ -1556,15 +1544,25 @@ g_scr  = min([ for (sp = scr_pos)
                gap2d(px0,px1,pz0,pz1, sp[0]-scr_head/2, sp[0]+scr_head/2,
                                       sp[1]-scr_head/2, sp[1]+scr_head/2) ]);
 g_min  = min(g_rec, g_scr);
-echo(str("POCKET FLOOR: recess_boss() runs x +/-",rec_w/2+rec_wall," and z ",shl_z0,
-         " to ",rec_top," (it starts at the shallow step - below that solid frame is",
-         " behind the cover), front face at ",rec_back,", so the floor is ",rec_floor,
+echo(str("POCKET END WALLS: the boss runs z ",boss_z0," to ",boss_z1," and the DEEP",
+         " section of the pocket runs ",shl_z0," to ",rec_top,", so each end wall has ",
+         shl_z0-boss_z0," / ",boss_z1-rec_top," of boss behind it -> ",
+         (shl_z0-boss_z0 >= rec_floor - 1e-6 && boss_z1-rec_top >= rec_floor - 1e-6)
+           ? "both closed"
+           : "AN END WALL IS OPEN into the interior - see chk=rec_floor_gap",
+         " | an end wall faces along z, so the floor probes never touch it: start the",
+         " boss and the deep section on the SAME plane and the lower one is a ",
+         rec_w," x ",rec_shl_y-rec_y0," hole into the electronics bay"));
+echo(str("POCKET FLOOR: recess_boss() runs x +/-",rec_w/2+rec_wall," and z ",boss_z0,
+         " to ",boss_z1," (it starts where the interior does - below that solid frame",
+         " is behind the cover), front face at ",rec_back,", so the floor is ",rec_floor,
          " for the whole DEEP length | the cover's own skin+register is only ",
          cover_t+reg_step," against a ",rec_dep,
          " deep pocket, so without the boss the cut goes through | below the step",
-         " stand_register() extends the register down to z ",rec_z0-1.0,
+         " stand_register() extends the register down to z ",reg_ext_z0,
          " so the shallow band keeps ",reg_step," behind it, and the frame is",
-         " relieved to match | the floor is flat and unbroken at ",rec_floor,
+         " relieved to match (it stops at ",reg_ext_z0,", clear of the chamfer)",
+         " | the floor is flat and unbroken at ",rec_floor,
          " the whole deep length - nothing is cut into it | boss reaches x ",
          -(rec_w/2+rec_wall),", carrier's near edge ",carrier_cx+carrier_w/2,
          " -> clears by ",abs(carrier_cx+carrier_w/2)-(rec_w/2+rec_wall)));
@@ -1577,8 +1575,9 @@ echo(str("POCKET FLOOR PLATE: the cover's register extension runs z ",reg_ext_z0
          reg_seal >= 0.5
            ? str("ends in solid frame, ",reg_seal," of it below the relief")
            : str("OPEN - only ",reg_seal," left; raise reg_ext_z0 or rec_z0"),
-         " | and the bottom lightening pocket is split either side of x +/-",
-         lgt_band," so the plate is backed by solid frame, not by a void"));
+         " | and the frame's bottom end wall is NOT hollowed - lightening() runs at",
+         " the top end only - so the plate is backed by ",body_d-lgt_y0,
+         " of solid frame rather than by a void.  That costs ",lgt_gain," cm3"));
 echo(str("GLASS RIBS: ", bare_panel
          ? str("bottom rib SPLIT into two ",rib_seg," segments at x +/-",
                rec_w/2+rib_pocket_c," to +/-",rec_w/2+rib_pocket_c+rib_seg,
@@ -1717,6 +1716,11 @@ if(chk=="heel_floor")   intersection(){
 // Each band is tested at ITS OWN floor: the deep section against rec_floor, the
 // shallow section against the register alone.  Anything the cover does not fill is
 // a hole into the interior.
+//
+// AND IT TESTS THE TWO END WALLS, which is what it used to miss.  An end wall faces
+// along z, not along y, so probing "behind the floor" never touches it - and the
+// deep section's lower end wall had nothing behind it at all: an 18 x 2.1 slot out
+// of the leg pocket into the electronics bay, with every other check passing.
 if(chk=="rec_floor_gap") difference(){
     union(){
         // max(...,0.1) on purpose: a non-positive slab would build no geometry and
@@ -1726,6 +1730,12 @@ if(chk=="rec_floor_gap") difference(){
         translate([-rec_w/2, body_d - reg_step + 0.05, rec_z0 + 0.05])
             cube([rec_w, max(reg_step + cover_t - rec_shl - 0.1, 0.1),
                   shl_z0 - rec_z0 - 0.1]);
+        // the deep section's two END WALLS: the material that has to stand beyond
+        // each end of it, over the depth the deep pocket reaches past the shallow
+        // floor.  Both must be solid boss.
+        for (zz = [shl_z0 - rec_floor + 0.05, rec_top + 0.05])
+            translate([-rec_w/2, rec_y0 + 0.05, zz])
+                cube([rec_w, rec_shl_y - rec_y0 - 0.1, rec_floor - 0.1]);
     }
     cover();
 }
@@ -1761,12 +1771,12 @@ if (part=="params") {
    ["heel_z",heel_z],["tap_z",tap_z],
    ["piv_h",piv_h],["piv_z",piv_z],["piv_y",piv_y],
    ["shl_z0",shl_z0],
-   ["lip_h",lip_h],["lip_z",lip_z],["lip_w",lip_w],
    ["rec_dep",rec_dep],["rec_shl",rec_shl],["rec_w",rec_w],["rec_clr",rec_clr],
    ["rec_floor",rec_floor],["rec_wall",rec_wall],["rec_y0",rec_y0],["rec_top",rec_top],["rec_z0",rec_z0],
    ["rec_back",rec_back],["rec_shl_y",rec_shl_y],["py_edge",py_edge],
    ["reg_ext_z0",reg_ext_z0],["reg_fit",reg_fit],["chf_bite",chf_bite],
-   ["reg_seal",reg_seal],["stand_reg_w",stand_reg_w],["lgt_band",lgt_band],
+   ["reg_seal",reg_seal],["stand_reg_w",stand_reg_w],["lgt_gain",lgt_gain],
+   ["boss_z0",boss_z0],["boss_z1",boss_z1],
    ["ear_w",ear_w],["ear_len",ear_len],["ear_x0",ear_x0],["ear_mouth",ear_mouth],
    ["pin_len",pin_len],["finger_g",finger_g],
    ["elec_back",elec_back],["reg_step",reg_step],

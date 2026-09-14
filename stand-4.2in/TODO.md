@@ -110,23 +110,28 @@ build that needs them.
 - [ ] Folded, the leg should sit **flush with the back face** and nothing should overhang the
       bottom edge.
 
-**The catch.** One number tunes it now — the leg swings free and holds only the two ends:
+**Folded, nothing holds it.** The pocket has no latch and no detent, so:
 
-- [ ] **`lip_h` (0.35) is the folded latch.** It should take a deliberate pull to open and a
-      firm push to close. Won't close, drop it; won't stay shut, raise it.
+- [ ] **Decide whether the leg staying shut matters.** Pick the display up, tip it forward, and
+      see whether the leg swings out on its own. If it does and that is annoying in use, a lip
+      across the pocket mouth is the one-line answer (`lip_h`, in git at the commit before the
+      pocket was cleaned out) — but it puts a bridge back in the pocket.
 - [ ] **Check the finger access actually works.** Off the ears there is 2.5 open either side of
       the leg, the whole length, at the full 4.5 depth. If a nail won't go under the leg's edge,
       the pocket has to get wider — but `rec_w` is capped at ~18.9 by the driver carrier at
       x −11.45, and widening it also widens `leg_w`'s derivation.
 - [ ] **Hold the cover up to the light before assembling.** The pocket must be blind everywhere:
-      no daylight through its floor, and the two ears must be solid with their C-mouths open
-      into the pocket, not through the back face. `chk="rec_floor_gap"` and `chk="rib_recess"`
-      both pass in the model, but a thin floor can still print through.
+      no daylight through its floor, none through either **end wall** (the step at z 11.3 and
+      the far end at z 63.5 — that pair was open into the electronics bay until the boss was
+      made to overrun the pocket), and the two ears solid with their C-mouths open into the
+      pocket, not through the back face. `chk="rec_floor_gap"` covers all of it in the model,
+      but a thin wall can still print through.
 - [ ] **Check the bottom of the pocket once frame and cover are screwed together.** The floor
       plate stops 1.15 mm clear of the rear chamfer so its fit gap cannot surface there — look
       along the bottom edge and there should be no slot into the frame. The model is sealed
       (`POCKET FLOOR PLATE` echo); what a print does with a 0.15 mm fit gap and a 1.15 mm
-      ledge is the thing to confirm.
+      ledge is the thing to confirm. Behind that plate the frame is now solid, so even a bad
+      print there opens into material rather than into the case.
 
 **The pin socket.** This is the one feature that could fail on the first assembly:
 

@@ -123,7 +123,7 @@ Everything else has room.
 
 The two CSVs are split on purpose.
 
-**[`parameters.csv`](parameters.csv)** — 106 rows, and every one of them is a
+**[`parameters.csv`](parameters.csv)** — 103 rows, and every one of them is a
 number that was measured or chosen. Nothing in the file is computed from
 anything else in it, so each row is a value to type in once and then own. Rows
 beginning `#` are group headings; drop them if an importer objects.
@@ -213,11 +213,8 @@ faceted: a Ø2.1 bore in `frame.stl` is a 48-sided polygon. Fusion gives you a
 true cylinder. Your solid will be **dimensionally identical and geometrically
 better**, and re-exporting it will not produce the same triangles.
 
-Two honest caveats:
+One honest caveat:
 
-- **`lip_h` 0.35 is a print-tuning knob, not fixed geometry.** It is expected to
-  move once the leg has been printed and felt — see [TODO.md](../TODO.md).
-  Reproduce it, then change it.
 - **The cover is roughly three times the frame's work.** Twenty-odd features,
   and the pivot ears and their C-sockets are the hardest geometry in the build.
   Do the frame first.
@@ -302,19 +299,17 @@ Order matters: several of these rely on material a previous step left behind.
 | 3 | Glass pocket | Y 1.4 | −3.2 (`pan_px`) | 55.25 | 77.5 | 91.5 | 0.5 (`pan_r`) | 1.26 |
 | 4 | Ribbon relief | Y 1.4 | −43.45 | 65.25 (`rib_cz`) | 3.0 (`rib_clr`) | 49.0 (`rib_w`) | — | 4.05 |
 | 5 | PCB cavity | Y 2.65 | −1.65 (`cav_cx`) | 55.25 | 81.6 (`cav_w`) | 92.5 (`cav_h`) | 1.5 (`cav_r`) | 20.95 |
-| 6a | Lightening, bottom −X | Y 4.65 | −25.05 | 4.75 | 24.8 | 4.5 | 1.5 | 18.95 |
-| 6b | Lightening, bottom +X | Y 4.65 | 24.40 | 4.75 | 23.5 | 4.5 | 1.5 | 18.95 |
-| 7 | Lightening, top | Y 4.65 | −1.65 | 105.75 | 73.6 | 4.5 | 1.5 | 18.95 |
+| 6 | Lightening, top | Y 4.65 | −1.65 | 105.75 | 73.6 (`lgt_w`) | 4.5 | 1.5 | 18.95 |
 | 8 | −X wall slot, lower | Y 21.1 | −43.15 | 23.25 | 1.6 | 10.0 | — | 2.1 |
 | 9 | −X wall slot, upper | Y 21.1 | −43.15 | 87.25 | 1.6 | 10.0 | — | 2.1 |
 
-**Step 6 is two pockets, not one, and the gap between them is the point.** The
-bottom lightening pocket runs through the band the stand recess crosses, and the
-recess's floor there is nothing but the cover's 1.0 mm register extension. Hollow
-the frame out behind that plate and the plate is the only thing between an open
-pocket on the outside of the case and the inside of the frame; leave x ±12.65
-(`lgt_band`) solid and the frame backs it. Run it as one pocket and you have
-deleted the backing.
+**There is no lightening pocket at the BOTTOM end, and that is deliberate.** That
+end wall is the one the stand pocket lies against, and the pocket's floor there is
+nothing but the cover's 1.0 mm register extension — an outside surface. Hollow the
+frame out behind it and that plate is the only thing between an open pocket on the
+outside of the case and the inside of the frame. Left solid it costs 6.28 cm³ and
+the pocket becomes a blind hollow in a solid block. Do not add a matching pocket
+at the bottom "for symmetry".
 
 **Step 10 must not reach the bottom edge.** It is the relief the cover's register
 extension plugs, and it is `reg_fit` 0.15 larger than the plug all round, so a
@@ -430,7 +425,7 @@ Start with C1, then Join the rest onto it.
 |---|---|---|---|---|---|---|---|---|
 | C1 | Register plate | −1.65 | 55.25 | 83.3 | 94.2 | 2.5 | 22.6 | 25.0 |
 | C2 | Outer skin | 0 | 55.25 | 91.9 | 110.5 | 5 | 23.6 | 25.0 |
-| C3 | Recess boss | 0 | 36.5 | 21.0 | 54.0 | — | 18.7 | 25.0 |
+| C3 | Recess boss | 0 | 37.4 | 21.0 | 55.8 | — | 18.7 | 25.0 |
 | C4 | Stand register extension | 0 | 5.73 | 21.0 | 7.65 | — | 22.6 | 23.6 |
 | C5 | Glass rib, bottom, ×2 | ±17.5 | 11.75 | 15.0 | 3.5 | — | 2.90 | 23.6 |
 | C6 | Glass rib, top | −11.0 | 98.75 | 20.0 | 3.5 | — | 2.90 | 23.6 |
@@ -457,6 +452,13 @@ bore — the back face carries no opening for the charger. The centres are
 1.4 thick and the pocket is 4.5 deep, so without this boss behind it the cut goes
 straight through the back face. Build it before you cut the pocket.
 
+**C3 is LONGER than C12 at both ends, by 1.8 (`rec_floor`) each, and that is the
+whole point.** The pocket's two end walls need material behind them exactly as its
+floor does, and they face along the long axis, so nothing that probes "behind the
+floor" ever touches them. Give C3 and C12 the same ends and the lower end wall has
+nothing behind it at all: an 18 × 2.1 slot out of the leg pocket into the
+electronics bay. C3 runs z 9.5…65.3; C12 runs 11.3…63.5.
+
 **C5 splits into two segments and C6 does not.** The bottom glass rib crosses the
 stand pocket. Run straight through, the pocket takes its root out and leaves the
 middle cantilevered off one end — and it is the rib that holds the glass down.
@@ -469,22 +471,18 @@ clear of the pocket, is a single 20 mm pad.
 
 | # | Cut | Centre X | Centre Z | Width | Height | Y from | Y to |
 |---|---|---|---|---|---|---|---|
-| C12 | Stand pocket, deep | 0 | 36.5 | 18.0 | 54.0 | 20.5 | 25.0 |
-| C13 | Stand pocket, shallow | 0 | 6.0 | 18.0 | 7.0 | 23.6 | 25.0 |
+| C12 | Stand pocket, deep | 0 | 37.4 | 18.0 | 52.2 | 20.5 | 25.0 |
+| C13 | Stand pocket, shallow | 0 | 6.9 | 18.0 | 8.8 | 23.6 | 25.0 |
 | C14 | Pigtail clearance | −5.0 | 92.0 | 15.5 | 6.0 | 13.6 | 23.8 |
 | C15 | Port opening | −5.0 | 92.0 | 14.3 | 4.8, R0.6 | 23.5 | 25.0 |
 | C16 | Screw holes, ×4 | ±40.45 | 5.5 and 105.0 | Ø2.9 | — | 23.5 | 25.0 |
 
-**The pocket floor stays flat.** Nothing is cut into it: the leg swings free
-between its two poses, so there is no seat and no track, and the floor is a plain
-face 1.8 (`rec_floor`) thick the whole deep length.
+**Nothing goes back in afterwards, and nothing is cut into the floor.** The pocket
+is a plain blind hollow: no detent seat, no arc track, and no lip bridging its
+mouth. The floor is a flat face 1.8 (`rec_floor`) thick the whole deep length. The
+only things standing in the pocket are the two pivot ears, below.
 
-Then three things that are not rectangles.
-
-**The latch lip — put material back.** After C12 and C13, **Join** a block
-spanning X ±9, Z 4.7 to 6.3, Y 24.65 to 25.0. It bridges the mouth of the pocket
-near the foot; the leg's tip tucks under it, and releasing only asks the leg to
-bow 0.35 (`lip_h`) over its whole length.
+Then two things that are not rectangles.
 
 **The countersinks.** Each screw hole needs a 90° countersink opening at the
 **back** face: Ø2.9 widening to Ø5.0 (`scr_head`) over 1.05 (`scr_csk`), so from

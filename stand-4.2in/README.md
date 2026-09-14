@@ -24,7 +24,7 @@ gets.
 | Lean | 22.3°, 34.1 mm footprint |
 | Interior | 81.6 × 92.5 × 21.0 mm, with 9 mm end walls |
 | Fasteners | 4 × M2.5 countersunk into heat-set inserts, one near each corner |
-| Print | 3 parts, ~103 g of filament; supports on the leg only |
+| Print | 3 parts, ~112 g of filament; supports on the leg only |
 
 <img src="renders/01-iso-portrait.png" width="46%" alt="Deployed"> <img src="renders/02-iso-folded.png" width="46%" alt="Folded">
 
@@ -646,27 +646,28 @@ face rotating into a plane. A corner grazing a plane saturates instead.
 right angle; the same geometry also keeps every point on the leg out of the cover through the
 whole stroke, which the swept `cover_legs` check confirms at every angle, not just at the ends.
 
-### The leg swings free, and holds two positions
+### The pocket is a plain blind hollow, and the leg swings free
 
-There is **no detent**. The leg holds the two positions that matter and nothing in between:
-**deployed** on the stop, where the display's own weight seats it, and **folded** under the
-latch lip. The recess floor is a **plain flat face** the whole deep length, and the leg is a
-plain tapered blade with a heel on it.
+There is **no detent, no seat and no latch lip**. The recess is two steps in depth, two ears at
+the pivot, and nothing else: no bridge across its mouth, nothing cut into its floor, and no
+opening anywhere in it. The leg is a plain tapered blade with a heel on it.
 
-Neither position depends on friction, which is why nothing is lost: the stop is a face taking
-load in compression, and the lip is a mechanical catch. And with nothing riding the floor,
-`cover_legs` is empty at **every** angle but θ = 0, where the 6.91 mm³ it reports is the latch
-lip's bite — the interference the leg bows past to snap shut.
+The one position that is *made* is the deployed one, and it is made by a face, not by friction:
+the heel's flat lands on the recess floor at 35° and the display's own weight seats it. Folded,
+the leg simply lies in its pocket.
 
-### What holds it shut, and what starts it
+**Nothing holds the leg shut.** Tip the display far enough forward and the leg will swing out
+under its own weight. That is the trade for a pocket with no features in it, and it is a
+one-line reversal — `lip_h` and the bridge it drew are in git at the commit before this one.
 
-A **lip** 1.6 mm wide bridges the mouth of the recess at z 5.5, overhanging 0.35 mm. The leg's
-tip tucks under it. That point is 52.5 mm from the pin, so releasing the latch only asks the leg
-to bow 0.35 mm over 52.5 mm — the latch can be firm without being stiff. `lip_h` tunes it.
+With nothing riding the floor and nothing bridging the mouth, `cover_legs` is **empty at every
+angle from 0 to 35 with nothing suppressed** — the first time in this design that has been true.
 
-To start it, **finger access comes free from the ears.** They are only 8 mm long, so away from
-the pivot the leg sits in the full 18 mm pocket with **2.5 mm open either side of it, the whole
-length, at the full 4.5 mm depth**. A fingernail goes straight under its side edge.
+### What starts it
+
+**Finger access comes free from the ears.** They are only 8 mm long, so away from the pivot the
+leg sits in the full 18 mm pocket with **2.5 mm open either side of it, the whole length, at the
+full 4.5 mm depth**. A fingernail goes straight under its side edge.
 
 There is no separate notch band, and there should not be: the band that used to widen the pocket
 for that purpose ran z 9.5 … 17.5, which is exactly where the bottom glass rib and the old port
@@ -707,14 +708,29 @@ interior.**
 
 So the pocket is bored into a boss of its own, `recess_boss()`, running its whole deep length
 with its front face at depth 18.7 — the floor is 1.8 mm everywhere rather than only where
-something else reaches. Below the shallow step the boss stops (solid frame is behind the cover
-there) and `stand_register()` extends the register plate down the pocket's footprint instead,
-with a matching relief in the frame, so that band keeps 1.0 mm behind it.
+something else reaches. Below the boss's start (solid frame is behind the cover there)
+`stand_register()` extends the register plate down the pocket's footprint instead, with a
+matching relief in the frame, so that band keeps 1.0 mm behind it.
 
-`chk="rec_floor_gap"` is the guard: a slab immediately behind the floor, less the cover. Anything
+**The boss overruns the deep pocket at both ends, and that is not a detail.** An *end wall*
+needs material behind it exactly as a floor does, and the pocket's two end walls face along the
+long axis rather than through the thickness — so a check that probes "behind the floor" never
+touches them. Started on the same plane, as the boss and the deep section were, the deep
+section's lower end wall has **nothing** behind it: an **18 × 2.1 mm slot straight out of the
+leg pocket into the electronics bay**, with every other check in the file passing. The boss now
+starts `rec_floor` below the step (`boss_z0` 9.5, `shl_z0` 11.3) and runs `rec_floor` past
+`rec_top` (`boss_z1` 65.3), so both end walls have 1.8 mm of boss behind them.
+
+That slot is also the one the cover's **genus** was counting: the pocket and the interior are
+both open to air, so joining them made a loop through the solid. The cover is genus 5 now —
+four screw holes and the port, and nothing else goes through it.
+
+`chk="rec_floor_gap"` is the guard: slabs immediately behind the pocket, less the cover. Anything
 the cover does not fill is a hole. It tests each band at its own floor depth — the deep section
 against the full `rec_floor` = **1.8 mm**, since nothing is cut into the floor, and the shallow
-section against the register plate alone.
+section against the register plate alone — **and it now tests the two end walls as well**, which
+is the probe that was missing. Put the boss and the deep section back on one plane and it reports
+62.7 mm³ at x ±9, z 7.75…9.45: the hole, named and located.
 
 ### The floor plate has to die in solid frame
 
@@ -735,10 +751,15 @@ millimetre lower than it needs to be — every millimetre the pocket runs down i
 nearer that chamfer. The `POCKET FLOOR PLATE` echo states both numbers and says which way the
 test came out.
 
-**And the bottom end wall is not hollowed behind the plate.** `lightening()` splits its bottom
-pocket into two, either side of `lgt_band` = x ±12.65, so the plate is backed by solid frame
-rather than cantilevered over a void — a second line of defence behind a 1.0 mm floor that is
-also an outside surface.
+**And the bottom end wall is not hollowed at all.** `lightening()` runs at the **top end only**.
+The bottom end wall is the one the stand pocket lies against, and that pocket's floor is the
+1.0 mm register plate — which is an *outside* surface. Hollowed out behind it, that plate was
+the only thing between an open pocket on the outside of the case and the inside of the frame,
+and the pocket was a 73.6 × 4.5 mm open space in the frame's back face into the bargain. Left
+solid, the leg's pocket is a blind hollow in a solid block with nothing behind it to get into.
+
+It costs **6.28 cm³** — about 7.8 g, the frame going from ~62 g to ~70 g. That is the price of
+the answer to "what is behind the pocket floor?" being "frame".
 
 ### The glass ribs keep their root
 
@@ -758,10 +779,11 @@ simply gone.
 
 ### The recess steps, and the leg tapers to match
 
-The recess is 16 mm wide and 4.5 mm deep down to z 9.5. Below that the cover is backed by solid
+The recess is 18 mm wide and 4.5 mm deep down to z 11.3. Below that the cover is backed by solid
 frame, so it steps to 1.4 mm. The leg's taper is **one-sided** — the back face stays flush the
-whole length and the front face rises — and it **finishes** at z 9.5 rather than running on to
-the tip, so the thin end matches the shallow section instead of standing proud of it.
+whole length and the front face rises — and it **finishes** at z 11.3 rather than running on to
+the tip, so the thin end matches the shallow section instead of standing proud of it. That is
+`shl_z0`, so the taper follows the step automatically wherever the step goes.
 
 ### The stand subassembly — parts, print, assembly
 
@@ -780,7 +802,7 @@ needs them, and it is the only part in the build that does.
 1. Push the **rod** through the leg's axle hole, 2.5 mm proud each side.
 2. Press that subassembly into the recess from the back, so both rod ends snap past the ears'
    socket lips.
-3. Fold the leg down until the tip tucks under the latch lip.
+3. Fold the leg down into the pocket. Nothing catches it there — it simply lies flush.
 
 **Taking it apart** is the reverse: lever the leg back out and the rod comes with it.
 
@@ -826,7 +848,7 @@ they land on the bed:
 
 | Part | STL | On the bed | Why | Filament |
 |---|---|---|---|---|
-| Frame | `stl/frame.stl` | front face down | big flat first layer, and the interior opens upward. The other way up, the 1.4 mm front plate has to bridge the whole interior | ~63 g |
+| Frame | `stl/frame.stl` | front face down | big flat first layer, and the interior opens upward. The other way up, the 1.4 mm front plate has to bridge the whole interior | ~70 g |
 | Back cover | `stl/cover.stl` | outer back face down | big flat first layer, standoffs and ribs build upward | ~35 g |
 | Leg | `stl/leg.stl` | flat, front face up | **the one part that wants supports** — the heel's stop flat is a 35° overhang. Flat also puts the leg's bending load across the layers rather than along them | ~3.2 g |
 | Bezel test tile | `stl/bezel_test.stl` | front face down — **print this first** | same as the frame | ~23 g |
@@ -835,11 +857,9 @@ PLA or PETG, 0.2 mm layers, 4 perimeters, 15–20% infill. On the frame and cove
 0.8 mm front chamfer overhangs, at 45°, on the first layer. Put the visible face on the bed;
 that surface finish is most of the look.
 
-The end walls are hollowed from the cover side (`lightening()`), leaving 2 mm of floor
-behind the glass shelf, a rim, and the screw bosses. Without it the two ends are solid
-frame and the part is 24 cm³ heavier for nothing. The **bottom** one is two pockets rather
-than one, split either side of the stand band so the leg pocket's floor plate lands on solid
-frame — see *The floor plate has to die in solid frame*.
+The **top** end wall is hollowed from the cover side (`lightening()`), leaving 2 mm of floor
+behind the glass shelf, a rim, and the screw bosses. The **bottom** one is left solid: the stand
+pocket lies against it — see *The floor plate has to die in solid frame*.
 
 ### Hardware
 
@@ -900,13 +920,9 @@ reason — they were consequences of hardware this build does not have:
 `cover_legs` is the one that must stay clean, and it must stay clean **through the whole
 stroke**, not just at the two ends. **One** thing in it is an interference by design:
 
-| At | Volume | What it is |
-|---|---|---|
-| θ = 0 | 6.91 mm³ | the latch lip's 0.35 mm bite on the folded leg's tip — the interference the leg bows past to snap shut |
-| θ = 2…35 | empty | the leg swings clear of the cover the whole way |
-
-Suppress the lip with `-D lip_h=0` and the sweep is empty at **every** angle from 0 to 35 —
-nothing at all is left over anywhere in the stroke, because nothing on the leg rides the floor.
+It is now **empty at every angle from 0 to 35, with nothing suppressed** — no detent riding the
+floor, no lip biting the tip, nothing in the pocket for the leg to touch but the pin. Any volume
+at all from this check is a real clash.
 
 `heel_floor` is the check that proves the stop, and it is read as a *transition* rather than as
 a pass: empty at every angle up to and including 35°, then 0.56 mm³ at 35.5° growing linearly.
@@ -1044,7 +1060,6 @@ datasheet and CAD model published for each part in the build.
 | Different lean | `dep_ang` — it sets the lean and nothing else; `leg_len` sets the footprint |
 | Rear port position | `ucb_x` / `ucb_z`; `port_w` / `port_h` for the opening. Watch `PORT CLEARANCES` — it must not end up in a band with another opening |
 | Deeper/shallower back bevel | `rear_chf` — 2.0 is the ceiling before it eats the 2.2 mm walls |
-| Firmer/softer folded latch | `lip_h` (0.35) |
 | More/less air under the carrier for its solder joints | `carrier_lift` (2.5) — it comes straight out of the driver column's 1.45 mm of spare |
 | The charger's real hole spacing | `chg_hx` / `chg_hz`; `chg_ins_d` / `chg_ins_l` for a different insert, `chg_skin` for the material left behind the bore |
 | Looser/tighter leg in its recess | `rec_clr` (0.35 a side) |
@@ -1061,11 +1076,10 @@ travel against the cover, and `heel_floor` asks whether the heel has reached the
 at a given angle, which is what proves the stop.
 
 **An empty intersection writes no file at all**, so `rm -f` the output before every run or a
-stale result gets read back as a clash. Three of the checks are *meant* to report volume:
-`frame_cover` is a zero-volume touch (both faces at `y = body_d`), `cover_board` is 16.70 mm³ —
-the four carrier pegs through holes `mock_board` does not model — and `cover_legs` sees the
-latch lip's 0.35 mm bite at θ = 0. Suppress the lip with `-D lip_h=0` when you want the sweep
-to be clean:
+stale result gets read back as a clash. Two of the checks are *meant* to report volume:
+`frame_cover` is a zero-volume touch (both faces at `y = body_d`), and `cover_board` is
+16.70 mm³ — the four carrier pegs through holes `mock_board` does not model. Everything else,
+`cover_legs` included, must be empty:
 
 ```bash
 openscad -o /tmp/chk.stl -D 'part="none"' -D 'chk="cover_board"' src/epaper_stand.scad
@@ -1074,7 +1088,7 @@ openscad -o /tmp/chk.stl -D 'part="none"' -D 'chk="cover_board"' src/epaper_stan
 for t in 0 5 10 17.5 25 30 35; do
   rm -f /tmp/chk.stl
   openscad -o /tmp/chk.stl -D 'part="none"' -D 'chk="cover_legs"' -D "chk_th=$t" \
-    -D 'lip_h=0' src/epaper_stand.scad 2>/dev/null
+    src/epaper_stand.scad 2>/dev/null
   [ -f /tmp/chk.stl ] && echo "theta $t CLASHES"
 done
 

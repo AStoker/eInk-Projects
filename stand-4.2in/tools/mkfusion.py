@@ -154,7 +154,7 @@ GROUPS = [
         "dep_ang", "leg_len", "foot_z", "leg_t", "leg_tf", "foot_r", "heel_z",
         "pin_d", "pin_fit", "rec_dep", "rec_shl", "rec_w", "rec_clr",
         "rec_wall", "rec_floor",
-        "lip_h", "lip_z", "lip_w", "ear_w", "ear_mouth", "ear_len",
+        "ear_w", "ear_mouth", "ear_len",
     ]),
     ("Measured, but not driving geometry in the OpenSCAD model", [
         "fpc_w", "adapt_t", "adapt_hole", "adapt_inset", "usb_w",

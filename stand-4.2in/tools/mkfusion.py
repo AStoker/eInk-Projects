@@ -148,6 +148,8 @@ GROUPS = [
         "chg_w", "chg_h", "chg_t",
         "chg_hx", "chg_hz", "chg_boss_d", "chg_ins_d", "chg_ins_l", "chg_skin",
         "bat_w", "bat_h", "bat_t", "bat_clr", "bat_fence",
+        "snap_w", "snap_h", "snap_d", "snap_c", "snap_ch",
+        "mag_d", "mag_t", "mag_clr", "mag_sink", "mag_wall", "mag_floor",
         "elec_clr", "col_gap",
     ]),
     ("Kickstand", [
@@ -208,6 +210,24 @@ NOTES = {
                   "the knurl has wall to bite",
     "chg_ins_l":  "M2 heat-set insert length. With chg_ins_rel it sets how deep "
                   "the bore goes, and so how tall the post has to be",
+    "mag_d":      "fridge magnet disc, MEASURED. The pocket is this plus mag_clr",
+    "mag_t":      "fridge magnet thickness. Pocket depth is this plus mag_sink",
+    "mag_clr":    "on the pocket's DIAMETER, so the disc drops onto glue rather "
+                  "than pressing into a tight bore",
+    "mag_sink":   "how far below the back face the disc sits. Doubles as the "
+                  "glue bed; proud, it would score the door",
+    "mag_wall":   "material kept between a magnet pocket and anything else",
+    "mag_floor":  "minimum left between a magnet pocket and the cell in front "
+                  "of it",
+    "snap_w":     "rear USB-C pigtail body, MEASURED. The opening is this plus "
+                  "2*snap_c",
+    "snap_h":     "rear USB-C pigtail body, MEASURED. The opening is this plus "
+                  "2*snap_ch - the height gets its own clearance",
+    "snap_d":     "how far the pigtail body reaches into the interior",
+    "snap_c":     "per-side clearance across the opening's WIDTH -> 14.3",
+    "snap_ch":    "per-side clearance across its HEIGHT -> 5.0. Bigger than "
+                  "snap_c on purpose: the height is the small dimension, so it "
+                  "is the one a printed opening loses most of. 0.35 gives 5.2",
     "chg_skin":   "back-face skin left behind the insert bore. The bore is "
                   "blind: the back face carries no opening for the charger",
     "usb_w":     "flash-port opening width. flash_port = false, so the port is "

@@ -123,7 +123,7 @@ Everything else has room.
 
 The two CSVs are split on purpose.
 
-**[`parameters.csv`](parameters.csv)** — 103 rows, and every one of them is a
+**[`parameters.csv`](parameters.csv)** — 114 rows, and every one of them is a
 number that was measured or chosen. Nothing in the file is computed from
 anything else in it, so each row is a value to type in once and then own. Rows
 beginning `#` are group headings; drop them if an importer objects.
@@ -311,6 +311,22 @@ outside of the case and the inside of the frame. Left solid it costs 6.28 cm³ a
 the pocket becomes a blind hollow in a solid block. Do not add a matching pocket
 at the bottom "for symmetry".
 
+**C17 needs a boss under each pocket (C7c), and the pair is mirrored in x.** The
+back face has only 2.4 behind it at both spots, so each Ø8.2 × 2.2 pocket is
+bored into its own Ø11.2 pad standing 1.8 off the register face — 2.0 is left in
+front of each disc.
+
+Mirrored x is the point: the pair's centroid has to sit under the case's centre
+of mass, which is on the centreline, or the display hangs crooked. The two z are
+**not** equal and cannot be — the −X half is carrier board from z 14.5 to 84.5
+held only 2.5 off the face, and that gap belongs to the header solder joints, so
+the −X pocket goes above the carrier while the +X one sits under the charger
+between its two post rows. Do not "tidy" them onto one line.
+
+A magnet is safe against everything in the case except an inductor, whose ferrite
+core it can bias toward saturation. Both pockets sit clear of the driver board,
+which carries the only inductors here.
+
 **Step 10 must not reach the bottom edge.** It is the relief the cover's register
 extension plugs, and it is `reg_fit` 0.15 larger than the plug all round, so a
 0.15 gap runs round the plate. The rear chamfer has already taken 0.6
@@ -431,6 +447,7 @@ Start with C1, then Join the rest onto it.
 | C6 | Glass rib, top | −11.0 | 98.75 | 20.0 | 3.5 | — | 2.90 | 23.6 |
 | C7a | Carrier pads, ×4 | −39.45 and −13.45 | 16.5 and 82.5 | Ø4.0 | — | — | 20.1 | 22.6 |
 | C7b | Carrier pegs, ×4 | −39.45 and −13.45 | 16.5 and 82.5 | Ø1.85 | — | — | 17.3 | 22.6 |
+| C7c | Magnet bosses, ×2 | ±27.6 | 83.0 (+X) and 92.1 (−X) | Ø11.2 | — | — | 20.8 | 25.0 |
 | C8 | Charger posts, ×4 | 9.65 and 34.65 | 73.35 and 92.65 | Ø6.5 | — | — | 18.8 | 23.6 |
 | C9 | Battery platform | 14.35 | 42.55 | 47.6 | 50.6 | — | 18.7 | 23.6 |
 | C10 | Battery fences, ×2 | −8.95 and 37.65 | 42.55 | 1.0 | 35.0 | — | 11.8 | 18.7 |
@@ -474,8 +491,9 @@ clear of the pocket, is a single 20 mm pad.
 | C12 | Stand pocket, deep | 0 | 37.4 | 18.0 | 52.2 | 20.5 | 25.0 |
 | C13 | Stand pocket, shallow | 0 | 6.9 | 18.0 | 8.8 | 23.6 | 25.0 |
 | C14 | Pigtail clearance | −5.0 | 92.0 | 15.5 | 6.0 | 13.6 | 23.8 |
-| C15 | Port opening | −5.0 | 92.0 | 14.3 | 4.8, R0.6 | 23.5 | 25.0 |
+| C15 | Port opening | −5.0 | 92.0 | 14.3 | 5.0, R0.6 | 23.5 | 25.0 |
 | C16 | Screw holes, ×4 | ±40.45 | 5.5 and 105.0 | Ø2.9 | — | 23.5 | 25.0 |
+| C17 | Magnet pockets, ×2 | ±27.6 | 83.0 (+X) and 92.1 (−X) | Ø8.2 | — | 22.8 | 25.0 |
 
 **Nothing goes back in afterwards, and nothing is cut into the floor.** The pocket
 is a plain blind hollow: no detent seat, no arc track, and no lip bridging its

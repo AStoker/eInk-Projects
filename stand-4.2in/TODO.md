@@ -150,6 +150,27 @@ build that needs them.
 - [ ] Check the heel's contact patch. It is a 3.07 × 14 face, so bearing stress is negligible;
       if it is visibly rounding over, the flat is not seating square.
 
+## 5b. Fridge magnets
+
+- [ ] **Test the fridge door with any magnet before printing.** A lot of "stainless" doors are
+      austenitic and hold nothing at all. If it does not stick, set `mag_fit = false` and the
+      two pockets disappear.
+- [ ] **Measure the discs you actually have.** The model assumes Ø8 × 2; `mag_d` / `mag_t`
+      drive the pocket, and the pocket is sized `mag_clr` = 0.2 over on the diameter so a disc
+      drops onto a bead of glue rather than being pressed into a tight bore. **Both positions
+      are derived from `mag_d`**, so a bigger disc moves them — read the `FRIDGE MAGNETS` echo
+      afterwards: at Ø10 the +X pocket closes to 1.5 mm of a charger post.
+- [ ] **Glue with epoxy, not CA.** The pocket floor is 2.0 mm of plastic:
+      a disc that works loose in a 3.2 mm pocket has nowhere to go but out, and CA is brittle
+      in peel. Let it cure before hanging anything on it.
+- [ ] **Check the pocket's bridge printed cleanly.** The cover prints outer-face-down, so each
+      pocket is a hole in the first layer whose floor is bridged 8.2 mm across at Z 2.2. Easy
+      for any printer, but look at it — a drooping bridge is what stops the disc seating flat.
+- [ ] **Hang it and leave it a week before trusting it.** ~2.8x shear margin is calculated, not
+      measured, and it assumes direct contact with magnetic steel. If the door is thin-skinned
+      and it slips, the fix is bigger discs — but check the echo's margins after changing
+      `mag_d`, because both pockets move with it.
+
 ## 6. Print and check the bezel test tile before the frame
 
 - [ ] Print `stl/bezel_test.stl`, front face down (~40 min, ~20 g).

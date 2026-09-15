@@ -409,12 +409,61 @@ carrier_pin   = 2.0;      // hole centre to the first header pin - a keep-out, s
 // precise rectangular hole and clear space behind it - no printed rails.
 // MEASURE THE ACTUAL PART: snap fits live or die on a tenth of a millimetre.
 port_snap = true;
-// MEASURED: the receptacle body is 14.0 wide x 4.5 high.  snap_c is added per
-// side on top of that, so the printed opening is 14.3 x 4.8 - a hole exactly the
-// size of the part will not take the part.
+// MEASURED: the receptacle body is 14.0 wide x 4.5 high.  Clearance is added per
+// side on top of that - a hole exactly the size of the part will not take the part.
+//
+// THE TWO AXES GET DIFFERENT CLEARANCES, and that is deliberate.  The height is
+// the tight one: it is the small dimension, so it is the one a printed opening
+// loses most of to the first perimeter and to elephant's foot, and it is the one
+// the body has to pass edge-on.  snap_ch is set to land the opening on a round
+// number measured in the slicer rather than to a rule - 0.25 gives 5.0, 0.35
+// gives 5.2 if 5.0 still fights going in.  The width has slack to spare and
+// keeps snap_c, because widening it is what lets the part rock in its hole.
 snap_w = 14.0; snap_h = 4.5;   // the part, not the hole
 snap_d = 10.0;                 // how far the body reaches into the interior
-snap_c = 0.15;                 // per-side clearance on the opening
+snap_c  = 0.15;                // per-side clearance across the WIDTH  -> 14.3
+snap_ch = 0.25;                // ... and across the HEIGHT            ->  5.0
+
+/* [Fridge magnets] */
+// Disc magnets glued into the BACK face, so the display can hang on a fridge door
+// instead of standing on its leg.
+//
+// THE PAIR IS MIRRORED ABOUT THE CENTRELINE, and that is the whole placement
+// rule: the magnets' centroid has to sit under the case's own centre of mass,
+// which is on the centreline, or the display hangs crooked and tries to rotate.
+// Equal x either side does that no matter what the two z's are.
+//
+// The two z's are NOT equal, and cannot be.  The -X half of the cover is driver
+// carrier from z 14.5 to 84.5, held only carrier_lift off the face, and that gap
+// belongs to the header solder joints - so the first free ground on that side is
+// ABOVE the carrier.  The +X one sits under the charger, midway between its two
+// rows of insert posts.  See mag_pos, where both are derived.
+//
+// The back face has only cover_t + reg_step behind it at both spots, so each
+// pocket gets its own boss to bore into - mag_floor of material is left in front
+// of every disc.
+//
+// ON SAFETY: INDUCTORS ARE THE ONE THING A MAGNET CAN UPSET.  A strong field
+// biases a ferrite core toward saturation, dropping its inductance.  The only
+// inductors in the build are on the driver board's panel-rail DC-DC, and both
+// magnets sit clear of that board.  The cell, the panel and the ESP32 do not
+// care: e-paper is electrophoretic (an electric field moves the pigment, not a
+// magnetic one), and neither pouch chemistry nor digital logic is magnetic.
+mag_fit   = true;
+mag_d     = 8.0;    // disc diameter.  MEASURE YOURS - 8 x 2 N42 pulls ~1.0 kg.
+                    //   Everything below is DERIVED from it, so a bigger disc
+                    //   moves both pockets and the guards re-check the margins:
+                    //   at dia 10 the +X one closes to 1.5 of a charger post and
+                    //   the -X one to 6.0 of a corner screw, which is why 8.
+mag_t     = 2.0;    // ... and thickness
+mag_clr   = 0.2;    // on the diameter, so the disc drops onto a bead of glue
+                    //   instead of being pressed into a tight bore
+mag_sink  = 0.2;    // how far below the back face the disc's outer face sits.
+                    //   It doubles as the glue bed.  Costs about a tenth of the
+                    //   pull; standing proud would score the door instead.
+mag_wall  = 1.5;    // material kept around a pocket - it also sets the boss
+mag_floor = 2.0;    // ... and what is left in front of a disc, which sets how
+                    //   far the boss has to reach in
 
 /* [Perfboard] */
 // The divider and any wiring junctions live on a scrap of 0.1" perfboard in the
@@ -601,6 +650,12 @@ bat_cx = bare_panel ? (carrier_fit ? carrier_cx + carrier_w/2 : drv_x1)
                       + col_gap + bat_col_w/2 : pcb_px;
 bat_cz = elec_z0 + snap_h/2 + 0.5 + bat_clr + bat_h/2;  // clear of the port band
 bat_x0 = bat_cx - bat_w/2;
+// ---- the cell platform's own footprint, which is what the magnets key off
+plat_x0 = bat_cx - (bat_w/2 + bat_clr + bat_fence);
+plat_x1 = bat_cx + (bat_w/2 + bat_clr + bat_fence);
+plat_z0 = bat_cz - (bat_h/2 + bat_clr);
+plat_z1 = bat_cz + (bat_h/2 + bat_clr);
+
 // ---- charger breakout, on its own standoffs.  The quarter Perma-Proto it used
 // to ride on is gone: it was the widest thing in the box and it took a corner
 // the screws needed.  Divider and wiring go on a scrap of perfboard or straight
@@ -648,6 +703,21 @@ ucb_z = bare_panel ?  92.0 : 11.0;
 ucb_w = 13.0; ucb_l = 13.0; ucb_t = 1.6;          // breakout board
 port_w = 9.5; port_h = 3.7;                       // receptacle opening
 chg_z = bare_panel ? proto_cz : proto_z0 + 3.0 + chg_h/2;
+// ---- fridge magnets.  MIRRORED in x; the two z's fall out of what is free.
+mag_bore  = mag_d + mag_clr;
+mag_dep   = mag_t + mag_sink;                 // pocket depth from the back face
+mag_y0    = depth - mag_dep;                  // ... so the pocket's floor
+mag_keep  = mag_bore/2 + mag_wall;            // which is also the boss's radius
+mag_front = mag_y0 - mag_floor;               // how far in the boss has to reach
+mag_boss  = elec_back - mag_front;            // ... i.e. how far it stands proud
+// x is set by the TOP GLASS RIB: the -X pocket has to sit outboard of it, since
+// the rib runs the full depth to the skin.  Mirrored, the +X one then lands
+// between the charger's two columns of posts, which is where it wants to be.
+mag_x     = abs(pad_x[1]) + pad_w[1]/2 + mag_keep + 1.0;
+// +X under the charger, midway between its post ROWS; -X clear above the carrier
+mag_pos   = [[ mag_x, chg_z],
+             [-mag_x, carrier_z1 + mag_keep + 2.0]];
+mag_arm   = 2*mag_x;                          // the pair's span across the case
 flash_x = drv_cx;                                 // Waveshare USB-C, +Z wall
 flash_y0 = 10.6; flash_y1 = 17.4;
 // The driver board's own USB-C is for FLASHING, not power - power comes in at the
@@ -845,7 +915,7 @@ module rear_port_cut(){
         translate([ucb_x, cov_in-0.1, ucb_z]) rotate([-90,0,0])
             linear_extrude(cover_t+0.2)
                 offset(r=0.6) offset(delta=-0.6)
-                    square([snap_w+2*snap_c, snap_h+2*snap_c], center=true);
+                    square([snap_w+2*snap_c, snap_h+2*snap_ch], center=true);
     } else {
         // slot for the breakout board through the register lip ...
         translate([ucb_x, cov_in-2.2, ucb_z]) xzext(2.5) rrect(ucb_w+1.0, port_h+0.8, 0.8);
@@ -1021,6 +1091,12 @@ module cover(){
                 for(sx=[-1,1],sz=[-1,1])
                     translate([perf_cx+sx*(perf_w/2-2.5), cov_in, perf_cz+sz*(perf_h/2-2.5)])
                         rotate([90,0,0]) cylinder(d=4.0, h=cov_in-perf_back);
+            // ---- fridge magnet bosses.  The back face has only cover_t+reg_step
+            //      behind it at both spots, and a disc pocket would go through
+            //      it, so each one brings its own pad.
+            if (mag_fit) for (mp = mag_pos)
+                translate([mp[0], mag_front, mp[1]]) rotate([-90,0,0])
+                    cylinder(d=mag_bore + 2*mag_wall, h=depth - mag_front);
             // ---- charger breakout: four screw posts, each deep enough to
             //      swallow an M2 heat-set insert and still leave chg_skin of
             //      back face behind it.
@@ -1053,6 +1129,11 @@ module cover(){
             translate([drv_cx, drv_back-drv_t-0.15, (drv_z0+cav_z1+6)/2])
                 xzext(drv_t+0.3) square([drv_w+2*drv_clr, cav_z1+6-drv_z0],center=true);
 
+        // fridge magnet pockets, bored into their bosses from the back face.
+        // Blind - mag_floor is left in front of every disc.
+        if (mag_fit) for (mp = mag_pos)
+            translate([mp[0], mag_y0, mp[1]]) rotate([-90,0,0])
+                cylinder(d=mag_bore, h=mag_dep + 0.1);
         // the insert bores, drilled from the seat toward the back face.  Blind:
         // chg_skin of skin is left, so the back face stays unbroken.
         for(sx=[-1,1],sz=[-1,1])
@@ -1533,7 +1614,7 @@ function gap2d(ax0,ax1,az0,az1, bx0,bx1,bz0,bz1) =
 // THE STRUCTURAL CHECK ON THE BACK FACE.  Every opening in it, measured against
 // the port.  Openings that share a narrow band leave a rib between them, and a rib
 // is the thing that cracks - so this is echoed rather than left to be discovered.
-pw = snap_w + 2*snap_c;  ph = snap_h + 2*snap_c;
+pw = snap_w + 2*snap_c;  ph = snap_h + 2*snap_ch;
 px0 = ucb_x - pw/2;  px1 = ucb_x + pw/2;
 pz0 = ucb_z - ph/2;  pz1 = ucb_z + ph/2;
 g_rec  = gap2d(px0,px1,pz0,pz1, -rec_w/2, rec_w/2, rec_z0, rec_top);
@@ -1543,6 +1624,18 @@ g_rib  = min([ for (i = [0,1])
 g_scr  = min([ for (sp = scr_pos)
                gap2d(px0,px1,pz0,pz1, sp[0]-scr_head/2, sp[0]+scr_head/2,
                                       sp[1]-scr_head/2, sp[1]+scr_head/2) ]);
+g_mag  = mag_fit ? min([ for (mp = mag_pos)
+           min(gap2d(mp[0]-mag_bore/2, mp[0]+mag_bore/2,
+                     mp[1]-mag_bore/2, mp[1]+mag_bore/2,
+                     -rec_w/2, rec_w/2, rec_z0, rec_top),
+               min([ for (sp = scr_pos)
+                     gap2d(mp[0]-mag_bore/2, mp[0]+mag_bore/2,
+                           mp[1]-mag_bore/2, mp[1]+mag_bore/2,
+                           sp[0]-scr_head/2, sp[0]+scr_head/2,
+                           sp[1]-scr_head/2, sp[1]+scr_head/2) ]),
+               gap2d(mp[0]-mag_bore/2, mp[0]+mag_bore/2,
+                     mp[1]-mag_bore/2, mp[1]+mag_bore/2,
+                     px0, px1, pz0, pz1)) ]) : 1e9;
 g_min  = min(g_rec, g_scr);
 echo(str("POCKET END WALLS: the boss runs z ",boss_z0," to ",boss_z1," and the DEEP",
          " section of the pocket runs ",shl_z0," to ",rec_top,", so each end wall has ",
@@ -1587,11 +1680,34 @@ echo(str("GLASS RIBS: ", bare_panel
                ", clear of the pocket which ends at z ",rec_top)
          : "module pads, not ribs", " | each stands ",cov_in-mod_back-rib_gap,
          " off the cover face"));
+echo(str("FRIDGE MAGNETS: ", mag_fit
+  ? str(len(mag_pos)," dia ",mag_d," x ",mag_t," discs in blind pockets dia ",mag_bore,
+        " x ",mag_dep," (",mag_sink," of that is the sink, so a disc sits that far",
+        " below the back face) | MIRRORED at x +/-",mag_x,
+        ": +X at z ",mag_pos[0][1]," under the charger, -X at z ",mag_pos[1][1],
+        " above the carrier.  The two z differ because the -X half is carrier",
+        " board from z ",carrier_z0," to ",carrier_z1,
+        " held only ",carrier_lift," off the face - but the pair's CENTROID is",
+        " still x 0, which is what stops the display hanging crooked",
+        " | each sits on a dia ",mag_bore+2*mag_wall," boss standing ",mag_boss,
+        " off the register face, since the back face has only ",cover_t+reg_step,
+        " behind it there -> ",mag_floor," in front of every disc",
+        " | the +X boss clears the charger's nearest post by ",
+        sqrt(pow(abs(mag_x-(chg_x_c+chg_hx/2)),2)+pow(chg_hz/2,2))
+          -(mag_keep+chg_boss_d/2),
+        " and the -X boss clears the top glass rib by ",
+        mag_x - mag_keep - (abs(pad_x[1])+pad_w[1]/2))
+  : "not fitted"));
 echo(str("PORT CLEARANCES in the back face: to the stand pocket ",g_rec,
          ", to the nearest corner screw ",g_scr," | worst ",g_min," -> ",
          g_min >= 8 ? "no two openings share a band"
                     : g_min >= 4 ? "TIGHT - a thin rib between two openings"
                                  : "TOO CLOSE - move the port"));
+echo(str("MAGNET CLEARANCES in the back face: nearest other feature (stand pocket,",
+         " corner screw or port) is ",g_mag," away -> ",
+         g_mag >= 8 ? "no two features share a band"
+                    : g_mag >= 4 ? "TIGHT - a thin rib between two pockets"
+                                 : "TOO CLOSE - move the magnets"));
 echo(str("PORT vs GLASS RIBS: nearest rib root is ",g_rib,
          " away -> ", g_rib >= 2 ? "the ribs keep their footing"
                                  : "IT IS UNDERCUTTING A RIB"));
@@ -1599,8 +1715,10 @@ echo(str("PORT WIRING: charger's near edge is x ",chg_x_c-chg_w/2," z ",
          chg_z-chg_h/2," to ",chg_z+chg_h/2,", so the two wires run about ",
          max(chg_x_c-chg_w/2-px1, 0)," mm"));
 echo(str("REAR PORT: ", port_snap
-         ? str("snap-in pigtail, opening ",snap_w+2*snap_c," x ",snap_h+2*snap_c,
-               " (part ",snap_w," x ",snap_h,", clearance ",snap_c," a side), centred x ",
+         ? str("snap-in pigtail, opening ",snap_w+2*snap_c," x ",snap_h+2*snap_ch,
+               " (part ",snap_w," x ",snap_h,", clearance ",snap_c," a side across",
+               " the width and ",snap_ch," across the height - the height is the",
+               " tight axis), centred x ",
                ucb_x," z ",ucb_z," | needs ",snap_d," clear behind, has ",
                cov_in - (ucb_z < cav_z0 + 30 ? 0 : 0) - mod_back)
          : str("breakout board in rails, opening ",port_w," x ",port_h)));
@@ -1812,7 +1930,12 @@ if (part=="params") {
    ["carrier_cx",carrier_cx],["carrier_cz",carrier_cz],["carrier_z0",carrier_z0],["carrier_z1",carrier_z1],
    ["carrier_back",carrier_back],["carrier_face",carrier_face],["carrier_pad",carrier_pad],
    ["carrier_lift",carrier_lift],["drv_room",drv_room],
-   ["pin_fit",pin_fit],["snap_c",snap_c],
+   ["pin_fit",pin_fit],["snap_c",snap_c],["snap_ch",snap_ch],
+   ["mag_fit",mag_fit?1:0],["mag_d",mag_d],["mag_t",mag_t],["mag_clr",mag_clr],
+   ["mag_sink",mag_sink],["mag_bore",mag_bore],["mag_dep",mag_dep],["mag_y0",mag_y0],
+   ["mag_x",mag_x],["mag_z0",mag_pos[0][1]],["mag_z1",mag_pos[1][1]],
+   ["mag_wall",mag_wall],["mag_floor",mag_floor],["mag_front",mag_front],
+   ["mag_boss",mag_boss],["mag_arm",mag_arm],["mag_bd",mag_bore+2*mag_wall],
    ["scr_wall",scr_wall],["carrier_t",carrier_t],["hdr_h",hdr_h],
    ["port_snap",port_snap?1:0],["snap_w",snap_w],["snap_h",snap_h],["snap_d",snap_d],
    ["post_s",post_s],["post_y0",post_y0],

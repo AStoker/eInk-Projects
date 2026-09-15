@@ -433,7 +433,7 @@ the ribbon arrives at — and the cell with the charger above it on the +X side.
 | FPC adapter | 18 × 32 × ~5 | at leg 3's turn, centred z 75.25 — **overlaps the carrier, no home yet, and may not be needed** |
 | Cell | 44 × 49 × 6.9 | +X column, low |
 | bq25185 charger | 32 × 26.3 × 7.2 | +X column, above the cell |
-| USB-C pigtail | **14 × 4.5 body** (measured), 10 deep | snapped into the back cover, low and off the leg's centreline. The printed opening is 14.3 × 4.8 — `snap_c` per side, because a hole exactly the size of the part will not take it |
+| USB-C pigtail | **14 × 4.5 body** (measured), 10 deep | snapped into the back cover, low and off the leg's centreline. The printed opening is 14.3 × 5.0 — clearance per side, because a hole exactly the size of the part will not take it |
 
 
 **The board used to be positioned by the ribbon, and is not any more.** It was placed so its
@@ -568,6 +568,75 @@ the band, and it rides a platform level with the back of the recess floor at 18.
 - **Panel** — bezel lip in front, 5.3 mm of solid frame behind each end. Tape in the
   recesses if you want it; nothing else is needed.
 
+### Fridge magnets
+
+Two **Ø8 × 2 mm disc magnets**, glued into blind pockets in the back face, so the display can
+hang on a fridge door instead of standing on its leg. The leg is unaffected and still works.
+
+**A magnet is safe next to everything in this build but one thing, and that one thing is half
+the placement rule.**
+
+| | |
+|---|---|
+| The **e-paper panel** | Unaffected. Electrophoretic: an *electric* field between the electrodes moves the pigment. Magnetic sleep covers have sat against e-reader panels for over a decade |
+| The **cell** | Unaffected. Neither pouch chemistry nor its protection PCB is magnetically sensitive. Pouch cells are damaged by puncture and heat, not fields |
+| The **ESP32**, logic and RF | Unaffected by the field |
+| **Inductors** — the exception | A strong field biases a ferrite core toward saturation, dropping its inductance and raising ripple. The only inductors here are on the driver board's panel-rail DC-DC |
+
+#### The pair is mirrored about the centreline, and that is the other half
+
+A pair offset to one side hangs the display crooked: the weight acts through the centre of mass,
+which is on the centreline, and the magnets hold somewhere else, so the difference is a couple
+the friction has to carry. **Equal x either side puts the pair's centroid at x 0**, under the
+centre of mass, and the couple goes to zero.
+
+**The two z's are not equal, and cannot be.** The −X half of the cover is driver carrier from
+z 14.5 to 84.5, held only `carrier_lift` = 2.5 mm off the face — and that gap is not free, it
+belongs to the header solder joints. The first free ground on that side is *above* the carrier.
+So:
+
+| | |
+|---|---|
+| **+X** | x +27.6, **z 83 — under the charger**, midway between its two rows of insert posts (3.1 mm clear of the nearest) |
+| **−X** | x −27.6, **z 92.1 — above the carrier**, 2.0 mm clear of it and 1.0 mm outboard of the top glass rib |
+| Centroid | **x 0** — which is the number that matters |
+
+`mag_x` is derived from the top glass rib, not typed: the −X pocket has to sit outboard of it
+because that rib runs full depth to the skin. Mirrored, the +X one then lands between the
+charger's post columns on its own. Change `mag_d` and both pockets move and the guards re-check
+— at Ø10 the +X one closes to 1.5 mm of a charger post and the −X one to 6.0 mm of a corner
+screw, which is why the default is Ø8.
+
+#### Each pocket brings its own boss
+
+The back face has only 2.4 mm behind it at both spots (skin + register), and a 2.2 mm pocket
+would leave 0.2. So each magnet sits on a **Ø11.2 boss standing 1.8 mm off the register face**,
+which leaves `mag_floor` = **2.0 mm in front of every disc**. The +X boss clears the charger
+board by 2.0 mm; the −X one has open cavity in front of it. `cover_board` still reads exactly
+16.70 mm³ — the four carrier pegs and nothing else — so neither boss touches a board.
+
+| | |
+|---|---|
+| Pocket | Ø8.2 × 2.2 deep, blind |
+| Sink | 0.2 mm — the disc sits that far below the back face, which is also its glue bed. Proud, it would score the door |
+| Nearest other back-face feature | 8.9 mm |
+
+**Will it hold?** The assembly is about **194 g**, and the magnets work in **shear**, not in
+tension — which is the number people get wrong. Two Ø8 × 2 N42 discs pull ~1.05 kgf each on
+thick flat steel; derate for the sink and take µ ≈ 0.3 against a painted door and the shear
+capacity is ~5.3 N against 1.9 N hanging. **About 2.8× margin.**
+
+Two things will eat that, and neither is in the model's gift:
+
+- **Many "stainless" fridge doors are not magnetic** (austenitic stainless). Test the door with
+  any fridge magnet before printing pockets for two.
+- **A thin door skin, and paint or laminate on it,** both derate the pull — a thin skin can
+  halve it.
+
+And one non-magnetic consequence worth knowing: **a steel door directly behind the PCB antenna
+will detune and shield it**, so expect shorter WiFi range on the fridge than on a desk. That is
+the real cost of fridge-mounting this, not anything the magnets do.
+
 ### Ports
 
 | Port | Where | Purpose |
@@ -576,14 +645,21 @@ the band, and it rides a platform level with the back of the recess floor at 18.
 | USB-C (Waveshare) | on the driver board, mid-interior | Flashing, **before assembly**. Switch on to program, off to run |
 
 The pigtail has its own snap-in catch, so the case owes it nothing but a **precise
-rectangular hole and clear air behind it**: **14.3 × 4.8 for the measured 14 × 4.5 body**
-(`snap_c` = 0.15 a side), with 19.95 mm of interior behind it against the 10 mm the body
+rectangular hole and clear air behind it**: **14.3 × 5.0 for the measured 14 × 4.5 body**,
+with 19.95 mm of interior behind it against the 10 mm the body
 needs. No printed rails, no breakout board, no guide posts. A relief box `snap_d` deep follows
 `ucb_x` / `ucb_z` automatically, so anything printed in the cover that would stray into the
 pigtail's path is cut back without being asked.
 
 **Measure the part before printing.** A snap fit lives or dies on a tenth of a millimetre,
-and `snap_w` / `snap_h` / `snap_c` are the three numbers that decide it.
+and `snap_w` / `snap_h` / `snap_c` / `snap_ch` are the numbers that decide it.
+
+**The two axes get different clearances.** `snap_c` = 0.15 a side across the **width**, `snap_ch`
+= 0.25 a side across the **height** — 14.3 × 5.0 rather than 14.3 × 4.8. The height is the tight
+axis: it is the small dimension, so it is the one a printed opening loses most of to its first
+perimeter and to elephant's foot, and it is the one the body has to pass edge-on. The width has
+slack to spare, and widening it is what would let the part rock in its hole. If 5.0 still fights
+going in, `snap_ch` = 0.35 gives 5.2 and nothing else moves.
 
 **Where it sits is a structural decision, not a routing one.** Openings in the back face must
 not crowd each other: a narrow rib between two of them is what cracks. Low down, the port
@@ -863,6 +939,8 @@ pocket lies against it — see *The floor plate has to die in solid frame*.
 
 ### Hardware
 
+- 2 × **Ø8 × 2 mm N42 disc magnets**, glued into the back face (optional — `mag_fit = false`
+  drops the pockets and their bosses). Only if the fridge door is actually magnetic: test first
 - 4 × **M2.5 heat-set inserts**, 4.0 OD × 4.0 long, in the frame's end walls
 - 4 × **M2.5 countersunk screws**, 8 mm, for the cover
 - 1 × **Ø2 × 18.0 mm pin** for the hinge. It snaps into the two ears inside the pocket, and
@@ -1060,6 +1138,7 @@ datasheet and CAD model published for each part in the build.
 | Different lean | `dep_ang` — it sets the lean and nothing else; `leg_len` sets the footprint |
 | Rear port position | `ucb_x` / `ucb_z`; `port_w` / `port_h` for the opening. Watch `PORT CLEARANCES` — it must not end up in a band with another opening |
 | Deeper/shallower back bevel | `rear_chf` — 2.0 is the ceiling before it eats the 2.2 mm walls |
+| Different fridge magnets | `mag_d` / `mag_t`; `mag_clr` for the bore, `mag_sink` for how far they sit below the face. `mag_fit = false` removes them |
 | More/less air under the carrier for its solder joints | `carrier_lift` (2.5) — it comes straight out of the driver column's 1.45 mm of spare |
 | The charger's real hole spacing | `chg_hx` / `chg_hz`; `chg_ins_d` / `chg_ins_l` for a different insert, `chg_skin` for the material left behind the bore |
 | Looser/tighter leg in its recess | `rec_clr` (0.35 a side) |

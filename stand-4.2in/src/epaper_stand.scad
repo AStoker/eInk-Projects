@@ -409,20 +409,27 @@ carrier_pin   = 2.0;      // hole centre to the first header pin - a keep-out, s
 // precise rectangular hole and clear space behind it - no printed rails.
 // MEASURE THE ACTUAL PART: snap fits live or die on a tenth of a millimetre.
 port_snap = true;
-// MEASURED: the receptacle body is 14.0 wide x 4.5 high.  Clearance is added per
-// side on top of that - a hole exactly the size of the part will not take the part.
+// The 6-wire part's datasheet gives a PANEL HOLE of 13.60 x 6.30 (4-R1.3) rather
+// than a body size, so its own mounting clearance is already in those numbers.
+// snap_w and snap_h therefore carry the vendor hole less the print compensation
+// below, and the opening computes back to 13.60 x 6.30.  The body through the
+// hole is 12.00 x 5.30; the flange is 16.70 x 10.30 and stands 2.00 proud of the
+// back face, so that much of the skin round the hole has to be flat and clear of
+// the rear chamfer.
 //
 // THE TWO AXES GET DIFFERENT CLEARANCES, and that is deliberate.  The height is
 // the tight one: it is the small dimension, so it is the one a printed opening
 // loses most of to the first perimeter and to elephant's foot, and it is the one
-// the body has to pass edge-on.  snap_ch is set to land the opening on a round
-// number measured in the slicer rather than to a rule - 0.25 gives 5.0, 0.35
-// gives 5.2 if 5.0 still fights going in.  The width has slack to spare and
-// keeps snap_c, because widening it is what lets the part rock in its hole.
-snap_w = 14.0; snap_h = 4.5;   // the part, not the hole
-snap_d = 10.0;                 // how far the body reaches into the interior
-snap_c  = 0.15;                // per-side clearance across the WIDTH  -> 14.3
-snap_ch = 0.25;                // ... and across the HEIGHT            ->  5.0
+// the body has to pass edge-on.  snap_ch lands the opening on the vendor number
+// measured in the slicer rather than to a rule - raise it to 0.35 for 6.5 if 6.3
+// still fights going in.  The width has slack to spare and keeps snap_c, because
+// widening it is what lets the part rock in its hole.
+snap_w = 13.30; snap_h = 5.80;  // vendor hole less the clearance below
+snap_d = 12.0;                  // body behind the flange: the drawing's 14.00
+                                //   overall less the 2.00 flange - CONFIRM with
+                                //   calipers, it is read off a datasheet image
+snap_c  = 0.15;                 // per-side clearance across the WIDTH  -> 13.6
+snap_ch = 0.25;                 // ... and across the HEIGHT            ->  6.3
 
 /* [Fridge magnets] */
 // Disc magnets glued into the BACK face, so the display can hang on a fridge door
@@ -699,7 +706,8 @@ conn_y1 = mod_back + conn_h;        // back face
 // opening to every other opening in the back face, so crowding shows up as a
 // number rather than being noticed on a print.
 ucb_x = bare_panel ?  -5.0 : -34.4;               // port centre on the back
-ucb_z = bare_panel ?  92.0 : 11.0;
+ucb_z = bare_panel ?  91.35 : 11.0;   // 0.65 down from 92.0: the 6.3 opening
+                                      //   would otherwise undercut the top glass rib
 ucb_w = 13.0; ucb_l = 13.0; ucb_t = 1.6;          // breakout board
 port_w = 9.5; port_h = 3.7;                       // receptacle opening
 chg_z = bare_panel ? proto_cz : proto_z0 + 3.0 + chg_h/2;

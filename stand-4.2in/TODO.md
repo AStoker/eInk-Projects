@@ -230,8 +230,6 @@ build that needs them.
 
 ## 10. Optional, not started
 
-- [ ] Slide switch in the charger's LOAD line, so the thing can be parked without draining.
-      `btn_n` already cuts holes in the +X wall if you want it there.
 - [ ] Three side buttons: `btn_n = 3`, then `btn_d` / `btn_sp`, and re-export the frame.
 
 ## 11. Housekeeping

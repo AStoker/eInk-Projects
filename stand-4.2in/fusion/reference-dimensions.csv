@@ -25,7 +25,7 @@ adapt_z1,97.75,mm
 bare_panel,1,mm
 bat_clr,0.8,mm
 bat_cx,14.35,mm
-bat_cz,42.55,mm
+bat_cz,43.2,mm
 bat_fence,1,mm
 bat_h,49,mm
 bat_t,6.9,mm
@@ -82,7 +82,7 @@ chg_t,7.2,mm
 chg_w,32,mm
 chg_x,23.15,mm
 chg_x_c,22.15,mm
-chg_z,83,mm
+chg_z,83.65,mm
 col_gap,2,mm
 conn_h,9,mm
 conn_l,7,mm
@@ -161,7 +161,7 @@ mag_t,2,mm
 mag_wall,1.5,mm
 mag_x,27.6,mm
 mag_y0,22.8,mm
-mag_z0,83,mm
+mag_z0,83.65,mm
 mag_z1,92.1,mm
 mod_back,2.65,mm
 mod_clr,0.5,mm
@@ -206,7 +206,7 @@ post_s,0,mm
 post_y0,3.45,mm
 proto_back,18.8,mm
 proto_cx,22.15,mm
-proto_cz,83,mm
+proto_cz,83.65,mm
 proto_face,17.2,mm
 proto_h,50.8,mm
 proto_hole_sp,35.6,mm
@@ -214,8 +214,8 @@ proto_t,1.6,mm
 proto_w,43.2,mm
 proto_x0,6.15,mm
 proto_x1,38.15,mm
-proto_z0,69.85,mm
-proto_z1,96.15,mm
+proto_z0,70.5,mm
+proto_z1,96.8,mm
 py_edge,23,mm
 rear_chf,2,mm
 rec_back,18.7,mm
@@ -261,9 +261,9 @@ shl_z0,11.3,mm
 side_wall,3,mm
 snap_c,0.15,mm
 snap_ch,0.25,mm
-snap_d,10,mm
-snap_h,4.5,mm
-snap_w,14,mm
+snap_d,12,mm
+snap_h,5.8,mm
+snap_w,13.3,mm
 stand_ok,1,mm
 stand_reg_w,21,mm
 tap_z,18.8,mm
@@ -277,7 +277,7 @@ ucb_l,13,mm
 ucb_t,1.6,mm
 ucb_w,13,mm
 ucb_x,-5,mm
-ucb_z,92,mm
+ucb_z,91.35,mm
 usb_w,13,mm
 wall,2.2,mm
 wall_rib,1,mm

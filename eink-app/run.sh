@@ -1,11 +1,6 @@
-#!/usr/bin/with-contenv bashio
+#!/bin/sh
+# Plain sh, not bashio: bashio ships in the Home Assistant base images and this
+# add-on builds on a plain Alpine base. Options are read straight from
+# /data/options.json in server.py, which is the same file bashio would parse.
 set -e
-
-export EINK_PHOTO_ROTATE_SECONDS="$(( $(bashio::config 'photo_rotate_minutes') * 60 ))"
-export EINK_SCAN_SECONDS="$(bashio::config 'scan_seconds')"
-export EINK_LOG_LEVEL="$(bashio::config 'log_level')"
-export EINK_PORT=8100
-export EINK_VERSION="$(bashio::addon.version)"
-
-bashio::log.info "eInk image server starting on :${EINK_PORT}"
 exec python3 /app/server.py

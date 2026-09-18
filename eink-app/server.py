@@ -34,6 +34,28 @@ from PIL import Image
 LOG = logging.getLogger("eink")
 
 # --- configuration ---------------------------------------------------------
+# Home Assistant writes the add-on's options here. Reading the file directly is
+# what bashio does; doing it in Python keeps the image free of the Home
+# Assistant base layer. Absent (running outside Supervisor), every value falls
+# back to an environment variable and then to a default, which is what makes
+# the server runnable from a terminal for testing.
+def _options() -> dict:
+    try:
+        with open("/data/options.json", encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        return {}
+
+
+_OPT = _options()
+
+
+def _opt(key: str, env: str, default):
+    if key in _OPT:
+        return _OPT[key]
+    return type(default)(os.environ.get(env, default))
+
+
 # Watched separately and never recursively. /media/runpod is the RunPod app's
 # own gallery plus a pile of loose renders; only the eink/ subdirectory is ours.
 PHOTO_DIR = Path(os.environ.get("EINK_PHOTO_DIR", "/media/eink/photos"))
@@ -43,11 +65,12 @@ PORT = int(os.environ.get("EINK_PORT", "8100"))
 # Reported by /health so a deploy can be confirmed by asking the running
 # container what it is, rather than by trusting that the update applied.
 VERSION = os.environ.get("EINK_VERSION", "dev")
-SCAN_SECONDS = int(os.environ.get("EINK_SCAN_SECONDS", "60"))
+SCAN_SECONDS = int(_opt("scan_seconds", "EINK_SCAN_SECONDS", 60))
 # How long one photo stays on the panel. Rotation is on a clock rather than on
 # /next so that the revision can be computed without a request having happened —
 # otherwise "has the picture changed" could only be answered by changing it.
-PHOTO_ROTATE_SECONDS = int(os.environ.get("EINK_PHOTO_ROTATE_SECONDS", "900"))
+PHOTO_ROTATE_SECONDS = int(_OPT["photo_rotate_minutes"]) * 60 if "photo_rotate_minutes" in _OPT \
+    else int(os.environ.get("EINK_PHOTO_ROTATE_SECONDS", "900"))
 
 # The three AI slots and the local hour each begins. Night wraps midnight.
 SLOTS = (("morning", 5), ("day", 11), ("night", 18))
@@ -239,7 +262,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main() -> None:
     logging.basicConfig(
-        level=os.environ.get("EINK_LOG_LEVEL", "INFO"),
+        level=_opt("log_level", "EINK_LOG_LEVEL", "INFO"),
         format="%(asctime)s %(levelname)s %(message)s",
     )
     library = Library()

@@ -1,0 +1,62 @@
+# ============================================================================
+# eInk Daily Dash -- the device file for ESPHome Device Builder
+# ============================================================================
+# This is the whole thing. Create a new device in ESPHome Device Builder, open
+# its YAML, replace the contents with this, and edit the two substitutions
+# below. Everything else -- the packages, the fonts, the rendering, the deep
+# sleep logic and the image fetcher -- is pulled from GitHub at build time.
+#
+# ----------------------------------------------------------------------------
+# SECRETS this needs in your ESPHome secrets.yaml
+# ----------------------------------------------------------------------------
+#   wifi_ssid
+#   wifi_password
+#   ap_password
+#   eink_daily_dash__api_encryption    32-byte base64, e.g. from
+#                                      `openssl rand -base64 32`
+#   eink_daily_dash__ota_password
+#
+# ----------------------------------------------------------------------------
+# HOME ASSISTANT this expects
+# ----------------------------------------------------------------------------
+#   sensor.esp_day_agenda              "entries" attribute, today's events
+#   input_boolean.eink_daily_dash_disable_deep_sleep
+#   input_select.eink_daily_dash_mode  Dash / Photos / AI
+#
+# ----------------------------------------------------------------------------
+# UPDATES
+# ----------------------------------------------------------------------------
+# `refresh: 1d` means a build picks up repo changes at most once a day. Set it
+# to 0s while iterating, or pin `ref:` to a tag once the thing is on a wall and
+# you would rather it not change under you.
+# ============================================================================
+
+substitutions:
+  # Where the e-ink app is, as the PANEL can reach it -- a LAN address, not an
+  # internal .local.hass.io name, because the ESP32 is not inside that network.
+  eink_host: "192.168.1.50:8100"
+
+  # Everything else has a working default in daily-dash.yaml. The ones worth
+  # knowing about, uncomment to change:
+  # sleep_duration: 15min      # also the refresh rate
+  # cold_boot_awake: 120s      # bootstrap OTA window on a cold boot
+  # fail_limit: '2'            # wakes with no API before the panel says so
+  # batt_adc_pin: GPIO35       # must be ADC1 (GPIO 32-39)
+
+packages:
+  daily_dash:
+    url: https://github.com/AStoker/eInk-Projects
+    ref: main
+    files: [daily-dash/daily-dash.yaml]
+    refresh: 1d
+
+# Declared here rather than in the package for the same reason dev.yaml
+# declares it: ESPHome resolves component sources against the top-level config,
+# so the file that IS the device has to say where the component comes from.
+external_components:
+  - source:
+      type: git
+      url: https://github.com/AStoker/eInk-Projects
+      ref: main
+      path: daily-dash/components
+    components: [eink_blob]

@@ -1,0 +1,66 @@
+# ============================================================================
+# BATTERY -- reported to Home Assistant, never shown on the panel
+# ============================================================================
+# Reads the divider described in stand-4.2in/README.md: two 100 kOhm from the
+# cell to ${batt_adc_pin}, halving the cell voltage, hence the multiply filter.
+# The pin must be on ADC1 (GPIO 32-39) -- ADC2 cannot be read while WiFi is on.
+#
+# With no divider fitted the pin floats and Home Assistant shows a near-zero
+# voltage, which is the honest reading for "not wired yet".
+#
+# Defines: battery_voltage, battery_level.  Consumes: nothing.
+# ============================================================================
+
+sensor:
+  - platform: adc
+    pin: ${batt_adc_pin}
+    id: battery_voltage
+    name: "Battery Voltage"
+    entity_category: diagnostic
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: V
+    accuracy_decimals: 2
+    attenuation: 12db
+    update_interval: 1s
+    filters:
+      - multiply: ${batt_divider}
+      - median:
+          window_size: 5
+          send_every: 5
+          send_first_at: 5
+
+  # Rough 1S LiPo curve. Piecewise because the discharge curve is not a line
+  # and a linear 3.0-4.2 map reads ~50% for most of the pack's real life. The
+  # floor is 3.6 V, not 3.0: the driver board browns out there, so anything
+  # below it is unreachable rather than remaining.
+  - platform: template
+    name: "Battery Level"
+    id: battery_level
+    entity_category: diagnostic
+    device_class: battery
+    state_class: measurement
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    # Same reason as the ADC above: the 60 s default would never fire inside a
+    # ~25 s wake, so the entity would sit at unknown forever.
+    update_interval: 5s
+    lambda: |-
+      if (!id(battery_voltage).has_state()) return NAN;
+      float v = id(battery_voltage).state;
+      if (v < 1.0f) return NAN;          // nothing wired to the divider
+      struct { float v, pct; } curve[] = {
+        {3.60f, 0.0f}, {3.70f, 10.0f}, {3.75f, 25.0f}, {3.85f, 50.0f},
+        {3.95f, 70.0f}, {4.05f, 85.0f}, {4.20f, 100.0f},
+      };
+      const int N = sizeof(curve) / sizeof(curve[0]);
+      if (v <= curve[0].v) return 0.0f;
+      if (v >= curve[N - 1].v) return 100.0f;
+      for (int i = 1; i < N; i++) {
+        if (v <= curve[i].v) {
+          float span = curve[i].v - curve[i - 1].v;
+          float f = (v - curve[i - 1].v) / span;
+          return curve[i - 1].pct + f * (curve[i].pct - curve[i - 1].pct);
+        }
+      }
+      return NAN;

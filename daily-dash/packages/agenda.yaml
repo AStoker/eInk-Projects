@@ -1,0 +1,28 @@
+# ============================================================================
+# AGENDA DATA -- today's events, pushed from Home Assistant
+# ============================================================================
+# Subscribe to the ATTRIBUTE, not the state. A calendar entity's state is just
+# "on"/"off" and never JSON, which is the trap that makes a naive
+# `entity_id: calendar.family` config draw nothing at all.
+#
+# An attribute, not the state, because HA caps entity states at 255 chars and
+# a full day of events blows past that.
+#
+# Event JSON shape (one object per event):
+#   {"s":"Dentist","t":"9:30 AM","a":false,"m":570,"n":615}
+#     s = summary   t = display time   a = true if all-day (JSON bool, not 1/0)
+#     m = start minutes past local midnight   n = end minutes (-1 for all-day)
+#
+# Defines: agenda_json.  Consumed by: packages/display.yaml.
+# ============================================================================
+
+text_sensor:
+  - platform: homeassistant
+    id: agenda_json
+    entity_id: sensor.esp_day_agenda
+    attribute: entries
+    internal: true
+
+# The hold-awake toggle. Read over the API, so it is only knowable on a wake
+# that reached Home Assistant -- which is the same wake that could accept an
+# OTA push, so nothing is lost.

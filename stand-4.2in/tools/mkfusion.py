@@ -201,10 +201,11 @@ NOTES = {
                    "from it; both are capped at 2*carrier_pin",
     "carrier_lift": "air left under the carrier for the header solder joints on "
                     "its underside. Spent out of the driver column's depth",
-    "chg_hx":     "ASSUMED insert centres on the charger breakout, 3.5 in from "
-                  "each edge. MEASURE THE BOARD",
-    "chg_hz":     "ASSUMED insert centres on the charger breakout. MEASURE THE "
-                  "BOARD",
+    "chg_hx":     "insert centres on the charger breakout, MEASURED off the "
+                  "vendor STEP: 0.1 in in from each edge of a 31.75 x 25.40 "
+                  "PCB, so 1.05 in across",
+    "chg_hz":     "insert centres on the charger breakout, MEASURED off the "
+                  "vendor STEP: 0.80 in along",
     "chg_boss_d": "charger screw post diameter, around a chg_ins_d bore",
     "chg_ins_d":  "bore for an M2 heat-set insert (3.2 x 4.0): under the OD, so "
                   "the knurl has wall to bite",

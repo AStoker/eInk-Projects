@@ -1,0 +1,36 @@
+# ============================================================================
+# IMAGE MODES -- where pictures come from
+# ============================================================================
+# The e-ink app converts photos and generated images into panel-ready blobs and
+# serves them; this package is only the client. The whole image path on the
+# device is components/eink_blob -- no decoder, no scaler, and never more than
+# one row of the picture in RAM. Format and app contract: IMAGE-PIPELINE.md.
+#
+# Mode comes from ${ha_mode_select}. Anything that is not
+# "${dash_option}" is passed to the app as-is, so adding a mode is a change to
+# the input_select and the app, not to this firmware.
+#
+# Defines: display_mode, image_revision, blob_fetcher.
+# Consumed by: packages/sleep.yaml (the revision check) and
+#              packages/display.yaml (the blit).
+# ============================================================================
+
+text_sensor:
+  - platform: homeassistant
+    id: display_mode
+    entity_id: ${ha_mode_select}
+    internal: true
+
+globals:
+  # The last revision actually painted. Survives deep sleep, which is the whole
+  # point: the comparison that decides whether to spend a refresh happens
+  # across a sleep, not within one wake.
+  - id: image_revision
+    type: std::string
+    restore_value: true
+    max_restore_data_length: 32
+    initial_value: '""'
+
+eink_blob:
+  id: blob_fetcher
+  timeout: 20s

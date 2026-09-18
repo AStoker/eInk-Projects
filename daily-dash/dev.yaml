@@ -1,0 +1,27 @@
+# ============================================================================
+# Local development entry point
+# ============================================================================
+# Build this, not daily-dash.yaml.
+#
+# ESPHome resolves a `type: local` external component path against the
+# directory of the top-level config file, not against the package that asked
+# for it -- so packages/image.yaml cannot point at ../components/eink_blob on
+# its own. Whatever is the top-level file has to declare it, which is all this
+# file does.
+#
+#   esphome run dev.yaml
+#
+# The device that actually gets flashed in normal use is example-device.yaml,
+# which pulls the same core from GitHub. Keep the two in step: anything added
+# here that is not about *where the component comes from* probably belongs in
+# daily-dash.yaml instead.
+# ============================================================================
+
+packages:
+  core: !include daily-dash.yaml
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [eink_blob]

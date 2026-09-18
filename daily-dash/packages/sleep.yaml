@@ -1,0 +1,208 @@
+# ============================================================================
+# POWER -- deep sleep, the wake cycle, and the way back in
+# ============================================================================
+# The board wakes every ${sleep_duration}, draws once, and goes back down. A
+# wake is ~25 s wall clock: WiFi connect, data, then the 17 s panel refresh.
+#
+# THE WAY BACK IN. The case has no opening for the driver board's USB-C, so OTA
+# is the only route once it is assembled, and a sleeping board is reachable for
+# only those ~25 s. Two things keep it reachable:
+#
+#   1. ${ha_disable_deep_sleep}
+#      turned ON holds the board up for as long as it stays on.
+#   2. Any COLD boot -- power-up, reset, fresh flash -- stays up for
+#      ${cold_boot_awake} whatever that toggle says. This is the bootstrap
+#      window, for when the helper does not exist yet or HA is unreachable.
+#
+# A wake draws only once the API is up. A wake that never reaches it spends no
+# refresh at all: it leaves the previous image standing and counts the miss.
+# After ${fail_limit} consecutive misses the panel says so, once.
+#
+# Defines: wake_cycle, sleep_or_stay, deep_sleep_ctl, deep_sleep_disable_ha,
+#          api_fail_streak, want_refresh.
+# Consumes: epaper_display, agenda_json, display_mode, blob_fetcher,
+#           image_revision, render_mode, sys_time.
+# ============================================================================
+
+globals:
+  # Redraw cadence while deep sleep is held off. Sleeping, the wake timer sets
+  # the cadence instead, so this only applies to a board being worked on.
+  - id: refresh_interval_s
+    type: int
+    restore_value: false
+    initial_value: '900'          # 15 min -- panel needs ~17 s per full refresh
+  # Both of these must survive deep sleep, or every wake looks like the first
+  # one and the fail count can never reach the limit. restore_value: true puts
+  # them in NVS, which a timer wake does not clear.
+  - id: api_fail_streak
+    type: int
+    restore_value: true
+    initial_value: '0'
+  - id: offline_notice_shown
+    type: bool
+    restore_value: true
+    initial_value: 'false'
+  - id: cold_boot_window_done
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+
+# ----------------------------------------------------------------------------
+# DATA SOURCE
+# ----------------------------------------------------------------------------
+# Subscribe to the ATTRIBUTE, not the state. A calendar entity's state is just
+# "on"/"off" and never JSON, which is the trap that makes a naive
+# `entity_id: calendar.family` config draw nothing at all.
+  # Set by wake_cycle, read by wake_cycle -- whether this wake has earned a
+  # refresh. Per-wake, so it is never restored.
+  - id: want_refresh
+    type: bool
+    restore_value: false
+    initial_value: 'true'
+
+binary_sensor:
+  - platform: homeassistant
+    id: deep_sleep_disable_ha
+    name: "Disable Deep Sleep"
+    entity_id: ${ha_disable_deep_sleep}
+
+# ----------------------------------------------------------------------------
+# BATTERY
+# ----------------------------------------------------------------------------
+# Home Assistant only -- deliberately not on the panel. Sampled fast because a
+# sleeping board is awake for ~25 s and a 60 s interval would never fire; the
+# median then throws out the noise the WiFi radio puts on the rail.
+
+button:
+  - platform: template
+    name: "Refresh Display"
+    on_press:
+      - script.execute: wake_cycle
+
+deep_sleep:
+  id: deep_sleep_ctl
+  sleep_duration: ${sleep_duration}
+  run_duration: ${max_awake}
+
+script:
+  # One pass: get a clock, get the API, draw once, then hand over to
+  # sleep_or_stay. mode: restart so the Refresh button or the midnight trigger
+  # replaces a pass in flight instead of stacking a second 17 s refresh on it.
+  - id: wake_cycle
+    mode: restart
+    then:
+      # SNTP usually lands in a few seconds and needs nothing but WiFi, so the
+      # date survives Home Assistant being down.
+      - wait_until:
+          condition:
+            lambda: 'return id(sys_time).now().is_valid();'
+          timeout: 45s
+      - wait_until:
+          condition:
+            - api.connected:
+          timeout: ${api_wait}
+      - if:
+          condition:
+            - api.connected:
+          then:
+            # Connected is not the same as subscribed -- the agenda attribute
+            # and the hold-awake toggle arrive as separate pushes just after.
+            - wait_until:
+                condition:
+                  lambda: 'return id(agenda_json).has_state();'
+                timeout: 20s
+            - delay: 3s
+            - lambda: |-
+                id(api_fail_streak) = 0;
+                id(offline_notice_shown) = false;
+                id(render_mode) = 0;
+                id(want_refresh) = true;
+            # Image modes ask the e-ink app what it would serve before pulling
+            # 30 KB and spending a 17 s refresh. The panel wakes every
+            # ${sleep_duration}; an AI picture changes three times a day.
+            - if:
+                condition:
+                  lambda: |-
+                    return id(display_mode).has_state() &&
+                           id(display_mode).state != "${dash_option}";
+                then:
+                  - lambda: |-
+                      id(render_mode) = 2;
+                      std::string rev = id(blob_fetcher)->fetch_text(
+                          "http://${eink_host}/revision");
+                      if (rev.empty()) {
+                        // App unreachable. Leave the picture alone rather than
+                        // refresh to an error -- it may just be restarting.
+                        ESP_LOGW("wake", "No revision from the e-ink app");
+                        id(want_refresh) = false;
+                      } else if (rev == id(image_revision)) {
+                        ESP_LOGD("wake", "Image unchanged (%s)", rev.c_str());
+                        id(want_refresh) = false;
+                      } else {
+                        ESP_LOGI("wake", "Image changed: %s -> %s",
+                                 id(image_revision).c_str(), rev.c_str());
+                        id(image_revision) = rev;
+                      }
+            - if:
+                condition:
+                  lambda: 'return id(want_refresh);'
+                then:
+                  - component.update: epaper_display
+          else:
+            # Spend no refresh. E-paper holds its last image through sleep, so
+            # a stale agenda beats an error screen, and a blank panel on a
+            # fresh flash beats "api down" burned in for the whole interval.
+            - lambda: |-
+                id(api_fail_streak)++;
+                ESP_LOGW("wake", "No API this wake (%d in a row)",
+                         id(api_fail_streak));
+            - if:
+                condition:
+                  lambda: |-
+                    return id(api_fail_streak) >= ${fail_limit} &&
+                           !id(offline_notice_shown);
+                then:
+                  - logger.log: "Home Assistant looks down. Drawing the offline notice."
+                  - lambda: 'id(render_mode) = 1;'
+                  - component.update: epaper_display
+                  - lambda: 'id(offline_notice_shown) = true;'
+      - script.execute: sleep_or_stay
+
+  # The only place that sleeps. Checked after the draw, every wake, so the
+  # toggle takes effect on the next wake at the latest.
+  - id: sleep_or_stay
+    mode: restart
+    then:
+      # A cold boot is the one case the toggle cannot cover: on a fresh flash
+      # the helper may not exist yet, and if Home Assistant is unreachable its
+      # state is unknowable anyway -- so the board would sleep with no way back
+      # into a sealed case. Hold it up once per power-up regardless. A timer
+      # wake reports its cause, so normal wakes skip this entirely.
+      - if:
+          condition:
+            lambda: |-
+              return esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_UNDEFINED &&
+                     !id(cold_boot_window_done);
+          then:
+            - logger.log: "Cold boot. Holding awake for the bootstrap OTA window."
+            - lambda: 'id(cold_boot_window_done) = true;'
+            - deep_sleep.prevent: deep_sleep_ctl
+            - delay: ${cold_boot_awake}
+      - if:
+          condition:
+            and:
+              - api.connected:
+              - binary_sensor.is_on: deep_sleep_disable_ha
+          then:
+            # prevent() also cancels the run_duration failsafe, so the board
+            # stays up for as long as the toggle is on -- the OTA window.
+            - logger.log: "Hold-awake toggle is on. Staying up for OTA."
+            - deep_sleep.prevent: deep_sleep_ctl
+            - delay: !lambda 'return (uint32_t) id(refresh_interval_s) * 1000;'
+            - script.execute: wake_cycle
+          else:
+            - logger.log: "Sleeping."
+            # A manual enter overrides a prevent() from an earlier pass, so
+            # turning the toggle back off puts the board down on the next pass.
+            - deep_sleep.enter:
+                id: deep_sleep_ctl

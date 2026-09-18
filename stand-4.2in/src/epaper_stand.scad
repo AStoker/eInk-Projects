@@ -218,11 +218,15 @@ chg_ins_rel = 1.0;    // extra bore past it, for the plastic the insert displace
 chg_skin    = 1.2;    // back-face skin left behind the bore.  The bore is blind:
                       //   the back face carries no opening for the charger
 chg_boss_d  = 6.5;    // post diameter -> 1.8 of wall around the bore
-// ASSUMED, like adapt_hole: 3.5 in from each edge of the board.  MEASURE THE
-// ACTUAL BREAKOUT - inserts are unforgiving about hole spacing in a way that
-// foam tape was not.
-chg_hx = chg_w - 7.0;   // insert centres, across the short axis
-chg_hz = chg_h - 7.0;   // ... and along the long axis
+// MEASURED off Adafruit's own solid model, fusion/vendor/adafruit-6091-bq25185-
+// charger.step: four dia 2.5 holes at (2.54, 2.54), (2.54, 22.86), (29.21,
+// 2.54) and (29.21, 22.86) on a 31.75 x 25.40 PCB - 0.1 in in from each edge,
+// so the centres span 1.05 x 0.80 in.  chg_w / chg_h above stay the PRODUCT
+// envelope (the USB-C jack overhangs the board), and the posts are centred on
+// it, so a hole spacing derived from them came out 1.7 x 1.0 short and the
+// board would not drop over the inserts.
+chg_hx = 26.67;   // insert centres, across the short axis  (1.05 in)
+chg_hz = 20.32;   // ... and along the long axis            (0.80 in)
 // ---- module 8-pin header keep-out.  NOT FITTED on this build (confirmed by
 // Andy and by the Rev 3 schematic): the panel's own 24-pin FPC goes straight
 // into the socket on the driver board, so nothing stands off the back of the
@@ -456,18 +460,29 @@ snap_ch = 0.25;                 // ... and across the HEIGHT            ->  6.3
 // magnets sit clear of that board.  The cell, the panel and the ESP32 do not
 // care: e-paper is electrophoretic (an electric field moves the pigment, not a
 // magnetic one), and neither pouch chemistry nor digital logic is magnetic.
-mag_fit   = true;
+mag_fit   = false;  // SURFACE-MOUNTED on this build.  The rear USB-C pigtail's
+                    //   flange stands 2.00 proud of the back face and is the
+                    //   rearmost thing on the case, so it holds the door that
+                    //   far away wherever a disc goes - and a disc sunk into
+                    //   the skin could not reach the steel.  They are glued
+                    //   straight onto the back face instead, where a mag_t = 2
+                    //   disc is exactly as proud as the flange.  Glue them at
+                    //   the same x +/-mag_x the pockets used, so the pair's
+                    //   centroid is still on the centreline - the FRIDGE
+                    //   MAGNETS echo keeps printing both positions.  true cuts
+                    //   the sunk pockets and their bosses back in.
 mag_d     = 8.0;    // disc diameter.  MEASURE YOURS - 8 x 2 N42 pulls ~1.0 kg.
                     //   Everything below is DERIVED from it, so a bigger disc
                     //   moves both pockets and the guards re-check the margins:
                     //   at dia 10 the +X one closes to 1.5 of a charger post and
                     //   the -X one to 6.0 of a corner screw, which is why 8.
-mag_t     = 2.0;    // ... and thickness
+mag_t     = 2.0;    // ... and thickness.  Surface-mounted this is also the
+                    //   standoff the disc has to match: below the flange's 2.00
+                    //   it stops short of the door.
 mag_clr   = 0.2;    // on the diameter, so the disc drops onto a bead of glue
                     //   instead of being pressed into a tight bore
-mag_sink  = 0.2;    // how far below the back face the disc's outer face sits.
-                    //   It doubles as the glue bed.  Costs about a tenth of the
-                    //   pull; standing proud would score the door instead.
+mag_sink  = 0.2;    // mag_fit = true only: how far below the back face the
+                    //   disc's outer face sits.  It doubles as the glue bed.
 mag_wall  = 1.5;    // material kept around a pocket - it also sets the boss
 mag_floor = 2.0;    // ... and what is left in front of a disc, which sets how
                     //   far the boss has to reach in
@@ -1705,17 +1720,25 @@ echo(str("FRIDGE MAGNETS: ", mag_fit
           -(mag_keep+chg_boss_d/2),
         " and the -X boss clears the top glass rib by ",
         mag_x - mag_keep - (abs(pad_x[1])+pad_w[1]/2))
-  : "not fitted"));
+  : str("no pockets cut - glue ",len(mag_pos)," dia ",mag_d," x ",mag_t,
+        " discs onto the back face, MIRRORED at x +/-",mag_x,
+        ": +X at z ",mag_pos[0][1]," under the charger, -X at z ",mag_pos[1][1],
+        " above the carrier.  Equal x is the whole rule - it puts the pair's",
+        " CENTROID on the centreline, which is what stops the display hanging",
+        " crooked.  Surface-mounted they stand ",mag_t," proud of the face and",
+        " sit ",mag_t," closer to the door than a sunk disc did")));
 echo(str("PORT CLEARANCES in the back face: to the stand pocket ",g_rec,
          ", to the nearest corner screw ",g_scr," | worst ",g_min," -> ",
          g_min >= 8 ? "no two openings share a band"
                     : g_min >= 4 ? "TIGHT - a thin rib between two openings"
                                  : "TOO CLOSE - move the port"));
-echo(str("MAGNET CLEARANCES in the back face: nearest other feature (stand pocket,",
-         " corner screw or port) is ",g_mag," away -> ",
-         g_mag >= 8 ? "no two features share a band"
-                    : g_mag >= 4 ? "TIGHT - a thin rib between two pockets"
-                                 : "TOO CLOSE - move the magnets"));
+echo(str("MAGNET CLEARANCES in the back face: ", mag_fit
+  ? str("nearest other feature (stand pocket, corner screw or port) is ",g_mag,
+        " away -> ",
+        g_mag >= 8 ? "no two features share a band"
+                   : g_mag >= 4 ? "TIGHT - a thin rib between two pockets"
+                                : "TOO CLOSE - move the magnets")
+  : "no pockets cut - the discs are glued onto the back face"));
 echo(str("PORT vs GLASS RIBS: nearest rib root is ",g_rib,
          " away -> ", g_rib >= 2 ? "the ribs keep their footing"
                                  : "IT IS UNDERCUTTING A RIB"));
@@ -1764,7 +1787,7 @@ echo(str("charger ",chg_part," ",chg_w," x ",chg_h," x ",chg_t,
          " | fits proto: ", (chg_w <= proto_w-2 && chg_h <= proto_h-2) ? "yes" : "NO",
          " | clear in front: ", proto_face - chg_t + proto_t - mod_back));
 echo(str("CHARGER POSTS: four dia ",chg_boss_d," posts at ",chg_hx," x ",chg_hz,
-         " centres (ASSUMED - measure the breakout), standing ",chg_stand,
+         " centres (measured off the vendor STEP), standing ",chg_stand,
          " off the register face so the board lands at ",chg_back,
          " | each takes an M2 heat-set insert: bore dia ",chg_ins_d," x ",chg_bore,
          " (insert ",chg_ins_l," plus ",chg_ins_rel," relief), reaching depth ",

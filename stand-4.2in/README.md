@@ -343,11 +343,53 @@ input** — a 1S cell drives it directly.
   pigtail with the 5.1 kΩ CC pulldowns sits in the back face at **x −5, z 92** — immediately
   left of the charger, so the two wires to its **VBUS** and **GND** pads run about 4 mm
   instead of crossing the whole interior. Charge only, no data — which is all this needs.
-- **Battery divider:** two 100 kΩ from the cell to an ADC pin on **ADC1 (GPIO 32–39)** —
-  ADC2 is unusable while WiFi is on. Firmware reads it on every wake and, below ~3.6 V,
-  calls `esp_deep_sleep_start()` with no timer and stays there. The board browns out at
-  3.6 V on its own, but a brownout loop drags the cell down to its protection cut, and deep
-  discharge is what kills LiPo cells.
+- **Battery divider:** two 100 kΩ from the cell to **GPIO 35**, wired as below. The
+  firmware reads it on every wake and reports the voltage to Home Assistant.
+
+### Wiring the battery sense
+
+The ESP32 cannot read the cell directly — a full 1S pouch is 4.2 V and the ADC tops out
+around 3.1 V — so the cell is halved by a divider first.
+
+```
+  cell +  (JST B+, red)
+     |
+    [R1] 100 kΩ
+     |
+     +-------------------> GPIO 35   (ADC1_CH7, the divider tap)
+     |
+    [R2] 100 kΩ
+     |
+  cell -  (JST B−, black, common with the driver board's GND)
+```
+
+Both resistors are 100 kΩ, so the tap sits at exactly half the cell: 4.2 V reads 2.10 V,
+3.6 V reads 1.80 V. The firmware's `multiply: 2.0` filter puts it back. Equal resistors
+are the whole trick — change one and change `batt_divider` in the YAML to match.
+
+| Why this value | |
+|---|---|
+| **100 kΩ + 100 kΩ** | 200 kΩ across the cell draws 21 µA, about 1% of the board's 2 mA idle. Ten times smaller wastes real runtime; ten times larger and the ADC's own input impedance starts to pull the reading down |
+| **GPIO 35** | ADC1. **ADC2 cannot be read at all while WiFi is on**, which rules out the entire 0/2/4/12–15/25–27 group. GPIO 35 is also input-only, so it can never be driven high into the divider by accident |
+| **not GPIO 32/33** | Also ADC1 and equally valid, but they are the two RTC-capable pins the frame's button cutouts are waiting on — see the buttons section. GPIO 35 leaves both free |
+| **not GPIO 34/36/39** | Fine electrically. GPIO 35 is simply the one the firmware is set to; change `batt_adc_pin` if the header layout makes another easier to reach |
+
+Tie the divider's bottom leg to the **driver board's** ground, not just the cell's — the
+ADC measures against the ESP32's own ground reference, and a divider referenced somewhere
+else reads whatever the difference between them happens to be. They are the same net once
+the cell is plugged in through the charger, so this is about which point you land the
+wire on, not about adding a connection.
+
+Nothing is fitted yet, so **GPIO 35 currently floats and Home Assistant shows a near-zero
+voltage** — that is the reading for "not wired", not a flat cell.
+
+Still to do once it is fitted: the low-voltage cutoff. The intent is that below ~3.6 V the
+firmware calls `esp_deep_sleep_start()` with no timer and stays there — the board browns
+out at 3.6 V on its own, but a brownout loop drags the cell down to its protection cut,
+and deep discharge is what kills LiPo cells. That path is deliberately **not** in the
+firmware yet: with no divider fitted the floating pin reads near zero, which looks
+identical to a flat cell, and a board that sleeps with no wake source inside a sealed case
+is unrecoverable. Wire the divider, confirm the voltage reads true, then add the cutoff.
 
 ### One opening in the whole assembly
 
@@ -554,9 +596,12 @@ the band, and it rides a platform level with the back of the recess floor at 18.
   1.2 mm of skin is left and the back face carries no opening for the charger. The post height
   is derived from the insert and that skin rather than chosen — `chg_back` follows from it, and
   the board ends up at depth 18.8 with 8.95 mm clear in front of it.
-  **The hole centres are assumed**, 3.5 mm in from each edge of the board (25 × 19.3): measure
-  the breakout before printing. Inserts are unforgiving about hole spacing in a way that foam
-  tape was not — it is on the [TODO](TODO.md).
+  **The hole centres are 26.67 × 20.32**, measured off Adafruit's own solid model
+  ([`fusion/vendor/adafruit-6091-bq25185-charger.step`](fusion/vendor/)): four Ø2.5 holes
+  0.1 in in from each edge of a **31.75 × 25.40 mm PCB**, so the centres span 1.05 × 0.80 in.
+  `chg_w` / `chg_h` stay the 32 × 26.3 **product envelope** — the USB-C jack overhangs the
+  board — and the posts are centred on that envelope, which is why the spacing is measured
+  rather than derived from it.
 - **Driver board** — plugs into female headers on the carrier perfboard; the case holds the
   carrier, not the board. (`drv_rail` still exists for the no-carrier fallback.)
 - **FPC adapter** — **foam double-sided tape, onto the back of the glass.** The case owes it
@@ -570,8 +615,15 @@ the band, and it rides a platform level with the back of the recess floor at 18.
 
 ### Fridge magnets
 
-Two **Ø8 × 2 mm disc magnets**, glued into blind pockets in the back face, so the display can
+Two **Ø8 × 2 mm disc magnets**, glued flat **onto** the back face, so the display can
 hang on a fridge door instead of standing on its leg. The leg is unaffected and still works.
+
+**They sit on the surface because the case already stands 2 mm off the door.** The USB-C
+pigtail's flange is 2.00 mm proud of the back face, and it is the rearmost thing on the case,
+so the door is held that far away wherever the discs go. A disc glued on the surface is
+**2 mm thick and therefore exactly as proud as the flange**: it reaches the steel while the
+flange rests against it. `mag_fit = false` is what leaves the face flat for them — set it
+`true` to cut the sunk pockets and their bosses back in.
 
 **A magnet is safe next to everything in this build but one thing, and that one thing is half
 the placement rule.**
@@ -597,39 +649,35 @@ So:
 
 | | |
 |---|---|
-| **+X** | x +27.6, **z 83 — under the charger**, midway between its two rows of insert posts (3.1 mm clear of the nearest) |
-| **−X** | x −27.6, **z 92.1 — above the carrier**, 2.0 mm clear of it and 1.0 mm outboard of the top glass rib |
+| **+X** | x +27.6, **z 83.65 — over the charger** |
+| **−X** | x −27.6, **z 92.1 — over the carrier's top end** |
 | Centroid | **x 0** — which is the number that matters |
 
-`mag_x` is derived from the top glass rib, not typed: the −X pocket has to sit outboard of it
-because that rib runs full depth to the skin. Mirrored, the +X one then lands between the
-charger's post columns on its own. Change `mag_d` and both pockets move and the guards re-check
-— at Ø10 the +X one closes to 1.5 mm of a charger post and the −X one to 6.0 mm of a corner
-screw, which is why the default is Ø8.
+Both positions are still derived and still echoed on every run, under `FRIDGE MAGNETS` — they
+are the marks to glue to. `mag_x` comes off the top glass rib rather than being typed: the −X
+position has to sit outboard of it, because with `mag_fit = true` that rib runs full depth to
+the skin and a pocket there would break into it. Mirrored, the +X one lands between the
+charger's post columns on its own.
 
-#### Each pocket brings its own boss
+#### How it hangs
 
-The back face has only 2.4 mm behind it at both spots (skin + register), and a 2.2 mm pocket
-would leave 0.2. So each magnet sits on a **Ø11.2 boss standing 1.8 mm off the register face**,
-which leaves `mag_floor` = **2.0 mm in front of every disc**. The +X boss clears the charger
-board by 2.0 mm; the −X one has open cavity in front of it. `cover_board` still reads exactly
-16.70 mm³ — the four carrier pegs and nothing else — so neither boss touches a board.
-
-| | |
-|---|---|
-| Pocket | Ø8.2 × 2.2 deep, blind |
-| Sink | 0.2 mm — the disc sits that far below the back face, which is also its glue bed. Proud, it would score the door |
-| Nearest other back-face feature | 8.9 mm |
+The two discs and the pigtail flange are the only things proud of the back face, all three of
+them by 2 mm, and all three sit in the top third of the case. The centre of mass is below them
+and about 14 mm out from the door, so its moment about the contact line rolls the **bottom** of
+the case in against the door. It hangs on three points at the top and leans on its bottom edge,
+which is the favourable way round: that lean carries the tipping moment, and the discs are left
+holding shear.
 
 **Will it hold?** The assembly is about **194 g**, and the magnets work in **shear**, not in
 tension — which is the number people get wrong. Two Ø8 × 2 N42 discs pull ~1.05 kgf each on
-thick flat steel; derate for the sink and take µ ≈ 0.3 against a painted door and the shear
-capacity is ~5.3 N against 1.9 N hanging. **About 2.8× margin.**
+thick flat steel. Glued on the surface they make direct contact, so there is no standoff to
+derate for; take µ ≈ 0.3 against a painted door and the shear capacity is **~6.2 N against
+1.9 N hanging — about 3.3× margin.**
 
 Two things will eat that, and neither is in the model's gift:
 
 - **Many "stainless" fridge doors are not magnetic** (austenitic stainless). Test the door with
-  any fridge magnet before printing pockets for two.
+  any fridge magnet before gluing two on.
 - **A thin door skin, and paint or laminate on it,** both derate the pull — a thin skin can
   halve it.
 
@@ -939,8 +987,8 @@ pocket lies against it — see *The floor plate has to die in solid frame*.
 
 ### Hardware
 
-- 2 × **Ø8 × 2 mm N42 disc magnets**, glued into the back face (optional — `mag_fit = false`
-  drops the pockets and their bosses). Only if the fridge door is actually magnetic: test first
+- 2 × **Ø8 × 2 mm N42 disc magnets**, glued onto the back face at x ±27.6 (optional).
+  Only if the fridge door is actually magnetic: test first
 - 4 × **M2.5 heat-set inserts**, 4.0 OD × 4.0 long, in the frame's end walls
 - 4 × **M2.5 countersunk screws**, 8 mm, for the cover
 - 1 × **Ø2 × 18.0 mm pin** for the hinge. It snaps into the two ears inside the pocket, and
@@ -1138,9 +1186,9 @@ datasheet and CAD model published for each part in the build.
 | Different lean | `dep_ang` — it sets the lean and nothing else; `leg_len` sets the footprint |
 | Rear port position | `ucb_x` / `ucb_z`; `port_w` / `port_h` for the opening. Watch `PORT CLEARANCES` — it must not end up in a band with another opening |
 | Deeper/shallower back bevel | `rear_chf` — 2.0 is the ceiling before it eats the 2.2 mm walls |
-| Different fridge magnets | `mag_d` / `mag_t`; `mag_clr` for the bore, `mag_sink` for how far they sit below the face. `mag_fit = false` removes them |
+| Different fridge magnets | `mag_d` / `mag_t` — they set `mag_x`, so both glue positions move and the echo re-reports them. `mag_fit = true` sinks them into pockets instead, with `mag_clr` for the bore and `mag_sink` for how far below the face they sit |
 | More/less air under the carrier for its solder joints | `carrier_lift` (2.5) — it comes straight out of the driver column's 1.45 mm of spare |
-| The charger's real hole spacing | `chg_hx` / `chg_hz`; `chg_ins_d` / `chg_ins_l` for a different insert, `chg_skin` for the material left behind the bore |
+| A different charger's hole spacing | `chg_hx` / `chg_hz` (26.67 × 20.32 for the 6091, off its STEP); `chg_ins_d` / `chg_ins_l` for a different insert, `chg_skin` for the material left behind the bore |
 | Looser/tighter leg in its recess | `rec_clr` (0.35 a side) |
 | Open the flash port again | `flash_port = true` |
 

@@ -69,11 +69,14 @@ nothing downstream is constrained. Nothing to design; two things to do at assemb
 
 ## 4. Still open from the relayout
 
-- [ ] **Measure the charger breakout's mounting holes.** The four posts now take **M2 heat-set
-      inserts**, so the hole centres have to be right: `chg_hx` / `chg_hz` are assumed at
-      25 × 19.3 (3.5 in from each edge of the 32 × 26.3 board) and that is a guess. Foam tape
-      forgave a guess; screws do not. Check the posts land on board rather than on components
-      while you are there, and that the charger's own holes take M2 clearance.
+- [x] **Measure the charger breakout's mounting holes.** Done, off Adafruit's own solid model
+      rather than with calipers: `fusion/vendor/adafruit-6091-bq25185-charger.step` has four
+      Ø2.5 holes at (2.54, 2.54), (2.54, 22.86), (29.21, 2.54) and (29.21, 22.86) on a
+      31.75 × 25.40 PCB. `chg_hx` / `chg_hz` are now **26.67 × 20.32**, up from the assumed
+      25 × 19.3 — the guess came off the 32 × 26.3 *product* envelope, which includes the
+      USB-C jack's overhang, and it put every post ~1 mm inboard of its hole.
+- [ ] **Check the posts land on board rather than on components** on the first dry fit, and
+      that the charger's Ø2.5 holes take the M2 screws with room to spare.
 - [ ] **Confirm the M2 inserts you have.** The posts are bored Ø2.9 × 5.0 for a 3.2 × 4.0
       insert. Set `chg_ins_d` / `chg_ins_l` if yours differ — the post height and `chg_back`
       follow from them, and so does whether the board still clears the glass in front of it.
@@ -152,24 +155,26 @@ build that needs them.
 
 ## 5b. Fridge magnets
 
-- [ ] **Test the fridge door with any magnet before printing.** A lot of "stainless" doors are
-      austenitic and hold nothing at all. If it does not stick, set `mag_fit = false` and the
-      two pockets disappear.
-- [ ] **Measure the discs you actually have.** The model assumes Ø8 × 2; `mag_d` / `mag_t`
-      drive the pocket, and the pocket is sized `mag_clr` = 0.2 over on the diameter so a disc
-      drops onto a bead of glue rather than being pressed into a tight bore. **Both positions
-      are derived from `mag_d`**, so a bigger disc moves them — read the `FRIDGE MAGNETS` echo
-      afterwards: at Ø10 the +X pocket closes to 1.5 mm of a charger post.
-- [ ] **Glue with epoxy, not CA.** The pocket floor is 2.0 mm of plastic:
-      a disc that works loose in a 3.2 mm pocket has nowhere to go but out, and CA is brittle
-      in peel. Let it cure before hanging anything on it.
-- [ ] **Check the pocket's bridge printed cleanly.** The cover prints outer-face-down, so each
-      pocket is a hole in the first layer whose floor is bridged 8.2 mm across at Z 2.2. Easy
-      for any printer, but look at it — a drooping bridge is what stops the disc seating flat.
-- [ ] **Hang it and leave it a week before trusting it.** ~2.8x shear margin is calculated, not
-      measured, and it assumes direct contact with magnetic steel. If the door is thin-skinned
-      and it slips, the fix is bigger discs — but check the echo's margins after changing
-      `mag_d`, because both pockets move with it.
+`mag_fit = false`: the discs are **glued onto** the back face, not sunk into it. The pigtail
+flange stands 2.00 mm proud and is the rearmost thing on the case, so a sunk disc sat 2.2 mm
+off the door and gripped nothing; a 2 mm disc on the surface is exactly as proud as the flange
+and reaches the steel. The positions are still derived and still printed by the `FRIDGE
+MAGNETS` echo — glue to those, not by eye.
+
+- [ ] **Test the fridge door with any magnet.** A lot of "stainless" doors are austenitic and
+      hold nothing at all.
+- [ ] **Mark x ±27.6 before gluing** — z 83.65 on the +X side, z 92.1 on the −X side. Equal x
+      is the whole rule: it puts the pair's centroid on the centreline. Offset, it hangs
+      crooked. Re-read the echo first if you changed `mag_d`, because `mag_x` moves with it.
+- [ ] **Measure the discs you actually have.** The model assumes Ø8 × 2. `mag_t` is what makes
+      the surface mount work — a disc thinner than the flange's 2.00 mm will not reach the
+      door, and the fix for that is a spacer under it, not a thinner flange.
+- [ ] **Glue with epoxy, not CA.** A surface-glued disc is held by the bond alone, and CA is
+      brittle in peel — which is the load a disc sees when you pull the case off the door.
+      Scuff both faces, and let it cure before hanging anything on it.
+- [ ] **Hang it and leave it a week before trusting it.** ~3.3x shear margin is calculated, not
+      measured. If the door is thin-skinned and it slips, the fix is bigger discs — check the
+      echo's positions again afterwards, because both move with `mag_d`.
 
 ## 6. Print and check the bezel test tile before the frame
 
@@ -201,8 +206,13 @@ build that needs them.
       Confirm the pigtail has the 5.1 kΩ CC1/CC2 pulldowns, or no USB-C source will turn
       its 5 V on. The port now sits at x −5, z 92, immediately left of the charger, so this
       is a ~4 mm run — leave a little slack so the cover can still lift off.
-- [ ] Build the battery divider: two 100 kΩ from the cell to an ADC pin on **ADC1
-      (GPIO 32–39)**. ADC2 is unusable while WiFi is on.
+- [ ] Build the battery divider: 100 kΩ from cell + to **GPIO 35**, 100 kΩ from that
+      same tap to the driver board's GND. Full wiring and why GPIO 35 is in the README's
+      "Wiring the battery sense". The firmware already reads it; until it is fitted the
+      pin floats and Home Assistant shows ~0 V.
+- [ ] Once the divider reads true, add the low-voltage cutoff (~3.6 V, sleep with no wake
+      source). Left out on purpose while the pin floats — a floating read looks like a
+      flat cell, and that path has no way back inside a sealed case.
 - [ ] **Flash the ESP32 and confirm OTA works before the cover goes on.** The flash port
       is closed (`flash_port = false`) and the charge port is deliberately two wires, no
       data — after assembly there is no wired route in.

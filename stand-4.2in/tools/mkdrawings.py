@@ -923,6 +923,11 @@ def sheet5():
             for mx, mz in ((P["mag_x"], P["mag_z0"]), (-P["mag_x"], P["mag_z1"])):
                 s.circ(fx(mx), fz(mz), P["mag_bd"], "boss")
                 s.circ(fx(mx), fz(mz), P["mag_bore"], "hid")
+        else:
+            # glued onto the OTHER face - drawn through so the positions are on
+            # a sheet, since nothing is cut for them
+            for mx, mz in ((P["mag_x"], P["mag_z0"]), (-P["mag_x"], P["mag_z1"])):
+                s.circ(fx(mx), fz(mz), P["mag_d"], "hid")
     else:
         for sz in (-1, 1):
             s.circ(fx(P["proto_cx"]), fz(P["proto_cz"]+sz*P["proto_hole_sp"]/2), 6.5, "boss")
@@ -957,8 +962,7 @@ def sheet5():
     s.bal(fx(rec_w/2), fz(piv_z), 1, fx(rec_w/2)+10, fz(piv_z)-8)
     s.bal(fx(P["stand_reg_w"]/2), fz(P["reg_ext_z0"]+1.0), 8,
           fx(P["stand_reg_w"]/2)+14, fz(P["reg_ext_z0"])-4)
-    if MAGS:
-        s.bal(fx(-P["mag_x"]), fz(P["mag_z1"]), 9, fx(-P["mag_x"])-14, fz(P["mag_z1"])-8)
+    s.bal(fx(-P["mag_x"]), fz(P["mag_z1"]), 9, fx(-P["mag_x"])-14, fz(P["mag_z1"])-8)
     s.bal(fx(P["chg_x_c"]), fz(P["chg_z"]+P["chg_hz"]/2), 2, fx(P["chg_x_c"])+12, fz(P["chg_z"])+6)
     if CARRIER:
         s.bal(fx(P["carrier_cx"]+P["carrier_hx"]/2), fz(P["carrier_cz"]-P["carrier_hz"]/2), 3,
@@ -974,7 +978,7 @@ def sheet5():
 
     s.notes(150, 22, [
         (1, f"stand recess in the BACK face, hidden here because it does not break through: {n(rec_w)} wide x {n(P['rec_dep'])} deep, stepping to {n(P['rec_shl'])} below z {n(P['shl_z0'])}. Pin sockets are on EARS inside it, not bored through its walls - sheet 6"),
-        (2, f"four dia {n(P['chg_boss_d'])} posts under the {P['chg_part']} charger, {n(P['chg_hx'])} x {n(P['chg_hz'])} centres, {n(P['chg_stand'])} off the register face, bored dia {n(P['chg_ins_d'])} x {n(P['chg_bore'])} for M2 inserts. BLIND, {n(P['chg_skin'])} of skin. Centres ASSUMED - measure the board"
+        (2, f"four dia {n(P['chg_boss_d'])} posts under the {P['chg_part']} charger, {n(P['chg_hx'])} x {n(P['chg_hz'])} centres, {n(P['chg_stand'])} off the register face, bored dia {n(P['chg_ins_d'])} x {n(P['chg_bore'])} for M2 inserts. BLIND, {n(P['chg_skin'])} of skin. Centres MEASURED off the vendor STEP - 0.1 in in from each edge of the 31.75 x 25.40 PCB"
             if BARE else
             f"2 x M2.5 posts, {n(P['proto_hole_sp'])} apart, plus four corner pads"),
         (3, f"four carrier mounts: a dia {n(P['carrier_pad'])} PAD {n(P['carrier_lift'])} tall - the air the solder joints under the board need - carrying a dia {n(P['carrier_hole']-P['carrier_peg'])} PEG that locates it through its hole"
@@ -987,8 +991,9 @@ def sheet5():
         *([(7, f"divider / wiring perfboard {n(P['perf_w'])} x {n(P['perf_h'])} - 11 x 4 holes of 0.1 inch strip - on four standoff pads. The band above the driver board is {n(P['cav_z1']-P['drv_z1'])} tall")]
           if (BARE and PERF) else []),
         (6, "the four corner screw holes, counterbored" if BARE else "module retention pad"),
-        *([(9, f"two dia {n(P['mag_bore'])} x {n(P['mag_dep'])} BLIND pockets for dia {n(P['mag_d'])} x {n(P['mag_t'])} discs, each on a dia {n(P['mag_bd'])} boss {n(P['mag_boss'])} proud, leaving {n(P['mag_floor'])} in front. MIRRORED at x +/-{n(P['mag_x'])} so the pair's centroid is on the centreline; offset, they hang it crooked. The two z differ - the -X half is carrier board to z {n(P['carrier_z1'])}")]
-          if MAGS else []),
+        (9, f"two dia {n(P['mag_bore'])} x {n(P['mag_dep'])} BLIND pockets for dia {n(P['mag_d'])} x {n(P['mag_t'])} discs, each on a dia {n(P['mag_bd'])} boss {n(P['mag_boss'])} proud, leaving {n(P['mag_floor'])} in front. MIRRORED at x +/-{n(P['mag_x'])} so the pair's centroid is on the centreline; offset, they hang it crooked. The two z differ - the -X half is carrier board to z {n(P['carrier_z1'])}"
+            if MAGS else
+            f"NOTHING IS CUT HERE. The two dia {n(P['mag_d'])} x {n(P['mag_t'])} discs are GLUED onto the OUTER back face at these positions, shown through - the USB-C pigtail's flange stands 2.00 proud and is the rearmost thing on the case, so a sunk disc could not reach the steel. A 2 mm disc glued on is exactly as proud as the flange. MIRRORED at x +/-{n(P['mag_x'])} so the pair's centroid is on the centreline; offset, they hang it crooked. The two z differ - the -X half is carrier board to z {n(P['carrier_z1'])}"),
         (8, f"the register extension, {n(P['stand_reg_w'])} wide, FLOORS the shallow end of the recess. It plugs a frame relief {n(P['reg_fit'])} larger, so it STOPS at z {n(P['reg_ext_z0'])} - clear of the {n(P['chf_bite'])} the rear chamfer takes"),
     ], cw=50)
     s.titleblock(TBX, TBY, 96, 18, "BACK COVER", 5, 8, "1:1")

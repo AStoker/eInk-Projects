@@ -71,8 +71,8 @@ chg_back,18.8,mm
 chg_bore,5,mm
 chg_boss_d,6.5,mm
 chg_h,26.3,mm
-chg_hx,25,mm
-chg_hz,19.3,mm
+chg_hx,26.67,mm
+chg_hz,20.32,mm
 chg_ins_d,2.9,mm
 chg_ins_l,4,mm
 chg_part,bq25185,
@@ -153,7 +153,7 @@ mag_boss,1.8,mm
 mag_clr,0.2,mm
 mag_d,8,mm
 mag_dep,2.2,mm
-mag_fit,1,mm
+mag_fit,0,mm
 mag_floor,2,mm
 mag_front,20.8,mm
 mag_sink,0.2,mm

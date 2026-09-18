@@ -31,6 +31,7 @@ class EinkBlob : public Component {
  public:
   void set_parent(http_request::HttpRequestComponent *parent) { this->parent_ = parent; }
   void set_timeout_ms(uint32_t ms) { this->timeout_ms_ = ms; }
+  void set_probe_timeout_ms(uint32_t ms) { this->probe_timeout_ms_ = ms; }
 
   float get_setup_priority() const override { return setup_priority::AFTER_WIFI; }
   void dump_config() override;
@@ -40,14 +41,19 @@ class EinkBlob : public Component {
   // back to drawing something of its own.
   bool draw(display::Display &it, const std::string &url);
 
-  // Small GET for the revision string. Returns "" on failure, which the caller
-  // must treat as "unknown", not as "changed" -- otherwise an app that is down
-  // spends a 17 s refresh on every wake.
+  // Small GET for the revision string. Returns "" on failure.
+  //
+  // Runs on a much shorter timeout than a blob download: this call sits in the
+  // wake path on every single wake, and http_request is synchronous, so the
+  // timeout is time the main loop is blocked. An unreachable host on the
+  // 20 s download timeout stalls the loop for 18 s and trips ESPHome's
+  // "took a long time for an operation" warning.
   std::string fetch_text(const std::string &url, size_t max_len = 64);
 
  protected:
   http_request::HttpRequestComponent *parent_{nullptr};
   uint32_t timeout_ms_{15000};
+  uint32_t probe_timeout_ms_{4000};
 };
 
 }  // namespace eink_blob

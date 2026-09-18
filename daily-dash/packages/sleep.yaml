@@ -130,18 +130,29 @@ script:
                       id(render_mode) = 2;
                       std::string rev = id(blob_fetcher)->fetch_text(
                           "http://${eink_host}/revision");
-                      if (rev.empty()) {
-                        // App unreachable. Leave the picture alone rather than
-                        // refresh to an error -- it may just be restarting.
-                        ESP_LOGW("wake", "No revision from the e-ink app");
-                        id(want_refresh) = false;
-                      } else if (rev == id(image_revision)) {
-                        ESP_LOGD("wake", "Image unchanged (%s)", rev.c_str());
-                        id(want_refresh) = false;
+                      if (!rev.empty()) {
+                        if (rev == id(image_revision)) {
+                          ESP_LOGD("wake", "Image unchanged (%s)", rev.c_str());
+                          id(want_refresh) = false;
+                        } else {
+                          ESP_LOGI("wake", "Image changed: %s -> %s",
+                                   id(image_revision).c_str(), rev.c_str());
+                          id(image_revision) = rev;
+                        }
+                      } else if (id(image_revision).empty()) {
+                        // Never shown a picture, so this is "the app is not
+                        // deployed", not "the app restarted". Fall back to the
+                        // agenda: an image mode that can never resolve must not
+                        // leave the panel frozen on whatever it drew last.
+                        ESP_LOGW("wake", "No e-ink app and no picture yet; "
+                                         "drawing the agenda instead");
+                        id(render_mode) = 0;
                       } else {
-                        ESP_LOGI("wake", "Image changed: %s -> %s",
-                                 id(image_revision).c_str(), rev.c_str());
-                        id(image_revision) = rev;
+                        // Has worked before, so treat it as a blip and keep the
+                        // picture rather than spend a refresh on a fallback.
+                        ESP_LOGW("wake", "e-ink app unreachable; keeping the "
+                                         "picture already on the panel");
+                        id(want_refresh) = false;
                       }
             - if:
                 condition:

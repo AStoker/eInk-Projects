@@ -14,6 +14,7 @@ void EinkBlob::dump_config() {
   ESP_LOGCONFIG(TAG, "eInk blob fetcher:");
   ESP_LOGCONFIG(TAG, "  Canvas: %ux%u, stride %u", BLOB_W, BLOB_H, BLOB_STRIDE);
   ESP_LOGCONFIG(TAG, "  Timeout: %" PRIu32 " ms", this->timeout_ms_);
+  ESP_LOGCONFIG(TAG, "  Probe timeout: %" PRIu32 " ms", this->probe_timeout_ms_);
 }
 
 // Reads exactly `len` bytes, or fails. HttpContainer::read() returns whatever
@@ -116,7 +117,13 @@ std::string EinkBlob::fetch_text(const std::string &url, size_t max_len) {
   if (this->parent_ == nullptr)
     return "";
 
+  // Borrow the transport's timeout for this one call. Synchronous HTTP means
+  // the timeout is main-loop stall time, and a probe is worth far less of it
+  // than a download.
+  const uint32_t saved = this->parent_->get_timeout();
+  this->parent_->set_timeout(this->probe_timeout_ms_);
   auto container = this->parent_->get(url);
+  this->parent_->set_timeout(saved);
   if (container == nullptr)
     return "";
   if (container->status_code < 200 || container->status_code >= 300) {

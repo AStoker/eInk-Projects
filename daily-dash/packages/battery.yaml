@@ -46,9 +46,12 @@ sensor:
     # ~25 s wake, so the entity would sit at unknown forever.
     update_interval: 5s
     lambda: |-
-      if (!id(battery_voltage).has_state()) return NAN;
+      // Return nothing rather than NaN when there is no divider fitted: a
+      // published NaN every 5 s is log noise and an "unknown" that looks like a
+      // fault, where no publish at all correctly leaves the entity unset.
+      if (!id(battery_voltage).has_state()) return {};
       float v = id(battery_voltage).state;
-      if (v < 1.0f) return NAN;          // nothing wired to the divider
+      if (v < 1.0f) return {};           // nothing wired to the divider
       struct { float v, pct; } curve[] = {
         {3.60f, 0.0f}, {3.70f, 10.0f}, {3.75f, 25.0f}, {3.85f, 50.0f},
         {3.95f, 70.0f}, {4.05f, 85.0f}, {4.20f, 100.0f},

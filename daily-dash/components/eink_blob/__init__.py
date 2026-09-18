@@ -16,6 +16,7 @@ eink_blob_ns = cg.esphome_ns.namespace("eink_blob")
 EinkBlob = eink_blob_ns.class_("EinkBlob", cg.Component)
 
 CONF_HTTP_REQUEST_ID = "http_request_id"
+CONF_PROBE_TIMEOUT = "probe_timeout"
 
 CONFIG_SCHEMA = cv.Schema(
     {
@@ -24,6 +25,9 @@ CONFIG_SCHEMA = cv.Schema(
             http_request.HttpRequestComponent
         ),
         cv.Optional(CONF_TIMEOUT, default="15s"): cv.positive_time_period_milliseconds,
+        cv.Optional(
+            CONF_PROBE_TIMEOUT, default="4s"
+        ): cv.positive_time_period_milliseconds,
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
@@ -35,3 +39,4 @@ async def to_code(config):
     parent = await cg.get_variable(config[CONF_HTTP_REQUEST_ID])
     cg.add(var.set_parent(parent))
     cg.add(var.set_timeout_ms(config[CONF_TIMEOUT]))
+    cg.add(var.set_probe_timeout_ms(config[CONF_PROBE_TIMEOUT]))

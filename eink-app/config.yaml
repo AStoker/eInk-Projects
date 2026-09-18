@@ -1,0 +1,30 @@
+# Home Assistant app manifest for the eInk image server.
+name: eInk Image Server
+version: "1.0.0"
+slug: eink_image_server
+description: Converts photos and generated images into panel-ready blobs for the eInk Daily Dash
+url: https://github.com/AStoker/eInk-Projects
+arch: [aarch64, amd64, armv7]
+startup: application
+boot: auto
+init: false
+
+# Read the source images, write the converted blobs.
+map:
+  - media:rw
+
+# Published on the HOST, not just the Docker network. The panel is an ESP32 on
+# the LAN and cannot reach an internal hostname, so this port has to be real.
+ports:
+  "8100/tcp": 8100
+ports_description:
+  "8100/tcp": Where the panel fetches /revision and /next
+
+options:
+  photo_rotate_minutes: 15
+  scan_seconds: 60
+  log_level: INFO
+schema:
+  photo_rotate_minutes: int(1,1440)
+  scan_seconds: int(10,3600)
+  log_level: list(DEBUG|INFO|WARNING|ERROR)

@@ -2,8 +2,8 @@
 # eInk Daily Dash -- today's date + today's agenda, portrait
 # ============================================================================
 # Waveshare 4.2in e-Paper (B) V2 (400x300 black/white/red) on the Waveshare
-# e-Paper ESP32 Driver Board. Rotated 90 deg, so the drawing canvas is
-# 300 wide x 400 tall (PORTRAIT).
+# e-Paper ESP32 Driver Board. Rotated 270 deg, so the drawing canvas is
+# 300 wide x 400 tall (PORTRAIT), the other way up from a 90 deg rotation.
 #
 #   SPI:     CLK = GPIO13, MOSI = GPIO14   (non-standard pins)
 #   Control: CS  = GPIO15, DC   = GPIO27, RST = GPIO26, BUSY = GPIO25
@@ -201,15 +201,16 @@ display:
     busy_pin: GPIO25               # polarity auto-detected by the component
     model: auto                    # auto | old | new
     auto_clear_enabled: false      # clear() fills COLOR_OFF = black ink here
-    rotation: 90°                  # -> portrait, 300 x 400 canvas
+    rotation: 270°                 # -> portrait, 300 x 400 canvas, flipped 180°
+                                   #    from 90° so the panel hangs the other way up
     update_interval: never         # driven by refresh_loop only
     lambda: |-
       const auto WHITE = Color(255, 255, 255);
       const auto BLACK = Color(0, 0, 0);
       const auto RED   = Color(255, 0, 0);
 
-      const int W = 300;   // canvas width  after 90° rotation
-      const int H = 400;   // canvas height after 90° rotation
+      const int W = 300;   // canvas width  after 270° rotation
+      const int H = 400;   // canvas height after 270° rotation
 
       it.fill(WHITE);
 

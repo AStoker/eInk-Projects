@@ -40,6 +40,9 @@ PHOTO_DIR = Path(os.environ.get("EINK_PHOTO_DIR", "/media/eink/photos"))
 AI_DIR = Path(os.environ.get("EINK_AI_DIR", "/media/runpod/eink"))
 OUT_DIR = Path(os.environ.get("EINK_OUT_DIR", "/media/eink/out"))
 PORT = int(os.environ.get("EINK_PORT", "8100"))
+# Reported by /health so a deploy can be confirmed by asking the running
+# container what it is, rather than by trusting that the update applied.
+VERSION = os.environ.get("EINK_VERSION", "dev")
 SCAN_SECONDS = int(os.environ.get("EINK_SCAN_SECONDS", "60"))
 # How long one photo stays on the panel. Rotation is on a clock rather than on
 # /next so that the revision can be computed without a request having happened —
@@ -178,7 +181,15 @@ class Handler(BaseHTTPRequestHandler):
         mode = (query.get("mode") or ["AI"])[0]
 
         if route.path == "/health":
-            return self._json(200, {"ok": True})
+            with self.library._lock:  # noqa: SLF001
+                counts = (len(self.library._photos), len(self.library._ai))
+            return self._json(200, {
+                "ok": True,
+                "version": VERSION,
+                "photos": counts[0],
+                "ai": counts[1],
+                "slot": current_slot(),
+            })
 
         if route.path == "/revision":
             blob = self.library.current(mode)

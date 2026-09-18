@@ -1,0 +1,11 @@
+# Makes this repo a Home Assistant add-on repository.
+#
+# Supervisor scans the top-level directories for a config.yaml, so eink-app/ is
+# picked up as an add-on and everything else here is ignored.
+#
+# Add it once, in Home Assistant:
+#   Settings > Add-ons > Add-on Store > (top right) > Repositories
+#   https://github.com/AStoker/eInk-Projects
+name: AStoker eInk Projects
+url: https://github.com/AStoker/eInk-Projects
+maintainer: Andrew Stoker

@@ -7,9 +7,14 @@ Format, contracts and the reasoning behind the conversion: [../IMAGE-PIPELINE.md
 
 ## Install
 
-Copy this directory to `/addons/eink_image_server` on the Home Assistant host
-(the Samba share exposes `/addons`), then **Settings → Add-ons → Add-on Store →
-⋮ → Check for updates**, and it appears under Local add-ons.
+This repo is a Home Assistant add-on repository (`repository.yaml` at the root),
+so there is no copying and no SSH. Add it once:
+
+**Settings → Add-ons → Add-on Store → ⋮ → Repositories →**
+`https://github.com/AStoker/eInk-Projects`
+
+"eInk Image Server" then appears in the store. Install it, and set the port
+mapping if Home Assistant does not take 8100 by default.
 
 Then point the panel at it. In the ESPHome device file:
 
@@ -20,6 +25,26 @@ substitutions:
 
 The ESP32 is on the LAN and outside Docker's network, which is why the app
 publishes port 8100 on the host and why this must be an IP the panel can reach.
+
+## Releasing a change
+
+Supervisor decides an update exists by comparing `version:` in `config.yaml`
+against what is installed. **A push with an unchanged version is invisible** —
+the files move, the store shows nothing, and it looks like the push failed.
+
+`./release.sh` does the three steps together so that cannot happen:
+
+```sh
+./release.sh          # patch bump, then confirm
+./release.sh minor
+./release.sh 2.0.0
+./release.sh patch -y # no confirmation
+```
+
+Then in Home Assistant: **Add-on Store → ⋮ → Check for updates**, and press
+Update on the add-on. Confirm what actually landed with `GET /health`, which
+reports the running version — a store that says it updated is not the same as a
+container that did.
 
 ## Directories
 

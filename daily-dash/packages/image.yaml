@@ -35,6 +35,22 @@ text_sensor:
             - lambda: 'id(force_refresh) = true;'
             - script.execute: wake_cycle
 
+sensor:
+  - platform: homeassistant
+    id: photo_offset
+    entity_id: ${ha_photo_offset}
+    internal: true
+    on_value:
+      # Same guard as the mode: Home Assistant re-pushes on every reconnect, so
+      # only a value that differs from the one last drawn is a real step.
+      - if:
+          condition:
+            lambda: 'return id(last_offset_valid) && x != id(last_offset);'
+          then:
+            - logger.log: "Photo offset changed; redrawing"
+            - lambda: 'id(force_refresh) = true;'
+            - script.execute: wake_cycle
+
 globals:
   # The last revision actually painted. Survives deep sleep, which is the whole
   # point: the comparison that decides whether to spend a refresh happens
@@ -59,6 +75,17 @@ globals:
     type: std::string
     restore_value: false
     initial_value: '""'
+  # The offset last drawn, and whether one has been drawn at all. A float
+  # needs the companion flag because 0 is a legitimate value and cannot double
+  # as "nothing yet".
+  - id: last_offset
+    type: float
+    restore_value: true
+    initial_value: '0'
+  - id: last_offset_valid
+    type: bool
+    restore_value: true
+    initial_value: 'false'
   # Set by the Refresh button and by a mode change. Draw regardless of whether
   # the picture changed: a person pressing refresh is asking for a redraw, not
   # for an opinion about whether one is needed.

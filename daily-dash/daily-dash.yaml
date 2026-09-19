@@ -72,6 +72,10 @@ substitutions:
   # published port. See IMAGE-PIPELINE.md.
   eink_host: "homeassistant.local:8100"
   ha_mode_select: input_select.eink_daily_dash_mode
+  # Steps through the photo library. The panel sends it to the app, which adds
+  # it to the clock-driven index, so Next/Previous nudge the rotation rather
+  # than replacing it.
+  ha_photo_offset: input_number.eink_daily_dash_photo_offset
   # The one mode the firmware draws itself. Everything else is a picture and
   # gets passed to the app verbatim.
   dash_option: "Dash"

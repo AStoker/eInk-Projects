@@ -83,7 +83,8 @@ display:
       if (id(render_mode) == 2) {
         std::string mode = id(display_mode).has_state() ? id(display_mode).state
                                                         : std::string("Photos");
-        std::string url = "http://${eink_host}/next?mode=" + mode;
+        std::string url = "http://${eink_host}/next?mode=" + mode + "&offset=" +
+                          to_string((int) id(photo_offset).state);
         if (id(blob_fetcher)->draw(it, url)) {
           // Only now is the picture really on the panel. Commit the revision
           // here and nowhere else.

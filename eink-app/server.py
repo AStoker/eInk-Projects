@@ -174,16 +174,18 @@ class Library:
                 LOG.info("pruned %s", stale.name)
 
     # -- selection ----------------------------------------------------------
-    def current(self, mode: str) -> Blob | None:
+    def current(self, mode: str, offset: int = 0) -> Blob | None:
         with self._lock:
             photos, ai = list(self._photos), dict(self._ai)
 
         if mode.lower().startswith("photo"):
             if not photos:
                 return None
-            # Deterministic from the clock, so /revision and /next agree without
-            # either of them holding a cursor.
-            idx = int(time.time() // PHOTO_ROTATE_SECONDS) % len(photos)
+            # Clock plus offset. The clock keeps it rotating on its own; the
+            # offset is what Next/Previous moves, and because both come from
+            # the caller rather than from state held here, /revision and /next
+            # always agree -- asking what is current cannot change it.
+            idx = (int(time.time() // PHOTO_ROTATE_SECONDS) + offset) % len(photos)
             return photos[idx]
 
         slot = current_slot()
@@ -232,6 +234,10 @@ class Handler(BaseHTTPRequestHandler):
         route = urlparse(self.path)
         query = parse_qs(route.query)
         mode = (query.get("mode") or ["AI"])[0]
+        try:
+            offset = int((query.get("offset") or ["0"])[0])
+        except ValueError:
+            offset = 0
 
         if route.path == "/health":
             with self.library._lock:  # noqa: SLF001
@@ -245,13 +251,13 @@ class Handler(BaseHTTPRequestHandler):
             })
 
         if route.path == "/revision":
-            blob = self.library.current(mode)
+            blob = self.library.current(mode, offset)
             # An empty revision means "nothing to show". The firmware reads that
             # as unknown and leaves the panel alone rather than refreshing.
             return self._text(200, blob.ident if blob else "")
 
         if route.path == "/next":
-            blob = self.library.current(mode)
+            blob = self.library.current(mode, offset)
             if blob is None:
                 return self._json(404, {"ok": False, "error": f"nothing for mode {mode}"})
             data = blob.path.read_bytes()

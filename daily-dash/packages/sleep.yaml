@@ -140,7 +140,8 @@ script:
                       // a completely different picture.
                       std::string rev = id(blob_fetcher)->fetch_text(
                           "http://${eink_host}/revision?mode=" +
-                          id(display_mode).state);
+                          id(display_mode).state + "&offset=" +
+                          to_string((int) id(photo_offset).state));
                       if (!rev.empty()) {
                         // Staged, not committed. packages/display.yaml moves
                         // this into image_revision once the blit succeeds; a
@@ -187,6 +188,10 @@ script:
                       // change is measured against it.
                       if (id(display_mode).has_state())
                         id(last_mode) = id(display_mode).state;
+                      if (id(photo_offset).has_state()) {
+                        id(last_offset) = id(photo_offset).state;
+                        id(last_offset_valid) = true;
+                      }
             - lambda: 'id(force_refresh) = false;'
           else:
             # Spend no refresh. E-paper holds its last image through sleep, so

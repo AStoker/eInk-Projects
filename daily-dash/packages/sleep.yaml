@@ -211,6 +211,17 @@ script:
                   - lambda: 'id(render_mode) = 1;'
                   - component.update: epaper_display
                   - lambda: 'id(offline_notice_shown) = true;'
+      # The panel refresh is ASYNCHRONOUS, and this guards every path above
+      # that might have started one. component.update only queues the refresh
+      # and returns in well under a second; the driver then awaits the BUSY pin
+      # from its own loop() for 15-20 s. Handing straight over to sleep_or_stay
+      # cuts that off partway and leaves half an image on the glass. It only
+      # shows up once deep sleep is really enabled -- a board held awake
+      # finishes in its own time and looks fine.
+      - wait_until:
+          condition:
+            lambda: 'return !id(epaper_display)->is_refreshing();'
+          timeout: 45s
       - script.execute: sleep_or_stay
 
   # The only place that sleeps. Checked after the draw, every wake, so the

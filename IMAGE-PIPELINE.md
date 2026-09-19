@@ -318,22 +318,18 @@ that night.
 
 ### The prompt rules, and why each exists
 
-These live in the automation's `instructions:` field. Every one is a render
-that failed on the panel; none is a preference. Edit with that in mind.
+These live in the automation's `instructions:`. Every one came from a render
+that failed on the glass; none is a preference.
 
 | Rule | Learned from |
 |---|---|
-| **Form** — one flowing comma-separated phrase opening `Bold graphic screen-print poster of` | Clipped sentences with capitalised emphasis produced flat vector clip-art. The same content, phrased as one description, produced a print |
-| **Simplicity** — one subject, few large shapes, two-thirds white | A harbour with boats, masts, docks, warehouses and reflections came out 57% black and turned to mud at 300 px wide |
-| **No mirroring** — never reflections or symmetry | A cypress swamp reflected in still water read as a mirror image, not a picture. Reflections double the ink and halve the empty space |
-| **Full bleed** — edge to edge, no border | Unsaid, the model produces a bordered print and a fifth of the panel is margin |
-| **One small red object**, named | A red kettle handle came out at 5.8% of the panel and stopped being an accent |
-| **Red as an object, never a glow** | The converter drops unsaturated red, so a "glowing red lantern" renders as *nothing* |
-| **Night still mostly white** | A night scene came back 80% black. On real e-paper that is dark grey on light grey — it loses the contrast it appears to have on a screen |
-
-The finished panel is the check: **roughly two-thirds white, a third black, red
-well under 1%.** The e-ink app logs nothing about this, so judge it by eye or by
-converting a copy locally with `eink-app/panelise.py`.
+| **Ask for tone, not flat blocks** — hatching, texture, shadow, atmosphere | An earlier version banned shading and gradients outright. Correct while the converter hard-thresholded; wrong once it clamped the flats and diffused the mid-tones, and it then produced exactly the lifeless tri-tone it was written to prevent. What genuinely fails is *subtle* tone spread thinly over a large area — that comes out as noise, so aim for clearly separated light, mid and dark passages |
+| **Form** — one flowing comma-separated phrase opening `Bold` + a print medium, varied daily | Clipped sentences with capitalised emphasis produce flat vector clip-art. Wood engraving, scraperboard, linocut with hatching, lithograph, halftone screen-print and ink wash all dither well |
+| **Composition** — one dominant subject, a few large shapes, detail *inside* them | A harbour listing boats, masts, docks and warehouses came out 57% black and turned to mud at 300 px. The problem was never detail as such, it was detail with no large structure holding it together |
+| **Light overall, ~two-thirds** | E-ink black is dark grey on light grey paper, so a dark picture loses most of its contrast in the flesh. A night scene came back 80% black and read as a slab. Night is shown through the scene and deep shadow in *part* of the frame |
+| **No mirroring** | A cypress swamp reflected in still water doubled the ink and read as a mirror image rather than a picture |
+| **One small red object**, named, solid, saturated | A red kettle handle came out at 5.8% of the panel and stopped being an accent. A red *glow* or *lit window* is worse — unsaturated red is dropped by the converter's gate, so it renders as nothing |
+| **Full bleed** | Unsaid, the model produces a bordered print and a fifth of the panel is margin |
 
 ### If you change the prompt rules
 

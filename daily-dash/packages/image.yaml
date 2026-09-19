@@ -51,6 +51,14 @@ globals:
     restore_value: true
     max_restore_data_length: 16
     initial_value: '""'
+  # The revision fetched this wake, held until the picture is actually on the
+  # glass. Committing it at fetch time was a bug: a failed blit fell through to
+  # the agenda while the revision said the image had been drawn, so every later
+  # wake saw "unchanged" and skipped -- the panel stuck on the agenda for good.
+  - id: pending_revision
+    type: std::string
+    restore_value: false
+    initial_value: '""'
   # Set by the Refresh button and by a mode change. Draw regardless of whether
   # the picture changed: a person pressing refresh is asking for a redraw, not
   # for an opinion about whether one is needed.

@@ -132,16 +132,28 @@ script:
                 then:
                   - lambda: |-
                       id(render_mode) = 2;
+                      // The mode MUST be on this URL. /revision defaults to AI
+                      // when it is absent, so without it a panel in Photos mode
+                      // compares the AI revision against the AI revision it
+                      // already drew, concludes nothing changed, and never
+                      // refreshes -- while /next?mode=Photos would have served
+                      // a completely different picture.
                       std::string rev = id(blob_fetcher)->fetch_text(
-                          "http://${eink_host}/revision");
+                          "http://${eink_host}/revision?mode=" +
+                          id(display_mode).state);
                       if (!rev.empty()) {
+                        // Staged, not committed. packages/display.yaml moves
+                        // this into image_revision once the blit succeeds; a
+                        // failed blit must leave the old value alone or the
+                        // panel decides it is already showing a picture it
+                        // never drew and skips every wake from then on.
+                        id(pending_revision) = rev;
                         if (rev == id(image_revision) && !id(force_refresh)) {
                           ESP_LOGD("wake", "Image unchanged (%s)", rev.c_str());
                           id(want_refresh) = false;
                         } else {
-                          ESP_LOGI("wake", "Image changed: %s -> %s",
+                          ESP_LOGI("wake", "Image %s -> %s",
                                    id(image_revision).c_str(), rev.c_str());
-                          id(image_revision) = rev;
                         }
                       } else if (id(image_revision).empty()) {
                         // Never shown a picture, so this is "the app is not

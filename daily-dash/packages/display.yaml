@@ -83,8 +83,14 @@ display:
       if (id(render_mode) == 2) {
         std::string mode = id(display_mode).has_state() ? id(display_mode).state
                                                         : std::string("Photos");
-        if (id(blob_fetcher)->draw(it, "http://${eink_host}/next?mode=" + mode))
+        std::string url = "http://${eink_host}/next?mode=" + mode;
+        if (id(blob_fetcher)->draw(it, url)) {
+          // Only now is the picture really on the panel. Commit the revision
+          // here and nowhere else.
+          id(image_revision) = id(pending_revision);
           return;
+        }
+        ESP_LOGW("display", "Could not draw %s", url.c_str());
         // Falling through to the agenda is the point: half a picture is worse
         // than yesterday's schedule, and the blob may have failed mid-stream.
         ESP_LOGW("display", "Blob fetch failed; drawing the agenda instead");

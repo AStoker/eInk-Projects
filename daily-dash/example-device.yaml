@@ -24,11 +24,21 @@
 #   input_select.eink_daily_dash_mode  Dash / Photos / AI
 #
 # ----------------------------------------------------------------------------
-# UPDATES
+# UPDATES -- read this before wondering why a fix did not take
 # ----------------------------------------------------------------------------
-# `refresh: 1d` means a build picks up repo changes at most once a day. Set it
-# to 0s while iterating, or pin `ref:` to a tag once the thing is on a wall and
-# you would rather it not change under you.
+# BOTH blocks below clone this repo, and BOTH cache their clone. Left at the
+# default, a rebuild compiles a copy of the repo up to a day old: the push
+# lands, the build succeeds, and the firmware is still the old one. The logs
+# then describe behaviour whose source no longer exists, which is a genuinely
+# confusing way to spend an evening.
+#
+# `refresh: 0s` on both means every build re-pulls. That is the right setting
+# while anything is changing. Once the panel is on a wall and settled, raise
+# them or pin `ref:` to a tag so it cannot move under you.
+#
+# To confirm which build is actually running, check the compile timestamp in
+# the log against when you pushed:
+#   [I][app:151]: ESPHome version ... compiled on <date time>
 # ============================================================================
 
 substitutions:
@@ -48,7 +58,7 @@ packages:
     url: https://github.com/AStoker/eInk-Projects
     ref: main
     files: [daily-dash/daily-dash.yaml]
-    refresh: 1d
+    refresh: 0s        # re-pull every build; see UPDATES above
 
 # Declared here rather than in the package for the same reason dev.yaml
 # declares it: ESPHome resolves component sources against the top-level config,
@@ -60,3 +70,4 @@ external_components:
       ref: main
       path: daily-dash/components
     components: [eink_blob]
+    refresh: 0s        # this one caches too, and defaults to a day

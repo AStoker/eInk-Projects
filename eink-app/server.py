@@ -65,7 +65,7 @@ PORT = int(os.environ.get("EINK_PORT", "8100"))
 # Reported by /health so a deploy can be confirmed by asking the running
 # container what it is, rather than by trusting that the update applied.
 VERSION = os.environ.get("EINK_VERSION", "dev")
-SCAN_SECONDS = int(_opt("scan_seconds", "EINK_SCAN_SECONDS", 60))
+SCAN_SECONDS = int(_opt("scan_seconds", "EINK_SCAN_SECONDS", 20))
 # How long one photo stays on the panel. Rotation is on a clock rather than on
 # /next so that the revision can be computed without a request having happened —
 # otherwise "has the picture changed" could only be answered by changing it.
@@ -145,7 +145,10 @@ class Library:
     def rescan(self) -> None:
         photos, ai = [], {}
 
-        for src in sorted(p for p in _images(PHOTO_DIR)):
+        for src in sorted(_images(PHOTO_DIR, recursive=True)):
+            if not _settled(src):
+                LOG.info("still copying, will pick up next scan: %s", src.name)
+                continue
             # Photographs need the error diffusion; see IMAGE-PIPELINE.md.
             blob = self._convert(src, dither=True)
             if blob:
@@ -187,12 +190,39 @@ class Library:
         return ai.get(slot) or next(iter(ai.values()), None)
 
 
-def _images(directory: Path):
+def _images(directory: Path, recursive: bool = False):
+    """Image files in a directory.
+
+    Photos recurse, so albums in subfolders work without anyone having to
+    flatten them. The AI directory does not: it holds exactly three known
+    names beside the RunPod app's own output.
+    """
     if not directory.is_dir():
         return
-    for entry in directory.iterdir():
-        if entry.is_file() and entry.suffix.lower() in SUFFIXES:
-            yield entry
+    walker = directory.rglob("*") if recursive else directory.iterdir()
+    for entry in walker:
+        if not entry.is_file() or entry.suffix.lower() not in SUFFIXES:
+            continue
+        # Skip the junk that turns up on a network share, and anything that
+        # looks like a partial copy.
+        if entry.name.startswith((".", "._")) or entry.suffix.lower() == ".tmp":
+            continue
+        yield entry
+
+
+def _settled(path: Path) -> bool:
+    """True once the file has stopped growing.
+
+    Dropping a photo over Samba arrives as a series of writes, so a scan can
+    catch it half-written. The RunPod side replaces atomically and never needs
+    this, but a person dragging a folder in does.
+    """
+    try:
+        first = path.stat().st_size
+        time.sleep(0.4)
+        return first > 0 and first == path.stat().st_size
+    except OSError:
+        return False
 
 
 class Handler(BaseHTTPRequestHandler):

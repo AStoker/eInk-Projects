@@ -268,154 +268,76 @@ One trigger block can take both by listing both event types.
 
 ---
 
-## 4. The 3am automation
+## 4. The nightly automation
 
-Runs once a night and leaves three files behind. Three steps: ask WeatherKit
-what the day looks like, ask Claude for three prompts, render them.
+**It is installed and enabled**, as `automation.eink_daily_dash_generate_ai_images`,
+under the **eInk Daily Dash** category. Everything below describes the thing
+that is already running — it is not a snippet to paste.
 
-### Claude writes the prompts
+At 03:00 it asks WeatherKit for the day's forecast, asks Claude for three
+matched prompts, and renders each on RunPod into `/media/runpod/eink/`. The
+e-ink app notices the new files within 20 seconds and converts them.
 
-`ai_task.generate_data` against `ai_task.claude_ai_task`, with a `structure` so
-the answer arrives as named fields instead of prose to parse. Claude picks one
-subject for the day and writes it three times, so the panel shows a set rather
-than three unrelated pictures — verified live, which returned "Sunflower through
-the day": a red sun at dawn, a red bee at noon, a red moon at night.
+To watch it work, run it manually from its page. It takes about four minutes
+and spends three GPU renders.
 
-The panel's constraints live in those instructions, and four of them were each
-learned by generating something that did not work:
+### Changing the look
 
-**Form.** One continuous comma-separated phrase, opening `Bold graphic
-screen-print poster of`. Never several short sentences, never capitalised
-emphasis. This is the single biggest lever on quality: clipped sentences
-produce flat vector clip-art, a flowing description produces a print. Give the
-model this exact line to match —
+`input_text.eink_daily_dash_theme` is the whole interface. Type a word, and
+that night's set follows it:
 
+| Theme | What you get |
+|---|---|
+| *(blank)* | Claude picks freely, favouring Columbia SC subjects |
+| `fall` | Autumn scenes |
+| `christmas` | Seasonal scenes |
+| `snow`, `storms`, `the coast`, `city at night` | As described |
+
+A non-empty theme **outranks the Columbia SC steer** — the automation swaps the
+local-landmark paragraph for the theme instruction rather than stacking them,
+so a theme does not fight a list of rivers and bridges it is supposed to
+replace. Clear the box to go back.
+
+The theme is read fresh at 03:00, so setting it any time before then applies
+that night.
+
+### The prompt rules, and why each exists
+
+These live in the automation's `instructions:` field. Every one is a render
+that failed on the panel; none is a preference. Edit with that in mind.
+
+| Rule | Learned from |
+|---|---|
+| **Form** — one flowing comma-separated phrase opening `Bold graphic screen-print poster of` | Clipped sentences with capitalised emphasis produced flat vector clip-art. The same content, phrased as one description, produced a print |
+| **Simplicity** — one subject, few large shapes, two-thirds white | A harbour with boats, masts, docks, warehouses and reflections came out 57% black and turned to mud at 300 px wide |
+| **No mirroring** — never reflections or symmetry | A cypress swamp reflected in still water read as a mirror image, not a picture. Reflections double the ink and halve the empty space |
+| **Full bleed** — edge to edge, no border | Unsaid, the model produces a bordered print and a fifth of the panel is margin |
+| **One small red object**, named | A red kettle handle came out at 5.8% of the panel and stopped being an accent |
+| **Red as an object, never a glow** | The converter drops unsaturated red, so a "glowing red lantern" renders as *nothing* |
+| **Night still mostly white** | A night scene came back 80% black. On real e-paper that is dark grey on light grey — it loses the contrast it appears to have on a screen |
+
+The finished panel is the check: **roughly two-thirds white, a third black, red
+well under 1%.** The e-ink app logs nothing about this, so judge it by eye or by
+converting a copy locally with `eink-app/panelise.py`.
+
+### If you change the prompt rules
+
+Test before trusting. One render is enough to see whether a rule is working,
+and the failure modes above are all visible at panel size. Convert a candidate
+by hand:
+
+```sh
+cd eink-app
+python3 -c "
+from PIL import Image; import panelise as P
+img = P.fit(Image.open('/path/to/render.png'))
+rgb, black, red = P.panelise(img, dither=False)
+rgb.save('preview.png')
+t = P.W * P.H
+print('white %.1f%%  black %.1f%%  red %.2f%%' % (
+    100*(~black&~red).sum()/t, 100*black.sum()/t, 100*red.sum()/t))
+"
 ```
-Bold graphic screen-print poster of a misty valley at dawn with a lone tree on
-a ridge, clear sky, one small red rising sun low on the horizon as the single
-red element in the whole image, everything else flat solid black on white
-paper, hard edges, thick black outlines, extremely high contrast, no shading,
-no gradients, vertical composition
-```
-
-**Scene, not object.** A landscape, shoreline, skyline, harbour, weather, a
-view through a window — something with depth. An isolated object on a plain
-ground renders as clip-art however it is described.
-
-**Full bleed, edge to edge, no border, no margin.** Left unsaid, the model
-produces a *bordered print* — artwork floating in white space — and a fifth of
-a 300 × 400 panel goes to margin.
-
-**One small red object**, named, stated as the single red element. Two
-failures to avoid: a *large* red object (a kettle handle came out at 5.8% of
-the panel and stopped reading as an accent), and a red *glow* or *lit window* —
-unsaturated red is dropped entirely by the converter's gate, so it renders as
-nothing at all. A sun on the horizon, a buoy, a flag, a lantern.
-
-Ink balance is the quick check on a finished panel: **roughly two-thirds white,
-a third black, red well under 1%.** A composition that comes out 80% black is a
-black slab on the wall.
-
-```yaml
-triggers:
-  - trigger: time
-    at: "03:00:00"
-
-actions:
-  # WeatherKit exposes no forecast attribute; ask for it.
-  - action: weather.get_forecasts
-    target:
-      entity_id: weather.home_weatherkit
-    data:
-      type: daily
-    response_variable: wx
-  - variables:
-      fc: "{{ wx['weather.home_weatherkit'].forecast[0] }}"
-
-  - action: ai_task.generate_data
-    data:
-      entity_id: ai_task.claude_ai_task
-      task_name: eink daily dash prompts
-      instructions: >-
-        You are writing image-generation prompts for a 4.2 inch three-colour
-        e-paper panel: 300x400 portrait, and the ONLY inks are white, solid
-        black, and one bright red. There are no greys and no shading.
-
-        Pick ONE subject for today and write three prompts showing that same
-        subject at morning, midday and night, so the three read as a set. Vary
-        the subject creatively from day to day.
-
-        Today's forecast: {{ fc.condition }}, high {{ fc.temperature }},
-        low {{ fc.templow }}.
-
-        Hard rules for every prompt: bold graphic screen-print poster style,
-        flat blocks of solid colour, hard edges, thick black outlines, extremely
-        high contrast. FULL BLEED - say explicitly that the artwork fills the
-        entire frame edge to edge with no border and no margin; this matters
-        more than anything else, because a bordered print wastes a fifth of the
-        panel. Name exactly ONE small red OBJECT per prompt and state it is the
-        single red element in the whole image - a solid object with a hard edge,
-        never a glow, a lit window, a tint or an atmosphere, because unsaturated
-        red renders as nothing. Everything else is solid black on white paper.
-        Explicitly say: no shading, no gradients, vertical composition. Under 70
-        words each.
-      structure:
-        subject:
-          selector: {text: }
-          description: The single shared subject chosen for today
-          required: true
-        morning:
-          selector: {text: }
-          description: Prompt for the morning image
-          required: true
-        day:
-          selector: {text: }
-          description: Prompt for the midday image
-          required: true
-        night:
-          selector: {text: }
-          description: Prompt for the night image
-          required: true
-    response_variable: prompts
-
-  - repeat:
-      for_each: [morning, day, night]
-      sequence:
-        - action: rest_command.runpod_generate
-          data:
-            endpoint: krea2
-            label: "eInk daily dash - {{ repeat.item }}"
-            output_dir: /media/runpod/eink
-            filename: "{{ repeat.item }}"
-            wait: true
-            params:
-              width: 768
-              height: 1024
-              prompt: "{{ prompts.data[repeat.item] }}"
-              negative: >-
-                border, frame, margin, white space around artwork, matted
-                print, gradient, soft shading, blur, haze, glow, fine detail,
-                intricate texture, noise, grain, photorealistic, photograph,
-                muted colours, grey, pastel, brown, orange, warm tones, red
-                tint, text, letters, watermark, signature
-```
-
-Three details are easy to get wrong and fail quietly:
-
-- **`width`, `height`, `prompt` and `negative` sit under `params`.** Flat, the
-  rest_command template drops them.
-- **768 × 1024, portrait.** The panel is 3:4 the tall way. A landscape
-  1024 × 768 source loses about 44% of its width to the centre crop.
-- **`prompts.data[...]`** — `ai_task` nests its answer under `data`, the same
-  way `rest_command` nests under `content`.
-
-The forecast is the day's, not the moment's: at 3am "current weather" describes
-the middle of the night, not the day the pictures are for.
-
-Timing, measured: a warm `krea2` worker put the finished file on disk **80
-seconds** after the call returned `QUEUED`.
-
----
 
 ## 5. Firmware side
 

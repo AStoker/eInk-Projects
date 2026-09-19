@@ -77,6 +77,10 @@ button:
   - platform: template
     name: "Refresh Display"
     on_press:
+      # Forces the draw: pressing this is a request for a redraw, not a
+      # question about whether one is needed. Only lands while the panel is
+      # awake -- a sleeping board is not listening.
+      - lambda: 'id(force_refresh) = true;'
       - script.execute: wake_cycle
 
 deep_sleep:
@@ -131,7 +135,7 @@ script:
                       std::string rev = id(blob_fetcher)->fetch_text(
                           "http://${eink_host}/revision");
                       if (!rev.empty()) {
-                        if (rev == id(image_revision)) {
+                        if (rev == id(image_revision) && !id(force_refresh)) {
                           ESP_LOGD("wake", "Image unchanged (%s)", rev.c_str());
                           id(want_refresh) = false;
                         } else {
@@ -147,18 +151,31 @@ script:
                         ESP_LOGW("wake", "No e-ink app and no picture yet; "
                                          "drawing the agenda instead");
                         id(render_mode) = 0;
-                      } else {
+                      } else if (!id(force_refresh)) {
                         // Has worked before, so treat it as a blip and keep the
                         // picture rather than spend a refresh on a fallback.
                         ESP_LOGW("wake", "e-ink app unreachable; keeping the "
                                          "picture already on the panel");
                         id(want_refresh) = false;
+                      } else {
+                        // Asked for explicitly, and there is no picture to be
+                        // had. Draw the agenda so the press does something
+                        // visible rather than nothing at all.
+                        ESP_LOGW("wake", "Refresh asked for but the e-ink app "
+                                         "is unreachable; drawing the agenda");
+                        id(render_mode) = 0;
                       }
             - if:
                 condition:
                   lambda: 'return id(want_refresh);'
                 then:
                   - component.update: epaper_display
+                  - lambda: |-
+                      // Remember what was actually drawn, so the next mode
+                      // change is measured against it.
+                      if (id(display_mode).has_state())
+                        id(last_mode) = id(display_mode).state;
+            - lambda: 'id(force_refresh) = false;'
           else:
             # Spend no refresh. E-paper holds its last image through sleep, so
             # a stale agenda beats an error screen, and a blank panel on a

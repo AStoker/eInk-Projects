@@ -50,12 +50,36 @@ container that did.
 
 | Path | What |
 |---|---|
-| `/media/eink/photos/` | Drop photographs here. Photo mode rotates through them |
+| `/media/eink/photos/` | Drop photographs here. Subfolders are fine |
 | `/media/runpod/eink/` | `morning.png`, `day.png`, `night.png` from the 3am job |
 | `/media/eink/out/` | Converted blobs. Disposable — deleting them forces a rebuild |
 
 Only those two source directories, never `/media/runpod/` itself: the RunPod
 app's own gallery lives beside it and would otherwise end up on the panel.
+
+## Dropping photos in
+
+Copy anything into `/media/eink/photos/` — over Samba, the Media browser,
+however. Within 20 seconds it is converted and in the rotation. No resizing, no
+naming convention, no restart, and subfolders work so an album can go in whole.
+
+Three things make that safe rather than merely convenient:
+
+**A file still being copied is skipped, not half-converted.** A large photo
+arriving over Samba is a series of writes, and a scan can land in the middle of
+one. Each candidate is checked for a stable size before conversion, and Pillow
+failing on a truncated file is caught and retried on the next scan rather than
+killing the scan.
+
+**Dotfiles and `.tmp` are ignored**, which is most of what a network share
+leaves lying around.
+
+**Deleting a photo removes it.** Converted blobs whose source is gone are
+pruned on the next scan, so the panel stops showing it.
+
+Formats: PNG, JPEG, WebP, BMP, GIF, TIFF. Any aspect ratio — the converter
+centre-crops to 3:4 and resizes, so a landscape photo loses its sides rather
+than being letterboxed.
 
 ## Routes
 

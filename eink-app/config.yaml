@@ -22,7 +22,7 @@ ports_description:
 
 options:
   photo_rotate_minutes: 15
-  scan_seconds: 60
+  scan_seconds: 20
   log_level: INFO
 schema:
   photo_rotate_minutes: int(1,1440)

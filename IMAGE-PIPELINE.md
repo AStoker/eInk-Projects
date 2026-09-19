@@ -117,23 +117,38 @@ is_red  = (sat >= 90) & (r >= np.maximum(g, b) + 60)
 A pixel becomes red only when it is convincingly red. Everything else is black
 or white, so the red that survives is the red the artwork meant.
 
-### Dither photographs, not flat art
+### Always dither. Clamp the flats first on generated art.
 
-The remaining black/white decision depends on where the image came from:
+Both sources are error-diffused. What differs is a clamp applied beforehand:
 
 | Source | Treatment |
 |---|---|
-| `/media/runpod/eink/` — generated flat art | threshold at luminance 128 |
-| `/media/eink/photos/` — photographs | Floyd–Steinberg the non-red pixels |
+| `/media/runpod/eink/` — generated art | clamp to the rails, then Floyd–Steinberg |
+| `/media/eink/photos/` — photographs | Floyd–Steinberg, no clamp |
 
-The model's "white" paper comes back at **RGB 230, 227, 222** — about 10% grey,
-not white. Error diffusion reads that as a tone it must reproduce and scatters
-dots across the entire background, turning a clean screen-print into speckle.
-A plain threshold snaps it to white and leaves the flats flat.
+A generated print is not two tones. Measured on a real render, its luminance
+histogram has two spikes — **31% at 0–15** (ink) and **27% at 224–239** (paper) —
+with about **19% genuine mid-tone** in between, which is where a storm cloud
+gets its depth.
 
-A photograph is the opposite case: three hard tones with no diffusion posterise
-it into unreadable blobs, and the error diffusion is what buys back the illusion
-of shading. Hence one switch, driven by the directory.
+Neither spike sits at the rail, and that is the whole problem. Floyd–Steinberg
+reads a 230 background as a tone it must reproduce and scatters dots across the
+entire sky. Clamping near-white to 255 and near-black to 0 first means those two
+flats quantise with zero error, so the diffusion is spent only on the real
+mid-tones:
+
+```python
+CLAMP_LO, CLAMP_HI = 40, 205
+lum = np.where(lum >= CLAMP_HI, 255.0, lum)
+lum = np.where(lum <= CLAMP_LO, 0.0, lum)
+```
+
+Hard-thresholding instead of dithering — the earlier fix for the speckle — cures
+the background but throws that 19% away, and the result is a flat tri-tone with
+no depth. The clamp fixes the actual cause rather than disabling the symptom.
+
+A photograph is not clamped: it wants its full tonal range, and its highlights
+and shadows are real content rather than a paper colour that missed the rail.
 
 A reference implementation of all of the above — fit, gate, dither switch — is
 `panelise.py` in the e-ink app.

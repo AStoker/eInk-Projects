@@ -22,13 +22,25 @@ def fit(src, w=W, h=H):
         nh = int(sw / t); box = (0, (sh - nh) // 2, sw, (sh - nh) // 2 + nh)
     return src.crop(box).resize((w, h), Image.LANCZOS)
 
-def panelise(img, dither):
+# Near-black and near-white bounds for the clamp. A generated print puts its
+# "white" paper around luminance 230 and its ink around 10 -- neither is at the
+# rail. Left alone, Floyd-Steinberg treats a 230 background as a tone it must
+# reproduce and scatters dots across the whole sky. Clamped, those two flats
+# quantise with zero error and only the genuine mid-tones get diffused, which
+# is where the depth actually lives.
+CLAMP_LO, CLAMP_HI = 40, 205
+
+
+def panelise(img, dither, clamp=False):
     x = np.asarray(img).astype(np.int16)
     r, g, b = x[:, :, 0], x[:, :, 1], x[:, :, 2]
     sat = x.max(2) - x.min(2)
     is_red = (sat >= RED_SAT) & (r >= np.maximum(g, b) + RED_DOM)
 
     lum = (x @ np.array([0.299, 0.587, 0.114])).astype(np.float32)
+    if clamp:
+        lum = np.where(lum >= CLAMP_HI, 255.0, lum)
+        lum = np.where(lum <= CLAMP_LO, 0.0, lum)
     if dither:
         # Floyd-Steinberg the non-red pixels into black/white.
         L = lum.copy(); black = np.zeros(L.shape, bool)

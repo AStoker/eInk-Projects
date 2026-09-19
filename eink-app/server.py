@@ -122,12 +122,12 @@ class Library:
         OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # -- conversion ---------------------------------------------------------
-    def _convert(self, src: Path, dither: bool) -> Blob | None:
-        # The dither mode is part of the identity, not just the content. The
+    def _convert(self, src: Path, kind: str) -> Blob | None:
+        # The conversion is part of the identity, not just the content. The
         # same bytes in the photo directory and the AI directory convert to
-        # different blobs -- one error-diffused, one hard-thresholded -- and a
-        # cache keyed on content alone serves whichever was converted first.
-        ident = source_ident(src) + ("d" if dither else "n")
+        # different blobs, and a cache keyed on content alone would serve
+        # whichever happened to be converted first.
+        ident = source_ident(src) + kind[0]
         out = OUT_DIR / f"{ident}.bin"
         if not out.exists():
             try:
@@ -135,7 +135,15 @@ class Library:
             except Exception as exc:  # a half-copied or non-image file
                 LOG.warning("skipping %s: %s", src.name, exc)
                 return None
-            blob = pack(*panelise(img, dither=dither)[1:])
+            # Both are dithered. Generated art is clamped first: its "white"
+            # paper sits around luminance 230 and its ink around 10, and
+            # without pulling those two flats to the rails the error diffusion
+            # treats the background as a tone to reproduce and speckles the
+            # whole sky. Clamped, the flats come out clean and the diffusion is
+            # spent where it earns something -- the mid-tones that give a storm
+            # cloud its depth. A photograph wants its full tonal range, so it
+            # is not clamped.
+            blob = pack(*panelise(img, dither=True, clamp=(kind == "art"))[1:])
             tmp = out.with_suffix(".bin.tmp")
             tmp.write_bytes(blob)
             os.replace(tmp, out)  # never serve a half-written blob
@@ -149,8 +157,7 @@ class Library:
             if not _settled(src):
                 LOG.info("still copying, will pick up next scan: %s", src.name)
                 continue
-            # Photographs need the error diffusion; see IMAGE-PIPELINE.md.
-            blob = self._convert(src, dither=True)
+            blob = self._convert(src, "photo")
             if blob:
                 photos.append(blob)
 
@@ -159,7 +166,7 @@ class Library:
             # is someone else's, not a slot.
             if src.stem not in AI_NAMES:
                 continue
-            blob = self._convert(src, dither=False)
+            blob = self._convert(src, "art")
             if blob:
                 ai[src.stem] = blob
 

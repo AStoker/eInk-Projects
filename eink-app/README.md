@@ -81,6 +81,17 @@ Formats: PNG, JPEG, WebP, BMP, GIF, TIFF. Any aspect ratio — the converter
 centre-crops to 3:4 and resizes, so a landscape photo loses its sides rather
 than being letterboxed.
 
+**The EXIF rotation is applied first.** A phone stores every shot in the
+sensor's landscape and records which way it was held in a tag; the converter
+bakes that in before it measures the picture, so a portrait photo comes out
+upright and the crop is taken from the frame as the eye saw it.
+
+**Photographs are black and white.** Red is a second ink meant for the one
+object a generated render was asked for. Spread through a photograph at
+whatever saturation the light gave it, the converter's red gate catches part of
+a jacket and not the rest, so photo mode turns it off and every pixel is
+dithered on luminance alone.
+
 ## Routes
 
 | Route | Returns |
@@ -106,10 +117,16 @@ every night through an atomic replace, so every file has a fresh mtime each
 morning whether or not the picture changed. Hashing the bytes means an identical
 render costs no refresh.
 
-**It includes the dither mode.** The same image in the photo directory and the
-AI directory converts to two different blobs — one error-diffused for a
-photograph, one hard-thresholded for flat art. A cache keyed on content alone
-serves whichever was converted first, so an AI image can come back speckled.
+**It includes the conversion, not just the content.** The same image in the
+photo directory and the AI directory converts to two different blobs — one
+black and white for a photograph, one clamped and red-gated for flat art. A
+cache keyed on content alone serves whichever was converted first, so an AI
+image can come back as a photograph.
+
+`PIPELINE_REV` in `server.py` covers the same thing across time. Bump it
+whenever `panelise()` would turn the same source into different pixels: every
+blob gets a new name, the cache on disk rebuilds instead of serving what the
+old converter made, and the panel is told the picture moved.
 
 ## Photo rotation
 

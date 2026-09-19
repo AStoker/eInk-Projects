@@ -65,6 +65,11 @@ PORT = int(os.environ.get("EINK_PORT", "8100"))
 # Reported by /health so a deploy can be confirmed by asking the running
 # container what it is, rather than by trusting that the update applied.
 VERSION = os.environ.get("EINK_VERSION", "dev")
+# Bumped whenever panelise() would turn the same source into different pixels.
+# It rides along in every blob's name, so an old blob is never mistaken for
+# what the current converter would produce. One character, because it also
+# rides along in the revision string the panel stores in 32 bytes.
+PIPELINE_REV = "2"
 SCAN_SECONDS = int(_opt("scan_seconds", "EINK_SCAN_SECONDS", 20))
 # How long one photo stays on the panel. Rotation is on a clock rather than on
 # /next so that the revision can be computed without a request having happened —
@@ -126,8 +131,12 @@ class Library:
         # The conversion is part of the identity, not just the content. The
         # same bytes in the photo directory and the AI directory convert to
         # different blobs, and a cache keyed on content alone would serve
-        # whichever happened to be converted first.
-        ident = source_ident(src) + kind[0]
+        # whichever happened to be converted first. PIPELINE_REV is in there
+        # for the same reason across time: a converter change gives the same
+        # source a new name, so the cache rebuilds and the panel is told the
+        # picture moved -- without it, every photo already on disk would keep
+        # serving the blob the old converter made.
+        ident = source_ident(src) + kind[0] + PIPELINE_REV
         out = OUT_DIR / f"{ident}.bin"
         if not out.exists():
             try:
@@ -143,7 +152,15 @@ class Library:
             # spent where it earns something -- the mid-tones that give a storm
             # cloud its depth. A photograph wants its full tonal range, so it
             # is not clamped.
-            blob = pack(*panelise(img, dither=True, clamp=(kind == "art"))[1:])
+            #
+            # Red is for generated art only. There it is one named object the
+            # prompt asked for, so it lands as an accent. A photograph has red
+            # scattered through it at whatever saturation the light gave it,
+            # and the gate then catches some of it and not the rest -- a face
+            # gets a red patch, a jacket goes half red and half dithered. Black
+            # and white throughout is the honest rendering of a photograph.
+            art = kind == "art"
+            blob = pack(*panelise(img, dither=True, clamp=art, red=art)[1:])
             tmp = out.with_suffix(".bin.tmp")
             tmp.write_bytes(blob)
             os.replace(tmp, out)  # never serve a half-written blob

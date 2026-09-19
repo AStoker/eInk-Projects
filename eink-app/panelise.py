@@ -4,7 +4,7 @@ Red is gated on the pixel actually being red, not on nearest-colour distance:
 a warm antialias pixel like (167,137,112) is closer to pure red than to black,
 which is what fringes every silhouette edge when you let quantize() decide.
 """
-from PIL import Image
+from PIL import Image, ImageOps
 import numpy as np
 
 W, H = 300, 400
@@ -13,6 +13,18 @@ RED_DOM = 60    # how far R must lead G and B
 LUM_MID = 128   # black/white split for flat art
 
 def fit(src, w=W, h=H):
+    # A phone writes every frame to the sensor's native landscape and records
+    # which way the camera was held in an EXIF Orientation tag; Pillow hands
+    # back those raw pixels and leaves the tag unapplied. Crop first and a
+    # portrait photo arrives sideways or upside down, which is exactly what a
+    # mixed folder of photos looks like on the panel. Bake the rotation in
+    # before anything measures the image, so sw/sh below are what the eye saw.
+    # A junk EXIF block should cost the photo its rotation, not its place on
+    # the panel -- the caller treats an exception here as "not an image".
+    try:
+        src = ImageOps.exif_transpose(src) or src
+    except Exception:
+        pass
     src = src.convert("RGB")
     sw, sh = src.size
     t = w / h
@@ -31,11 +43,16 @@ def fit(src, w=W, h=H):
 CLAMP_LO, CLAMP_HI = 40, 205
 
 
-def panelise(img, dither, clamp=False):
+def panelise(img, dither, clamp=False, red=True):
     x = np.asarray(img).astype(np.int16)
     r, g, b = x[:, :, 0], x[:, :, 1], x[:, :, 2]
-    sat = x.max(2) - x.min(2)
-    is_red = (sat >= RED_SAT) & (r >= np.maximum(g, b) + RED_DOM)
+    if red:
+        sat = x.max(2) - x.min(2)
+        is_red = (sat >= RED_SAT) & (r >= np.maximum(g, b) + RED_DOM)
+    else:
+        # Red off: every pixel goes through the luminance path instead of
+        # being held out of it, so a red shirt dithers as the mid-tone it is.
+        is_red = np.zeros(x.shape[:2], bool)
 
     lum = (x @ np.array([0.299, 0.587, 0.114])).astype(np.float32)
     if clamp:

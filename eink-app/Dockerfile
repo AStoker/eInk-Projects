@@ -18,7 +18,7 @@ RUN apk add --no-cache python3 py3-pillow py3-numpy
 ARG BUILD_VERSION=dev
 ENV EINK_VERSION=$BUILD_VERSION
 
-COPY panelise.py server.py run.sh /app/
+COPY agenda.py panelise.py server.py run.sh /app/
 RUN chmod a+x /app/run.sh
 
 WORKDIR /app

@@ -28,6 +28,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+import agenda
 from panelise import W, H, fit, panelise, pack
 from PIL import Image
 
@@ -82,6 +83,13 @@ SLOTS = (("morning", 5), ("day", 11), ("night", 18))
 AI_NAMES = {"morning", "day", "night"}
 
 SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tif", ".tiff"}
+
+# Today's agenda, assembled here and pushed to Core for the panel to subscribe
+# to. Empty calendars means the feature is off, which is what running outside
+# Supervisor gets you.
+AGENDA_CALENDARS = _OPT.get("agenda_calendars") or []
+AGENDA_ENTITY = _opt("agenda_entity", "EINK_AGENDA_ENTITY", "sensor.esp_day_agenda")
+AGENDA_SECONDS = int(_opt("agenda_refresh_minutes", "EINK_AGENDA_REFRESH_MINUTES", 5)) * 60
 
 
 @dataclass(frozen=True)
@@ -253,6 +261,7 @@ def _settled(path: Path) -> bool:
 
 class Handler(BaseHTTPRequestHandler):
     library: Library
+    agenda: dict | None = None
 
     def do_GET(self) -> None:  # noqa: N802
         route = urlparse(self.path)
@@ -292,6 +301,11 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(data)
             return
+
+        if route.path == "/agenda":
+            # Diagnostics: what the last push contained and which calendars
+            # were switched on when it was built.
+            return self._json(200, self.agenda or {"enabled": False})
 
         if route.path == "/index":
             with self.library._lock:  # noqa: SLF001 — diagnostics only
@@ -338,6 +352,22 @@ def main() -> None:
                 LOG.exception("rescan failed")
 
     threading.Thread(target=scanner, daemon=True).start()
+
+    # The agenda is pushed rather than pulled, so it runs on its own clock. It
+    # publishes once at startup because the entity is state-only and does not
+    # survive a Core restart -- this is what puts it back.
+    def agenda_loop() -> None:
+        while True:
+            try:
+                Handler.agenda = agenda.refresh(AGENDA_CALENDARS, AGENDA_ENTITY)
+            except Exception:
+                LOG.exception("agenda refresh failed")
+            time.sleep(AGENDA_SECONDS)
+
+    if AGENDA_CALENDARS:
+        threading.Thread(target=agenda_loop, daemon=True).start()
+    else:
+        LOG.info("agenda disabled: no calendars configured")
 
     LOG.info("serving on :%d  photos=%s  ai=%s", PORT, PHOTO_DIR, AI_DIR)
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()

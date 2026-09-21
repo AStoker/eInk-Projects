@@ -99,6 +99,7 @@ dithered on luminance alone.
 | `GET /revision?mode=AI` | The id of the blob that `/next` would serve, or empty |
 | `GET /next?mode=AI` | The blob, `application/octet-stream`, 30,413 bytes |
 | `GET /index` | What it has found and which slot is current — for debugging |
+| `GET /agenda` | The last agenda pushed, and which calendars were on — for debugging |
 | `GET /health` | `{"ok": true}` |
 
 `mode` is the value of `input_select.eink_daily_dash_mode`, passed through
@@ -134,3 +135,41 @@ Rotation is driven by the clock, not by `/next`: the selected photo is
 `int(now / rotate_seconds) % count`. That way `/revision` and `/next` always
 agree, and asking what is current does not change what is current. Default is
 one photo per 15 minutes, matching the panel's wake interval.
+
+## Today's agenda
+
+The panel draws the day from `sensor.esp_day_agenda`, which this app assembles
+and pushes to Core. `agenda.py` asks each configured calendar for today's
+events, flattens them into the JSON shape `daily-dash/packages/agenda.yaml`
+documents, and writes the result back — the count in the state, the events in
+the `entries` attribute, because Core caps states at 255 characters.
+
+Reaching Core needs `homeassistant_api: true` in the manifest, which is what
+makes Supervisor's injected `SUPERVISOR_TOKEN` authorize the calls.
+
+### Choosing calendars
+
+`agenda_calendars` in the app options is the set the dash may draw. Each one is
+also gated at runtime by a switch:
+
+    calendar.tricias_routine  ->  input_boolean.eink_dash_cal_tricias_routine
+
+Turn that off and the calendar drops off the panel within one refresh, with no
+restart and no options edit. A calendar whose switch does not exist counts as
+on, so adding one to `agenda_calendars` puts it on the panel straight away and
+the helper only has to exist for the ones you want to be able to turn off.
+
+Note that a newly created `input_boolean` starts `off` — switch it on after
+creating it, or the calendar it gates disappears.
+
+### What it pushes
+
+`POST /api/states` creates a state-only entity, so the sensor does not survive
+a Core restart. The refresh loop publishes once at startup and then every
+`agenda_refresh_minutes`, which is what puts it back without anyone
+intervening. The panel wakes every 15 minutes, so the default of 5 means the
+agenda on the glass is never more than one wake behind.
+
+Events are clamped to the day and decided here rather than trusted from the
+query: Core answers a one-day window with nearby multi-day events too, so an
+all-day event starting tomorrow would otherwise land on today's panel.

@@ -1,6 +1,6 @@
 # Home Assistant app manifest for the eInk image server.
 name: eInk Image Server
-version: "1.0.6"
+version: "1.0.7"
 slug: eink_image_server
 description: Converts photos and generated images into panel-ready blobs for the eInk Daily Dash
 url: https://github.com/AStoker/eInk-Projects
@@ -8,6 +8,11 @@ arch: [aarch64, amd64]
 startup: application
 boot: auto
 init: false
+
+# Needed to reach Core at http://supervisor/core/api. The agenda builder asks
+# for calendar events and writes the assembled day back as a sensor; without
+# this the injected SUPERVISOR_TOKEN does not authorize either.
+homeassistant_api: true
 
 # Read the source images, write the converted blobs.
 map:
@@ -24,7 +29,20 @@ options:
   photo_rotate_minutes: 15
   scan_seconds: 20
   log_level: INFO
+  # The calendars the dash may draw. Each is gated at runtime by
+  # input_boolean.eink_dash_cal_<slug>, so a calendar can be switched off
+  # without editing this list; one with no such helper is simply on.
+  agenda_calendars:
+    - calendar.bills
+    - calendar.family
+    - calendar.tricias_routine
+  agenda_entity: sensor.esp_day_agenda
+  agenda_refresh_minutes: 5
 schema:
   photo_rotate_minutes: int(1,1440)
   scan_seconds: int(10,3600)
   log_level: list(DEBUG|INFO|WARNING|ERROR)
+  agenda_calendars:
+    - str
+  agenda_entity: str
+  agenda_refresh_minutes: int(1,120)

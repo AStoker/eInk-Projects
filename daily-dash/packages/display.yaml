@@ -39,6 +39,10 @@
 # footer means events were dropped; "+N more later" means the day overflows
 # the bottom even with all history dropped.
 #
+# Pins, rotation and the font family are substitutions in
+# packages/defaults.yaml. The layout constants below are not: they are written
+# for the 300 x 400 portrait canvas and move together.
+#
 # Defines: epaper_display, render_mode, the fonts.
 # Consumes: agenda_json, display_mode, blob_fetcher, sys_time, api_fail_streak.
 # ============================================================================
@@ -55,14 +59,15 @@ globals:
 display:
   - platform: waveshare_4in2b_v2
     id: epaper_display
-    cs_pin: GPIO15
-    dc_pin: GPIO27
-    reset_pin: GPIO26
-    busy_pin: GPIO25               # polarity auto-detected by the component
-    model: auto                    # auto | old | new
+    cs_pin: ${panel_cs_pin}
+    dc_pin: ${panel_dc_pin}
+    reset_pin: ${panel_reset_pin}
+    busy_pin: ${panel_busy_pin}    # polarity auto-detected by the component
+    model: ${panel_model}          # auto | old | new
     auto_clear_enabled: false      # clear() fills COLOR_OFF = black ink here
-    rotation: 270°                 # -> portrait, 300 x 400 canvas, flipped 180°
-                                   #    from 90° so the panel hangs the other way up
+    rotation: ${panel_rotation}    # 270 -> portrait, 300 x 400 canvas, flipped
+                                   # 180° from 90° so the panel hangs the
+                                   # other way up
     update_interval: never         # driven by wake_cycle only
     lambda: |-
       const auto WHITE = Color(255, 255, 255);
@@ -331,7 +336,7 @@ display:
         it.printf(W / 2, 214, id(font_small_11), BLACK, TextAlign::TOP_CENTER,
                   "api %s", api_is_connected() ? "up" : "down");
         it.print(W / 2, 230, id(font_small_11), BLACK,
-                 TextAlign::TOP_CENTER, "check sensor.esp_day_agenda");
+                 TextAlign::TOP_CENTER, "check ${ha_agenda_sensor}");
       } else if (n == 0) {
         it.print(W / 2, 200, id(font_title_17), BLACK,
                  TextAlign::TOP_CENTER, "Nothing scheduled today");
@@ -366,7 +371,7 @@ font:
   # Day number -- digits only, so an oversized face costs almost no flash.
   - file:
       type: gfonts
-      family: "Roboto"
+      family: ${font_family}
       weight: 300
       italic: false
     id: font_day_54
@@ -374,7 +379,7 @@ font:
     glyphs: "0123456789"
   - file:
       type: gfonts
-      family: "Roboto"
+      family: ${font_family}
       weight: 700
       italic: false
     id: font_dow_22
@@ -383,7 +388,7 @@ font:
     ignore_missing_glyphs: true
   - file:
       type: gfonts
-      family: "Roboto"
+      family: ${font_family}
       weight: 400
       italic: false
     id: font_title_17
@@ -392,7 +397,7 @@ font:
     ignore_missing_glyphs: true
   - file:
       type: gfonts
-      family: "Roboto"
+      family: ${font_family}
       weight: 400
       italic: false
     id: font_sub_15
@@ -401,7 +406,7 @@ font:
     ignore_missing_glyphs: true
   - file:
       type: gfonts
-      family: "Roboto"
+      family: ${font_family}
       weight: 700
       italic: false
     id: font_time_14
@@ -410,7 +415,7 @@ font:
     ignore_missing_glyphs: true
   - file:
       type: gfonts
-      family: "Roboto"
+      family: ${font_family}
       weight: 400
       italic: false
     id: font_small_11

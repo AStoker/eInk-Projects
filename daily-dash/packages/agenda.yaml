@@ -13,16 +13,15 @@
 #     s = summary   t = display time   a = true if all-day (JSON bool, not 1/0)
 #     m = start minutes past local midnight   n = end minutes (-1 for all-day)
 #
+# Entity and attribute are ${ha_agenda_sensor} and ${ha_agenda_attribute},
+# both in packages/defaults.yaml.
+#
 # Defines: agenda_json.  Consumed by: packages/display.yaml.
 # ============================================================================
 
 text_sensor:
   - platform: homeassistant
     id: agenda_json
-    entity_id: sensor.esp_day_agenda
-    attribute: entries
+    entity_id: ${ha_agenda_sensor}
+    attribute: ${ha_agenda_attribute}
     internal: true
-
-# The hold-awake toggle. Read over the API, so it is only knowable on a wake
-# that reached Home Assistant -- which is the same wake that could accept an
-# OTA push, so nothing is lost.

@@ -18,6 +18,8 @@
 # refresh at all: it leaves the previous image standing and counts the miss.
 # After ${fail_limit} consecutive misses the panel says so, once.
 #
+# Every duration named below is a substitution in packages/defaults.yaml.
+#
 # Defines: wake_cycle, sleep_or_stay, deep_sleep_ctl, deep_sleep_disable_ha,
 #          api_fail_streak, want_refresh.
 # Consumes: epaper_display, agenda_json, display_mode, blob_fetcher,
@@ -25,12 +27,6 @@
 # ============================================================================
 
 globals:
-  # Redraw cadence while deep sleep is held off. Sleeping, the wake timer sets
-  # the cadence instead, so this only applies to a board being worked on.
-  - id: refresh_interval_s
-    type: int
-    restore_value: false
-    initial_value: '900'          # 15 min -- panel needs ~17 s per full refresh
   # Both of these must survive deep sleep, or every wake looks like the first
   # one and the fail count can never reach the limit. restore_value: true puts
   # them in NVS, which a timer wake does not clear.
@@ -47,12 +43,6 @@ globals:
     restore_value: false
     initial_value: 'false'
 
-# ----------------------------------------------------------------------------
-# DATA SOURCE
-# ----------------------------------------------------------------------------
-# Subscribe to the ATTRIBUTE, not the state. A calendar entity's state is just
-# "on"/"off" and never JSON, which is the trap that makes a naive
-# `entity_id: calendar.family` config draw nothing at all.
   # Set by wake_cycle, read by wake_cycle -- whether this wake has earned a
   # refresh. Per-wake, so it is never restored.
   - id: want_refresh
@@ -60,18 +50,14 @@ globals:
     restore_value: false
     initial_value: 'true'
 
+# The hold-awake toggle. Read over the API, so it is only knowable on a wake
+# that reached Home Assistant -- which is the same wake that could accept an
+# OTA push, so nothing is lost.
 binary_sensor:
   - platform: homeassistant
     id: deep_sleep_disable_ha
     name: "Disable Deep Sleep"
     entity_id: ${ha_disable_deep_sleep}
-
-# ----------------------------------------------------------------------------
-# BATTERY
-# ----------------------------------------------------------------------------
-# Home Assistant only -- deliberately not on the panel. Sampled fast because a
-# sleeping board is awake for ~25 s and a 60 s interval would never fire; the
-# median then throws out the noise the WiFi radio puts on the rail.
 
 button:
   - platform: template
@@ -100,7 +86,7 @@ script:
       - wait_until:
           condition:
             lambda: 'return id(sys_time).now().is_valid();'
-          timeout: 45s
+          timeout: ${clock_wait}
       - wait_until:
           condition:
             - api.connected:
@@ -114,8 +100,8 @@ script:
             - wait_until:
                 condition:
                   lambda: 'return id(agenda_json).has_state();'
-                timeout: 20s
-            - delay: 3s
+                timeout: ${agenda_wait}
+            - delay: ${settle_delay}
             - lambda: |-
                 id(api_fail_streak) = 0;
                 id(offline_notice_shown) = false;
@@ -221,7 +207,7 @@ script:
       - wait_until:
           condition:
             lambda: 'return !id(epaper_display)->is_refreshing();'
-          timeout: 45s
+          timeout: ${refresh_wait}
       - script.execute: sleep_or_stay
 
   # The only place that sleeps. Checked after the draw, every wake, so the
@@ -254,7 +240,9 @@ script:
             # stays up for as long as the toggle is on -- the OTA window.
             - logger.log: "Hold-awake toggle is on. Staying up for OTA."
             - deep_sleep.prevent: deep_sleep_ctl
-            - delay: !lambda 'return (uint32_t) id(refresh_interval_s) * 1000;'
+            # Same cadence a sleeping board keeps, so the knob means the same
+            # thing either way.
+            - delay: ${sleep_duration}
             - script.execute: wake_cycle
           else:
             - logger.log: "Sleeping."

@@ -41,17 +41,36 @@
 #   [I][app:151]: ESPHome version ... compiled on <date time>
 # ============================================================================
 
+# ----------------------------------------------------------------------------
+# SETTINGS
+# ----------------------------------------------------------------------------
+# Anything in packages/defaults.yaml can be set here, and what is set here
+# wins -- that file is the full catalogue with a comment on each one. Nothing
+# in the repo needs editing to change a device.
 substitutions:
   # Where the e-ink app is, as the PANEL can reach it -- a LAN address, not an
   # internal .local.hass.io name, because the ESP32 is not inside that network.
   eink_host: "192.168.1.50:8100"
 
-  # Everything else has a working default in daily-dash.yaml. The ones worth
-  # knowing about, uncomment to change:
-  # sleep_duration: 15min      # also the refresh rate
+  # Everything else has a working default. The ones worth knowing about --
+  # uncomment to change:
+
+  # sleep_duration: 15min      # how often it wakes, and so the refresh rate
+  #                            # and the biggest lever on battery life.
+  #                            # 1h wakes hourly.
+  # timezone: America/New_York # must match Home Assistant's
   # cold_boot_awake: 120s      # bootstrap OTA window on a cold boot
   # fail_limit: '2'            # wakes with no API before the panel says so
   # batt_adc_pin: GPIO35       # must be ADC1 (GPIO 32-39)
+  # font_family: Roboto        # any Google Fonts family
+
+  # A second panel off the same repo needs its own name and its own helpers:
+  # device_name: eink-daily-dash-2
+  # friendly_name: "eInk Daily Dash 2"
+  # ha_agenda_sensor: sensor.esp_day_agenda_2
+  # ha_disable_deep_sleep: input_boolean.eink_daily_dash_2_disable_deep_sleep
+  # ha_mode_select: input_select.eink_daily_dash_2_mode
+  # ha_photo_offset: input_number.eink_daily_dash_2_photo_offset
 
 packages:
   daily_dash:

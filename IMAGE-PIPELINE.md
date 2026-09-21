@@ -94,7 +94,20 @@ is the whole job of this step.
 Fit the source to 300 × 400 by centre-cropping to 3:4 and then resizing — a
 letterboxed picture wastes a third of a panel that is only 300 px wide.
 
+### Apply the EXIF rotation before measuring anything
+
+A phone writes every frame to the sensor's native landscape and records which
+way the camera was held in the EXIF `Orientation` tag. Pillow hands back those
+raw pixels with the tag unapplied, so a portrait photo measures as landscape
+and arrives on the panel on its side or upside down — all eight tag values are
+in circulation, and a folder of photos from several cameras hits most of them.
+
+`ImageOps.exif_transpose()` bakes the rotation into the pixels. It runs first,
+before the crop, so the aspect ratio the fit measures is the one the eye saw.
+
 ### Gate red on being red
+
+Red is for generated art. Photographs convert to black and white.
 
 **Do not let `quantize()` pick the colours.** Nearest-colour in RGB puts a warm
 antialias pixel like `(167, 137, 112)` closer to pure red (39,057) than to black
@@ -117,14 +130,20 @@ is_red  = (sat >= 90) & (r >= np.maximum(g, b) + 60)
 A pixel becomes red only when it is convincingly red. Everything else is black
 or white, so the red that survives is the red the artwork meant.
 
+That gate is built for a render whose red is one named object the prompt asked
+for. A photograph's red is spread through the frame at whatever saturation the
+light gave it, so the gate lands on part of a jacket and not the rest, and on a
+patch of a sunlit face. `panelise(..., red=False)` turns the gate off and every
+pixel goes through the luminance path, which is what photo mode passes.
+
 ### Always dither. Clamp the flats first on generated art.
 
 Both sources are error-diffused. What differs is a clamp applied beforehand:
 
-| Source | Treatment |
-|---|---|
-| `/media/runpod/eink/` — generated art | clamp to the rails, then Floyd–Steinberg |
-| `/media/eink/photos/` — photographs | Floyd–Steinberg, no clamp |
+| Source | Treatment | Red |
+|---|---|---|
+| `/media/runpod/eink/` — generated art | clamp to the rails, then Floyd–Steinberg | gated, as above |
+| `/media/eink/photos/` — photographs | Floyd–Steinberg, no clamp | off — every pixel takes the luminance path |
 
 A generated print is not two tones. Measured on a real render, its luminance
 histogram has two spikes — **31% at 0–15** (ink) and **27% at 224–239** (paper) —
@@ -353,12 +372,13 @@ print('white %.1f%%  black %.1f%%  red %.2f%%' % (
 ## 5. Firmware side
 
 Built, in `daily-dash/`. The YAML follows the sound machine's layout — one
-substitutions block in the core file, one package per slice, cross-package
+substitutions block for the whole project, one package per slice, cross-package
 wiring by ESPHome id:
 
 | File | Holds |
 |---|---|
-| `daily-dash.yaml` | Substitutions, wifi/api/ota, http_request, SPI, clock |
+| `daily-dash.yaml` | wifi/api/ota, http_request, SPI, clock, the packages list |
+| `packages/defaults.yaml` | Every tunable, as substitutions the device file overrides |
 | `packages/display.yaml` | The panel, the fonts, and the one lambda that draws all three screens |
 | `packages/agenda.yaml` | The agenda attribute sensor |
 | `packages/image.yaml` | Mode select, the stored revision, the blob fetcher |

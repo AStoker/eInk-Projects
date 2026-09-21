@@ -1,0 +1,150 @@
+# ============================================================================
+# DEFAULTS -- every tunable in the project, in one place
+# ============================================================================
+# This package is nothing but a substitutions block. It is the bottom of the
+# override stack, so anything here can be replaced by the file that consumes
+# it, and nothing needs editing in place to change a device.
+#
+# ----------------------------------------------------------------------------
+# HOW OVERRIDING WORKS
+# ----------------------------------------------------------------------------
+# ESPHome resolves a substitution from the highest-priority source that
+# defines it and ignores every lower one, walking outwards from the device
+# file:
+#
+#   example-device.yaml   (or dev.yaml)   <- highest, this is where you edit
+#     daily-dash.yaml
+#       packages/defaults.yaml            <- lowest, the values below
+#
+# So a device that wakes hourly instead of every 15 minutes is one line in the
+# device file:
+#
+#   substitutions:
+#     sleep_duration: 1h
+#
+# A second device off the same repo overrides device_name and the ha_* entity
+# ids alongside it and shares everything else.
+#
+# Consumed by: every package, and daily-dash.yaml itself.
+# ============================================================================
+
+substitutions:
+
+  # --- identity -------------------------------------------------------------
+  # device_name is the ESPHome node name and therefore the hostname; the AP is
+  # what the board publishes when it cannot join WiFi. The api/ota secret keys
+  # are fixed names in secrets.yaml and are not substituted -- a second device
+  # reuses them or the entry point overrides the `api:`/`ota:` blocks.
+  device_name: eink-daily-dash
+  friendly_name: "eInk Daily Dash"
+  ap_ssid: "eInk-Daily-Dash"
+
+  # SNTP carries the clock before the board is adopted in Home Assistant, and
+  # SNTP has no HA to learn a timezone from -- so this is stated rather than
+  # discovered. It must match HA's, or the "happening now" highlighting drifts:
+  # the agenda's m/n fields are minutes past HA-local midnight.
+  timezone: America/New_York
+
+  # --- cadence --------------------------------------------------------------
+  # How long the panel sleeps between wakes -- and therefore its refresh rate,
+  # and the single biggest lever on battery life. It also sets the redraw
+  # cadence while the board is being held awake, so both paths move together.
+  sleep_duration: 15min
+
+  # Failsafe cap on a single wake, so a hung script cannot hold the board up
+  # and flatten the cell. Must clear the worst-case healthy wake, which is
+  # clock_wait + api_wait + agenda_wait + settle_delay + a 17 s panel refresh
+  # = ~115 s at the values below. deep_sleep.prevent overrides it, which is
+  # what makes both hold-awake paths in packages/sleep.yaml work.
+  max_awake: 240s
+
+  # How long a cold boot stays up before its first sleep, whatever Home
+  # Assistant says. This is the bootstrap OTA window.
+  cold_boot_awake: 120s
+
+  # The four waits inside one wake. clock_wait is SNTP, which needs only WiFi;
+  # api_wait is Home Assistant; agenda_wait is the attribute push that follows
+  # the API connecting; settle_delay lets the rest of the subscriptions land.
+  clock_wait: 45s
+  api_wait: 30s
+  agenda_wait: 20s
+  settle_delay: 3s
+
+  # The panel refresh is asynchronous and takes 15-20 s. This is how long the
+  # wake cycle waits for it to finish before sleeping.
+  refresh_wait: 45s
+
+  # Consecutive wakes with no API before the panel gives up and says so.
+  fail_limit: '2'
+
+  # --- home assistant entities ----------------------------------------------
+  # The agenda feed: a JSON array of today's events on an ATTRIBUTE, because
+  # HA caps entity states at 255 chars. Shape is documented in
+  # packages/agenda.yaml.
+  ha_agenda_sensor: sensor.esp_day_agenda
+  ha_agenda_attribute: entries
+
+  # Toggle helper that holds the board awake for flashing.
+  ha_disable_deep_sleep: input_boolean.eink_daily_dash_disable_deep_sleep
+
+  # Dash / Photos / AI.
+  ha_mode_select: input_select.eink_daily_dash_mode
+
+  # Steps through the photo library. The panel sends it to the app, which adds
+  # it to the clock-driven index, so Next/Previous nudge the rotation rather
+  # than replacing it.
+  ha_photo_offset: input_number.eink_daily_dash_photo_offset
+
+  # --- image modes ----------------------------------------------------------
+  # The e-ink app: converts photos and generated images into panel-ready blobs
+  # and serves them. Host:port as the ESP32 can reach it -- an app on the HA
+  # host is <slug>.local.hass.io, but the panel is not inside that network, so
+  # this is normally the HA machine's LAN address and the app's published
+  # port. See IMAGE-PIPELINE.md.
+  eink_host: "homeassistant.local:8100"
+
+  # The one mode the firmware draws itself. Everything else is a picture and
+  # gets passed to the app verbatim, so adding a mode is a change to the
+  # input_select and the app rather than to this firmware.
+  dash_option: "Dash"
+
+  # Budget for one call to the e-ink app -- the revision check and the blob
+  # stream both use it.
+  http_timeout: 20s
+
+  # --- panel wiring ---------------------------------------------------------
+  # Waveshare e-Paper ESP32 Driver Board. SPI is on non-standard pins here.
+  # GPIO4 is NOT free on this board: it gates the panel's supply rail.
+  spi_clk_pin: GPIO13
+  spi_mosi_pin: GPIO14
+  panel_cs_pin: GPIO15
+  panel_dc_pin: GPIO27
+  panel_reset_pin: GPIO26
+  panel_busy_pin: GPIO25
+
+  # auto | old | new. The component detects the panel revision at boot, which
+  # settles both the command set and the busy-pin polarity.
+  panel_model: auto
+
+  # 270 gives a 300x400 portrait canvas; 90 is the same canvas with the panel
+  # hung the other way up. The agenda layout in packages/display.yaml is
+  # written for a portrait canvas.
+  panel_rotation: '270'
+
+  # --- battery --------------------------------------------------------------
+  # Must be ADC1 (GPIO 32-39) -- ADC2 is dead while WiFi is on. GPIO35 is
+  # input-only and leaves 32/33 free for the buttons the frame is cut for.
+  # The divider is two 100k, so the pin sees half the cell.
+  batt_adc_pin: GPIO35
+  batt_divider: '2.0'
+
+  # Sampled fast because a sleeping board is awake for ~25 s and the 60 s
+  # default would never fire inside one.
+  batt_interval: 1s
+  batt_level_interval: 5s
+
+  # --- type -----------------------------------------------------------------
+  # Any Google Fonts family. Sizes are baked into the font ids and the agenda
+  # layout measures its own text, so a different family re-flows rather than
+  # overflows.
+  font_family: Roboto

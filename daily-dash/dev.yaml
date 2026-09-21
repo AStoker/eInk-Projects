@@ -13,9 +13,14 @@
 #
 # The device that actually gets flashed in normal use is example-device.yaml,
 # which pulls the same core from GitHub. Keep the two in step: anything added
-# here that is not about *where the component comes from* probably belongs in
-# daily-dash.yaml instead.
+# here that is not about *where the component comes from* belongs in
+# packages/defaults.yaml (a tunable) or daily-dash.yaml (device core) instead.
 # ============================================================================
+
+# Overrides for local work go here and win over packages/defaults.yaml -- a
+# shorter sleep while iterating, say, or a test instance's own entity ids.
+# substitutions:
+#   sleep_duration: 1min
 
 packages:
   core: !include daily-dash.yaml

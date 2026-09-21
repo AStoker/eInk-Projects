@@ -22,7 +22,7 @@ sensor:
     unit_of_measurement: V
     accuracy_decimals: 2
     attenuation: 12db
-    update_interval: 1s
+    update_interval: ${batt_interval}
     filters:
       - multiply: ${batt_divider}
       - median:
@@ -44,7 +44,7 @@ sensor:
     accuracy_decimals: 0
     # Same reason as the ADC above: the 60 s default would never fire inside a
     # ~25 s wake, so the entity would sit at unknown forever.
-    update_interval: 5s
+    update_interval: ${batt_level_interval}
     lambda: |-
       // Return nothing rather than NaN when there is no divider fitted: a
       // published NaN every 5 s is log noise and an "unknown" that looks like a

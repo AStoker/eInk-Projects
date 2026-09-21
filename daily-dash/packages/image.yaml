@@ -96,4 +96,4 @@ globals:
 
 eink_blob:
   id: blob_fetcher
-  timeout: 20s
+  timeout: ${http_timeout}

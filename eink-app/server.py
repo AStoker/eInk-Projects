@@ -85,8 +85,8 @@ AI_NAMES = {"morning", "day", "night"}
 SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tif", ".tiff"}
 
 # Today's agenda, assembled here and pushed to Core for the panel to subscribe
-# to. Empty calendars means the feature is off, which is what running outside
-# Supervisor gets you.
+# to. Calendars are opt-in and listed explicitly; an empty list switches the
+# feature off, which is what running outside Supervisor gets you.
 AGENDA_CALENDARS = _OPT.get("agenda_calendars") or []
 AGENDA_ENTITY = _opt("agenda_entity", "EINK_AGENDA_ENTITY", "sensor.esp_day_agenda")
 AGENDA_SECONDS = int(_opt("agenda_refresh_minutes", "EINK_AGENDA_REFRESH_MINUTES", 5)) * 60

@@ -125,8 +125,11 @@ def _clock(when: datetime) -> str:
     return f"{hour}:{when.minute:02d} {'AM' if when.hour < 12 else 'PM'}"
 
 
-def fetch(calendars: list[str], day: date) -> list[dict]:
-    """Every event touching `day`, across the configured calendars.
+def fetch(calendars: list[str], day: date) -> tuple[list[dict], int]:
+    """Every event touching `day`, and how many calendars answered.
+
+    The count is what lets the caller tell a day with nothing on it from a day
+    Core would not talk about; both produce no events.
 
     Asked for one calendar at a time on purpose. A combined call fails whole
     when any single calendar is unavailable, and an unavailable calendar is a
@@ -140,16 +143,18 @@ def fetch(calendars: list[str], day: date) -> list[dict]:
     }
 
     found: list[dict] = []
+    answered = 0
     for entity in calendars:
         body = dict(window, entity_id=entity)
         got = _call("services/calendar/get_events", body, "?return_response")
         if not isinstance(got, dict):
             continue
+        answered += 1
         # The REST shape is {"service_response": {"calendar.x": {"events": []}}}.
         response = got.get("service_response") or {}
         for per_entity in response.values():
             found.extend(per_entity.get("events") or [])
-    return found
+    return found, answered
 
 
 def entries(events: list[dict], day: date) -> list[dict]:
@@ -230,7 +235,17 @@ def refresh(calendars: list[str], entity: str) -> dict:
     """
     day = datetime.now().astimezone().date()
     live = enabled(calendars)
-    payload = entries(fetch(live, day), day)
+    events, answered = fetch(live, day)
+
+    if live and not answered:
+        # Every calendar failed. Publishing now would publish an empty day, and
+        # an empty day is indistinguishable on the glass from a clear one --
+        # leaving the last good agenda up is the honest failure.
+        LOG.warning("agenda: no calendar answered; leaving the last agenda in place")
+        return {"day": day.isoformat(), "published": False,
+                "error": "no calendar answered"}
+
+    payload = entries(events, day)
     published = publish(entity, payload, day)
     if published:
         LOG.info("agenda: %d events for %s from %d/%d calendars",

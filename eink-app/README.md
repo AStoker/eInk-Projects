@@ -149,8 +149,17 @@ makes Supervisor's injected `SUPERVISOR_TOKEN` authorize the calls.
 
 ### Choosing calendars
 
-`agenda_calendars` in the app options is the set the dash may draw. Each one is
-also gated at runtime by a switch:
+`agenda_calendars` in the app options is the set the dash may draw. Nothing
+joins on its own: a calendar appears on the panel only once it is listed here,
+by entity id.
+
+The options form has no autocomplete for this — Home Assistant's app options
+schema has only scalar types (`str`, `int`, `list(a|b|c)`, `device`) and no
+entity picker, so the ids are typed by hand. A typo reads as a calendar that
+never has any events rather than as an error, so `GET /agenda` reports what was
+actually resolved, which is the quickest way to catch one.
+
+Each listed calendar is then gated at runtime by a switch:
 
     calendar.tricias_routine  ->  input_boolean.eink_dash_cal_tricias_routine
 
@@ -173,3 +182,7 @@ agenda on the glass is never more than one wake behind.
 Events are clamped to the day and decided here rather than trusted from the
 query: Core answers a one-day window with nearby multi-day events too, so an
 all-day event starting tomorrow would otherwise land on today's panel.
+
+A cycle in which no calendar answers publishes nothing rather than publishing
+an empty day, because an empty day is indistinguishable on the glass from a
+clear one. The last good agenda stays up until a cycle succeeds.

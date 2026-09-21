@@ -29,7 +29,8 @@ options:
   photo_rotate_minutes: 15
   scan_seconds: 20
   log_level: INFO
-  # The calendars the dash may draw. Each is gated at runtime by
+  # The calendars the dash may draw. Opt in by adding one here; nothing joins
+  # on its own. Each is then gated at runtime by
   # input_boolean.eink_dash_cal_<slug>, so a calendar can be switched off
   # without editing this list; one with no such helper is simply on.
   agenda_calendars:

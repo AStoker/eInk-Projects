@@ -143,6 +143,15 @@ substitutions:
   batt_interval: 1s
   batt_level_interval: 5s
 
+  # --- the agenda ruler -----------------------------------------------------
+  # The hour-label column on the left of the ruler, and the height of an hour
+  # with nothing in it. The gutter has to clear a two-digit hour at 20 px bold
+  # plus its am/pm; the empty height sets how much of the panel free time is
+  # allowed to take before the gaps start collapsing. Everything else in the
+  # layout is measured from the text.
+  ruler_gutter: '46'
+  ruler_empty_h: '17'
+
   # --- type -----------------------------------------------------------------
   # Any Google Fonts family. Sizes are baked into the font ids and the agenda
   # layout measures its own text, so a different family re-flows rather than

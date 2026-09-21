@@ -17,31 +17,64 @@
 #   1  Home Assistant is unreachable
 #   2  a picture           (streamed by packages/image.yaml)
 #
-# LAYOUT of the agenda screen
-#   19  WEDNESDAY          <- header is side-by-side, not stacked: it costs
-#       August 2026           64 px instead of 176, leaving ~300 px for events
+# ----------------------------------------------------------------------------
+# THE AGENDA SCREEN: AN HOUR RULER
+# ----------------------------------------------------------------------------
+#   22  TUESDAY              <- header is side-by-side: 62 px instead of 176
+#       September 2026
 #   ------------------------
-#   o 11:00 AM  -Lunch-       hollow dot + RED strike = finished
-#   | 1:30 PM   Dentist       red bar + red text      = happening now
-#   * 3:00 PM   Pickup        filled dot              = still ahead
+#   # Trash night            <- all-day items, pinned above the ruler
 #   ------------------------
-#   4 of 6 left  (scrolled)          3:42 PM
+#  >2 |Customer call         <- the CURRENT hour is always the top band, and
+#   pm :30                      the red wedge in the margin is the minute
+#   3  ---------------------
+#   4  ---------------------
+#   5  Soccer pickup
+#   6  ---------------------
+#   7  Dinner at Mom's
+#   ------------------------
+#   LATER TODAY
+#    8p  Book club           <- whatever the ruler could not reach, in full
+#   9:30p Take the trash out
+#   ------------------------                        2:50 pm
 #
-# Red carries the date, the month line, the live event, and the cross-off on
-# finished events. The weekday is deliberately black so the red date reads as
-# the focal point.
+# THE PANEL SHOWS THE FUTURE. An event whose end time has passed is dropped
+# entirely, so the top of the ruler walks down the day on its own and the
+# space is spent on what is still ahead. All-day events are the exception:
+# they sit above the ruler until midnight, because they have no place on a
+# time axis and stay useful all day.
 #
-# SCROLLING: the whole day is shown whenever it fits. When it does not, only
-# then are FINISHED events dropped off the top, oldest first, until the
-# upcoming ones fit -- so the panel never hides something still ahead in order
-# to keep history. Row heights are measured before anything is drawn, since
-# that decision needs the full list's height up front. "(scrolled)" in the
-# footer means events were dropped; "+N more later" means the day overflows
-# the bottom even with all history dropped.
+# AN EVENT STILL RUNNING IS CARRIED into the current band. A 12:30 lunch seen
+# at 1:15 has an hour that is already off the top of the ruler, so it is drawn
+# in the 1 pm band and labelled "til 1:30" -- a ":30" there would read as the
+# wrong hour. The current hour is the anchor of the layout and is the one band
+# the collapse never absorbs.
 #
-# Pins, rotation and the font family are substitutions in
-# packages/defaults.yaml. The layout constants below are not: they are written
-# for the 300 x 400 portrait canvas and move together.
+# EMPTY HOURS ARE KEPT, at ${ruler_empty_h} px, so a two-hour gap looks like a
+# gap. A run of three or more empty hours collapses to a three-dot marker, but
+# only when the day would otherwise overflow -- and when the whole day does
+# fit, the leftover height is spread across the empty bands so the ruler
+# reaches the footer.
+#
+# THE RULER RUNS at least four hours past the current one, so a lone 7pm
+# dinner still fills the panel.
+#
+# NOTHING IS EVER REPLACED BY A COUNT. The hour view takes as many bands as
+# will fit above a COMPLETE list of everything it leaves out, so the panel
+# always names every event still ahead. A packed morning gets fewer hours and
+# more list rows; the hours come back on their own as the day empties. The
+# list has two type tiers (16 px and 13 px rows) and, past those, shrinks its
+# row pitch to whatever divides the space.
+#
+# RED carries the date, the month, the current hour's rule and numeral, the
+# now-wedge, the live event, the all-day bullets and the tail's label.
+#
+# Previewing: tools/preview/render.py draws this layout to PNG on the same
+# 300 x 400 canvas with the same 1-bit type, at any time of day and against
+# several sample agendas. Iterate there, then port here.
+#
+# Pins, rotation, the font family and the ruler's geometry are substitutions
+# in packages/defaults.yaml.
 #
 # Defines: epaper_display, render_mode, the fonts.
 # Consumes: agenda_json, display_mode, blob_fetcher, sys_time, api_fail_streak.
@@ -127,8 +160,8 @@ display:
 
       // --- word wrap ---------------------------------------------------------
       // Measure-only, so row heights are known BEFORE anything is drawn. The
-      // scroll logic needs the full list's height up front to decide how many
-      // past events to drop, which a draw-as-you-go wrapper cannot provide.
+      // ruler needs every band's height up front to decide what collapses and
+      // what falls into the tail.
       auto wrap_lines = [&](esphome::font::Font *f, const char *text,
                             int maxw, int max_lines) -> std::vector<std::string> {
         std::vector<std::string> lines;
@@ -165,11 +198,8 @@ display:
       };
 
       // ══════════════════════════════════════════════════════════════════
-      // HEADER -- compact, side-by-side
+      // HEADER
       // ══════════════════════════════════════════════════════════════════
-      // Laid out horizontally on purpose: the earlier stacked header burned
-      // ~176 px of a 400 px canvas on three lines of date. This does the same
-      // job in 64 px and hands the rest to the agenda.
       const char *dow_names[]   = {"SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY",
                                    "THURSDAY", "FRIDAY", "SATURDAY"};
       const char *month_names[] = {"January", "February", "March", "April",
@@ -181,17 +211,14 @@ display:
       int mon = now.month - 1;
       if (mon < 0 || mon > 11) mon = 0;
 
-      // The date and the month line carry the red ink; the weekday stays
-      // black. This replaced an earlier weekend-only red weekday, which would
-      // now just read as noise next to a permanently red date.
-      it.printf(14, 2, id(font_day_54), RED,
+      it.printf(12, -4, id(font_day_58), RED,
                 TextAlign::TOP_LEFT, "%d", now.day_of_month);
-      it.print(84, 10, id(font_dow_22), BLACK,
+      it.print(86, 6, id(font_dow_25), BLACK,
                TextAlign::TOP_LEFT, dow_names[dow]);
-      it.printf(84, 38, id(font_sub_15), RED,
+      it.printf(86, 36, id(font_sub_16), RED,
                 TextAlign::TOP_LEFT, "%s %d", month_names[mon], now.year);
 
-      it.line(14, 66, W - 14, 66, BLACK);
+      it.line(12, 62, W - 12, 62, BLACK);
 
       // ══════════════════════════════════════════════════════════════════
       // HOME ASSISTANT IS DOWN
@@ -211,37 +238,37 @@ display:
         it.print(W / 2, 222, id(font_small_11), BLACK,
                  TextAlign::TOP_CENTER, "the agenda returns on its own");
 
-        it.line(14, 382, W - 14, 382, BLACK);
-        it.strftime(W - 14, H - 2, id(font_small_11), BLACK,
+        it.line(12, 380, W - 12, 380, BLACK);
+        it.strftime(W - 12, H - 4, id(font_small_11), BLACK,
                     TextAlign::BOTTOM_RIGHT, "last tried %I:%M %p", now);
         return;
       }
 
       // ══════════════════════════════════════════════════════════════════
-      // TODAY'S EVENTS
+      // TODAY, AS AN HOUR RULER
       // ══════════════════════════════════════════════════════════════════
-      const int MARK_X  = 10;   // status dot / live bar
-      const int TIME_X  = 20;   // "9:30 AM" / "ALL DAY"
-      const int TITLE_X = 88;   // wrapped summary
-      const int TITLE_W = W - TITLE_X - 10;
-      const int LINE_H  = 18;
-      const int ROW_GAP = 6;
-      const int Y_TOP   = 76;
-      const int Y_MAX   = 374;  // leave room for the footer
-      const int AVAIL   = Y_MAX - Y_TOP;
+      const int GUT     = ${ruler_gutter};    // hour-label column
+      const int Y_MAX   = 374;                // last usable row above the footer
+      const int EMPTY_H = ${ruler_empty_h};   // an hour with nothing in it
+      const int BREAK_H = 15;                 // a collapsed run of empty hours
+      const int LIST_HDR = 20;                // the LATER TODAY label
+      const int EV_LH   = 24;                 // one line of event title
+      const int TITLE_W = W - GUT - 16;
 
       int now_min = now.hour * 60 + now.minute;
       bool have_agenda = false;
 
-      struct Row {
-        std::string time_txt;
-        std::vector<std::string> lines;
-        bool all_day;
+      struct Ev {
+        std::string summary;              // unwrapped, for the list
+        std::vector<std::string> lines;   // wrapped, for the ruler
+        int  m, n;                        // minutes past midnight
+        int  band;                        // hour band it is drawn in
+        int  height;                      // px this event costs inside a band
         bool live;
-        bool past;
-        int  height;
       };
-      std::vector<Row> rows;
+      std::vector<Ev> up;                 // still ahead, timed, in time order
+      std::vector<std::string> all_day;   // pinned above the ruler
+      int timed_total = 0;                // separates a clear day from a done one
 
       if (id(agenda_json).has_state()) {
         std::string js = id(agenda_json).state;
@@ -252,119 +279,309 @@ display:
             ESP_LOGW("agenda", "JSON parse error: %s", err.c_str());
           } else if (doc.is<JsonArray>()) {
             have_agenda = true;
-            for (JsonVariant ev : doc.as<JsonArray>()) {
-              const char *summary = ev["s"] | "(no title)";
-              const char *tdisp   = ev["t"] | "";
-              bool all_day        = ev["a"] | false;
-              int  m_start        = ev["m"] | 0;
-              int  m_end          = ev["n"] | 0;
+            for (JsonVariant e : doc.as<JsonArray>()) {
+              const char *summary = e["s"] | "(no title)";
+              bool ad             = e["a"] | false;
+              int  m_start        = e["m"] | 0;
+              int  m_end          = e["n"] | 0;
 
-              Row r;
-              r.all_day  = all_day;
-              r.live     = !all_day && now_min >= m_start && now_min < m_end;
-              r.past     = !all_day && !r.live && now_min >= m_end;
-              r.time_txt = all_day ? "ALL DAY" : std::string(tdisp);
-              r.lines    = wrap_lines(id(font_title_17), summary, TITLE_W, 2);
-              r.height   = (int) r.lines.size() * LINE_H + ROW_GAP;
-              rows.push_back(r);
+              if (ad) {
+                all_day.push_back(std::string(summary));
+                continue;
+              }
+              timed_total++;
+              // The whole point of this layout: a finished event is gone.
+              if (m_end <= now_min) continue;
+
+              Ev ev;
+              ev.summary = std::string(summary);
+              ev.m       = m_start;
+              ev.n       = m_end;
+              ev.live    = now_min >= m_start && now_min < m_end;
+              // An event that began in an earlier hour is still happening, and
+              // its own hour is already off the top of the ruler -- so it is
+              // carried into the current band rather than dropped.
+              ev.band    = (m_start / 60 < now.hour) ? now.hour : m_start / 60;
+              ev.lines   = wrap_lines(id(font_event_22), summary, TITLE_W, 2);
+              ev.height  = (int) ev.lines.size() * EV_LH + 18;
+              up.push_back(ev);
             }
           }
         }
       }
 
-      // --- scroll: drop finished events off the top only when they crowd out
-      // --- something still upcoming. A day that fits stays whole.
-      int n = (int) rows.size();
-      int first_upcoming = 0;
-      while (first_upcoming < n && rows[first_upcoming].past) first_upcoming++;
+      // Insertion sort: the feed is normally already in order and the list is
+      // a dozen events at most, so this costs nothing and removes the
+      // assumption.
+      for (int i = 1; i < (int) up.size(); i++) {
+        Ev key = up[i];
+        int j = i - 1;
+        while (j >= 0 && up[j].m > key.m) { up[j + 1] = up[j]; j--; }
+        up[j + 1] = key;
+      }
 
-      auto height_from = [&](int start) -> int {
-        int h = 0;
-        for (int i = start; i < n; i++) h += rows[i].height;
-        return h;
+      // --- all-day strip ----------------------------------------------------
+      int y0 = 70;
+      for (const auto &s : all_day) {
+        it.filled_rectangle(12, y0 + 3, 6, 6, RED);
+        std::vector<std::string> l = wrap_lines(id(font_allday_17), s.c_str(),
+                                                W - 40, 1);
+        it.print(26, y0 - 3, id(font_allday_17), BLACK,
+                 TextAlign::TOP_LEFT, l[0].c_str());
+        y0 += 22;
+      }
+      if (!all_day.empty()) y0 += 4;
+      const int avail = Y_MAX - y0;
+
+      // --- nothing left to draw ---------------------------------------------
+      if (up.empty()) {
+        if (!have_agenda) {
+          // An empty panel should say whether the day is clear or the feed is
+          // simply missing -- those look identical otherwise.
+          it.print(W / 2, y0 + 70, id(font_dow_25), BLACK,
+                   TextAlign::TOP_CENTER, "No agenda data");
+          it.printf(W / 2, y0 + 106, id(font_small_11), BLACK,
+                    TextAlign::TOP_CENTER, "api %s",
+                    api_is_connected() ? "up" : "down");
+          it.print(W / 2, y0 + 122, id(font_small_11), BLACK,
+                   TextAlign::TOP_CENTER, "check ${ha_agenda_sensor}");
+        } else {
+          // "All done" and "Nothing on" are different days, and the panel
+          // should say which one this is.
+          it.print(W / 2, y0 + 60, id(font_dow_25), BLACK, TextAlign::TOP_CENTER,
+                   timed_total ? "All done" : "Nothing on");
+          it.print(W / 2, y0 + 98, id(font_sub_16), RED, TextAlign::TOP_CENTER,
+                   timed_total ? "for today" : "today");
+        }
+        it.line(12, 380, W - 12, 380, BLACK);
+        it.strftime(W - 12, H - 4, id(font_bold_13), BLACK,
+                    TextAlign::BOTTOM_RIGHT, "%I:%M %p", now);
+        return;
+      }
+
+      // --- band helpers -----------------------------------------------------
+      auto in_hour = [&](int h) -> int {
+        int c = 0;
+        for (const auto &e : up) if (e.band == h) c++;
+        return c;
+      };
+      auto band_h = [&](int h) -> int {
+        int c = 0, total = 6;
+        for (const auto &e : up) if (e.band == h) { total += e.height; c++; }
+        return c ? total : EMPTY_H;
       };
 
-      int start = 0;
-      while (start < first_upcoming && height_from(start) > AVAIL) start++;
+      // The ruler runs to the last event's hour, or four hours out, whichever
+      // is later -- an evening with one dinner in it should still fill the
+      // panel.
+      int last_end = 0;
+      for (const auto &e : up) if (e.n > last_end) last_end = e.n;
+      int end_h = (last_end + 59) / 60;
+      if (end_h < now.hour + 4) end_h = now.hour + 4;
+      if (end_h > 23) end_h = 23;
 
-      // --- draw the window --------------------------------------------------
-      int y = Y_TOP;
-      int drawn = 0;
-      for (int i = start; i < n; i++) {
-        const Row &r = rows[i];
-        if (y + r.height > Y_MAX + ROW_GAP) break;
+      typedef std::pair<int, int> Band;   // (hour, height); hour -1 = collapsed
+      std::vector<Band> bands;
+      for (int h = now.hour; h <= end_h; h++) bands.push_back(Band(h, band_h(h)));
 
-        Color c = r.live ? RED : BLACK;
+      // Collapse the longest runs of empty hours first, and only as far as it
+      // takes to fit. The current hour is the layout's anchor and is never
+      // absorbed.
+      for (int run_min = 3; run_min >= 2; run_min--) {
+        int tot = 0;
+        for (const auto &b : bands) tot += b.second;
+        if (tot <= avail) break;
 
-        // Marker: red bar = happening now, filled dot = still ahead,
-        // hollow dot = already done.
-        if (r.live) {
-          it.filled_rectangle(MARK_X - 4, y, 4, LINE_H, RED);
-        } else if (r.past) {
-          it.circle(MARK_X, y + 8, 3, BLACK);
-        } else {
-          it.filled_circle(MARK_X, y + 8, 3, BLACK);
+        std::vector<Band> next;
+        size_t i = 0;
+        while (i < bands.size()) {
+          size_t j = i;
+          while (j < bands.size() && bands[j].first >= 0 &&
+                 bands[j].first != now.hour && in_hour(bands[j].first) == 0)
+            j++;
+          if ((int) (j - i) >= run_min) next.push_back(Band(-1, BREAK_H));
+          else for (size_t k = i; k < j; k++) next.push_back(bands[k]);
+          if (j < bands.size()) next.push_back(bands[j]);
+          i = j + 1;
         }
-
-        it.print(TIME_X, y + 2, id(font_time_14), c,
-                 TextAlign::TOP_LEFT, r.time_txt.c_str());
-
-        for (int k = 0; k < (int) r.lines.size(); k++) {
-          it.print(TITLE_X, y + k * LINE_H, id(font_title_17), c,
-                   TextAlign::TOP_LEFT, r.lines[k].c_str());
-        }
-
-        // Strike through finished events, in red so it reads as a deliberate
-        // cross-off rather than an underline. Red now marks two states, but
-        // they stay distinct: live is red TEXT plus a red bar, done is black
-        // text with only the rule struck through it.
-        if (r.past) {
-          int sw = text_w(id(font_title_17), r.lines[0]);
-          if (sw > TITLE_W) sw = TITLE_W;
-          it.line(TITLE_X, y + 9, TITLE_X + sw, y + 9, RED);
-        }
-
-        y += r.height;
-        drawn++;
+        if (next.size() == bands.size()) break;
+        bands = next;
       }
 
-      if (n == 0 && !have_agenda) {
-        // An empty panel should say whether the day is clear or the feed is
-        // simply missing -- those look identical otherwise.
-        it.print(W / 2, 190, id(font_title_17), BLACK,
-                 TextAlign::TOP_CENTER, "No agenda data");
-        it.printf(W / 2, 214, id(font_small_11), BLACK, TextAlign::TOP_CENTER,
-                  "api %s", api_is_connected() ? "up" : "down");
-        it.print(W / 2, 230, id(font_small_11), BLACK,
-                 TextAlign::TOP_CENTER, "check ${ha_agenda_sensor}");
-      } else if (n == 0) {
-        it.print(W / 2, 200, id(font_title_17), BLACK,
-                 TextAlign::TOP_CENTER, "Nothing scheduled today");
-      } else if (drawn == 0) {
-        it.print(W / 2, 200, id(font_title_17), BLACK,
-                 TextAlign::TOP_CENTER, "All done for today");
+      // --- how much ruler fits, given that the rest must still be LISTED ----
+      // Nothing is ever replaced by a count. The hour view takes as many bands
+      // as will fit above a complete list of everything it leaves out, so a
+      // packed morning simply gets fewer hours and more rows, and the hours
+      // come back as the day empties.
+      std::vector<Band> plan;
+      std::vector<char> shown(up.size(), 0);
+      int LH = 16;
+      bool placed = false;
+
+      const int tiers[2] = {16, 13};
+      for (int ti = 0; ti < 2 && !placed; ti++) {
+        int lh = tiers[ti];
+        for (int k = (int) bands.size(); k >= 0 && !placed; k--) {
+          // A ruler that ends on empty hours is spending height on nothing.
+          int kk = k;
+          while (kk > 0 && (bands[kk - 1].first < 0 || in_hour(bands[kk - 1].first) == 0))
+            kk--;
+
+          std::vector<char> mark(up.size(), 0);
+          int need = 0, listed = 0;
+          for (int i = 0; i < kk; i++) {
+            need += bands[i].second;
+            if (bands[i].first < 0) continue;
+            for (int e = 0; e < (int) up.size(); e++)
+              if (up[e].band == bands[i].first) mark[e] = 1;
+          }
+          for (int e = 0; e < (int) up.size(); e++) if (!mark[e]) listed++;
+          if (listed) need += LIST_HDR + listed * lh;
+
+          if (need <= avail) {
+            plan.assign(bands.begin(), bands.begin() + kk);
+            shown = mark;
+            LH = lh;
+            placed = true;
+          }
+        }
       }
 
-      // Overflow off the bottom still matters -- it is upcoming, not history.
-      int hidden_after = n - start - drawn;
-      if (hidden_after > 0 && y < Y_MAX + ROW_GAP) {
-        it.printf(TIME_X, y - ROW_GAP + 2, id(font_small_11), BLACK,
-                  TextAlign::TOP_LEFT, "+%d more later", hidden_after);
+      if (!placed) {
+        // A day too full for even a 13 px row each. Shrink the rows to whatever
+        // divides the space: crowded, but still every event and still no count.
+        plan.clear();
+        shown.assign(up.size(), 0);
+        LH = (avail - LIST_HDR) / (int) up.size();
+        if (LH < 9) LH = 9;
+      }
+
+      int n_list = 0;
+      for (int e = 0; e < (int) up.size(); e++) if (!shown[e]) n_list++;
+
+      // The list hangs off the footer, so slack left after both are placed
+      // opens a hole between them. Give it to the ruler.
+      int used = 0;
+      for (const auto &b : plan) used += b.second;
+      if (n_list) used += LIST_HDR + n_list * LH;
+      int slack = avail - used;
+      if (!plan.empty() && slack > 0) {
+        std::vector<int> gaps;
+        for (int i = 0; i < (int) plan.size(); i++)
+          if (plan[i].first < 0 || in_hour(plan[i].first) == 0) gaps.push_back(i);
+        if (!gaps.empty()) {
+          int add = slack / (int) gaps.size();
+          if (add > 46) add = 46;
+          for (int i : gaps) plan[i].second += add;
+          slack -= add * (int) gaps.size();
+        }
+        if (slack > 0 && n_list) plan.back().second += slack;
+      }
+
+      // --- draw the ruler ---------------------------------------------------
+      int y = y0;
+      for (const auto &band : plan) {
+        int h = band.first, bh = band.second;
+
+        if (h < 0) {
+          // A collapsed stretch of nothing. Drawn rather than typed: a
+          // vertical-ellipsis glyph is not in GF_Latin_Kernel.
+          for (int k = 0; k < 3; k++)
+            it.filled_rectangle(GUT - 13, y + 2 + k * 5, 2, 2, BLACK);
+          y += bh;
+          continue;
+        }
+
+        int count = in_hour(h);
+        bool is_now = (h == now.hour);
+        Color hc = is_now ? RED : BLACK;
+        int hh = h % 12; if (hh == 0) hh = 12;
+
+        it.line(GUT, y, W - 12, y, hc);
+        it.printf(GUT - 10, count ? y - 4 : y - 2,
+                  count ? id(font_hour_20) : id(font_sub_16), hc,
+                  TextAlign::TOP_RIGHT, "%d", hh);
+        if (count)
+          it.print(GUT - 10, y + 17, id(font_small_11), hc,
+                   TextAlign::TOP_RIGHT, h < 12 ? "am" : "pm");
+
+        if (is_now) {
+          // A wedge in its own lane at the far left edge, at the minute. Clear
+          // of a two-digit hour numeral, and clear of the event text.
+          int ny = y + (int) (bh * (now.minute / 60.0f));
+          for (int k = 0; k < 7; k++)
+            it.filled_rectangle(k, ny - (6 - k), 1, 2 * (6 - k) + 1, RED);
+        }
+
+        int ey = y + 4;
+        for (const auto &e : up) {
+          if (e.band != h) continue;
+          Color c = e.live ? RED : BLACK;
+          if (e.live)
+            it.filled_rectangle(GUT + 2, ey, 4, (int) e.lines.size() * EV_LH, RED);
+          for (int k = 0; k < (int) e.lines.size(); k++)
+            it.print(GUT + 12, ey + k * EV_LH, id(font_event_22), c,
+                     TextAlign::TOP_LEFT, e.lines[k].c_str());
+          ey += (int) e.lines.size() * EV_LH;
+          // The full range, always. A bare ":30" under a carried-over event
+          // reads as a minute of the band's hour rather than of its own.
+          int sh = e.m / 60 % 12; if (sh == 0) sh = 12;
+          int eh = e.n / 60 % 12; if (eh == 0) eh = 12;
+          it.printf(GUT + 12, ey - 3, id(font_bold_12), c, TextAlign::TOP_LEFT,
+                    "%d:%02d - %d:%02d", sh, e.m % 60, eh, e.n % 60);
+          ey += 18;
+        }
+        y += bh;
+      }
+
+      // Close the column, so a ruler trimmed mid-day ends rather than stops.
+      if (!plan.empty()) it.line(GUT, y, W - 12, y, BLACK);
+
+      // ══════════════════════════════════════════════════════════════════
+      // LATER TODAY -- everything the ruler could not hold, in full
+      // ══════════════════════════════════════════════════════════════════
+      if (n_list) {
+        // With no ruler above it the list is the whole screen and starts at the
+        // top; under a ruler it hangs off the footer instead.
+        int ly = plan.empty() ? y0 + LIST_HDR
+                              : Y_MAX - (LIST_HDR + n_list * LH) + LIST_HDR;
+        it.print(12, ly - 17, id(font_lbl_11), RED,
+                 TextAlign::TOP_LEFT, "LATER TODAY");
+
+        bool big = LH >= 16;
+        auto tf = big ? id(font_tail_13) : id(font_small_11);
+        auto mf = big ? id(font_bold_12) : id(font_lbl_11);
+        int tsz = big ? 13 : 11;
+
+        for (int i = 0; i < (int) up.size(); i++) {
+          if (shown[i]) continue;
+          const Ev &e = up[i];
+          int h = e.m / 60, m = e.m % 60;
+          int hh = h % 12; if (hh == 0) hh = 12;
+          char buf[16];
+          if (m) snprintf(buf, sizeof(buf), "%d:%02d%c", hh, m, h < 12 ? 'a' : 'p');
+          else   snprintf(buf, sizeof(buf), "%d%c",      hh,    h < 12 ? 'a' : 'p');
+
+          int ry = ly + (LH - tsz) / 2 - 1;
+          it.print(GUT - 10, ry, mf, BLACK, TextAlign::TOP_RIGHT, buf);
+
+          std::string title = e.summary;
+          int maxw = W - GUT - 24;
+          if (text_w(tf, title) > maxw) {
+            while (!title.empty() && text_w(tf, title + "...") > maxw)
+              title.erase(title.size() - 1);
+            title += "...";
+          }
+          it.print(GUT + 12, ry, tf, BLACK, TextAlign::TOP_LEFT, title.c_str());
+          ly += LH;
+        }
       }
 
       // ══════════════════════════════════════════════════════════════════
       // FOOTER
       // ══════════════════════════════════════════════════════════════════
-      it.line(14, 382, W - 14, 382, BLACK);
-      if (n > 0) {
-        // Count what is still ahead, since that is the actionable number.
-        int remaining = 0;
-        for (int i = 0; i < n; i++) if (!rows[i].past) remaining++;
-        it.printf(14, H - 2, id(font_small_11), BLACK, TextAlign::BOTTOM_LEFT,
-                  "%d of %d left%s", remaining, n,
-                  start > 0 ? "  (scrolled)" : "");
-      }
-      it.strftime(W - 14, H - 2, id(font_small_11), BLACK,
+      it.line(12, 380, W - 12, 380, BLACK);
+      it.strftime(W - 12, H - 4, id(font_bold_13), BLACK,
                   TextAlign::BOTTOM_RIGHT, "%I:%M %p", now);
 
 font:
@@ -374,16 +591,45 @@ font:
       family: ${font_family}
       weight: 300
       italic: false
-    id: font_day_54
-    size: 54
+    id: font_day_58
+    size: 58
     glyphs: "0123456789"
   - file:
       type: gfonts
       family: ${font_family}
       weight: 700
       italic: false
-    id: font_dow_22
+    id: font_dow_25
+    size: 25
+    glyphsets: [GF_Latin_Kernel]
+    ignore_missing_glyphs: true
+  # The event titles. The largest full face on the panel, and the one the
+  # layout is sized around.
+  - file:
+      type: gfonts
+      family: ${font_family}
+      weight: 400
+      italic: false
+    id: font_event_22
     size: 22
+    glyphsets: [GF_Latin_Kernel]
+    ignore_missing_glyphs: true
+  # Hour numerals on bands that have something in them. Digits only.
+  - file:
+      type: gfonts
+      family: ${font_family}
+      weight: 700
+      italic: false
+    id: font_hour_20
+    size: 20
+    glyphs: "0123456789"
+  - file:
+      type: gfonts
+      family: ${font_family}
+      weight: 700
+      italic: false
+    id: font_allday_17
+    size: 17
     glyphsets: [GF_Latin_Kernel]
     ignore_missing_glyphs: true
   - file:
@@ -395,13 +641,14 @@ font:
     size: 17
     glyphsets: [GF_Latin_Kernel]
     ignore_missing_glyphs: true
+  # The month line, and the hour numerals on empty bands.
   - file:
       type: gfonts
       family: ${font_family}
       weight: 400
       italic: false
-    id: font_sub_15
-    size: 15
+    id: font_sub_16
+    size: 16
     glyphsets: [GF_Latin_Kernel]
     ignore_missing_glyphs: true
   - file:
@@ -409,8 +656,37 @@ font:
       family: ${font_family}
       weight: 700
       italic: false
-    id: font_time_14
-    size: 14
+    id: font_bold_13
+    size: 13
+    glyphsets: [GF_Latin_Kernel]
+    ignore_missing_glyphs: true
+  - file:
+      type: gfonts
+      family: ${font_family}
+      weight: 400
+      italic: false
+    id: font_tail_13
+    size: 13
+    glyphsets: [GF_Latin_Kernel]
+    ignore_missing_glyphs: true
+  # The time range under an event, and the times in the roomier list tier.
+  - file:
+      type: gfonts
+      family: ${font_family}
+      weight: 700
+      italic: false
+    id: font_bold_12
+    size: 12
+    glyphsets: [GF_Latin_Kernel]
+    ignore_missing_glyphs: true
+  # "LATER TODAY", and the times in the tight list tier.
+  - file:
+      type: gfonts
+      family: ${font_family}
+      weight: 700
+      italic: false
+    id: font_lbl_11
+    size: 11
     glyphsets: [GF_Latin_Kernel]
     ignore_missing_glyphs: true
   - file:

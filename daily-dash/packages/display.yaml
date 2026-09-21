@@ -422,21 +422,29 @@ display:
       for (int ti = 0; ti < 2 && !placed; ti++) {
         int lh = tiers[ti];
         for (int k = (int) bands.size(); k >= 0 && !placed; k--) {
-          // A ruler that ends on empty hours is spending height on nothing.
-          int kk = k;
-          while (kk > 0 && (bands[kk - 1].first < 0 || in_hour(bands[kk - 1].first) == 0))
-            kk--;
-
           std::vector<char> mark(up.size(), 0);
           int need = 0, listed = 0;
-          for (int i = 0; i < kk; i++) {
+          for (int i = 0; i < k; i++) {
             need += bands[i].second;
             if (bands[i].first < 0) continue;
             for (int e = 0; e < (int) up.size(); e++)
               if (up[e].band == bands[i].first) mark[e] = 1;
           }
           for (int e = 0; e < (int) up.size(); e++) if (!mark[e]) listed++;
-          if (listed) need += LIST_HDR + listed * lh;
+
+          // Dropping trailing empty hours is only worth it when the height
+          // buys list rows. With nothing to list, those same empty hours are
+          // what lets the ruler reach the footer instead of stopping halfway.
+          // Trimming removes only EMPTY bands, so it never changes `mark`.
+          int kk = k;
+          if (listed) {
+            while (kk > 0 &&
+                   (bands[kk - 1].first < 0 || in_hour(bands[kk - 1].first) == 0)) {
+              need -= bands[kk - 1].second;
+              kk--;
+            }
+            need += LIST_HDR + listed * lh;
+          }
 
           if (need <= avail) {
             plan.assign(bands.begin(), bands.begin() + kk);

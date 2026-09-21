@@ -11,10 +11,14 @@
 # Event JSON shape (one object per event):
 #   {"s":"Dentist","t":"9:30 AM","a":false,"m":570,"n":615}
 #     s = summary   t = display time   a = true if all-day (JSON bool, not 1/0)
-#     m = start minutes past local midnight   n = end minutes (-1 for all-day)
+#     m = start minutes past local midnight   n = end minutes
+#   An all-day event carries m = n = -1; `a` is what the firmware reads, and
+#   it takes that branch before either number is used.
 #
 # Entity and attribute are ${ha_agenda_sensor} and ${ha_agenda_attribute},
-# both in packages/defaults.yaml.
+# both in packages/defaults.yaml. The sensor is assembled and pushed by the
+# eInk Image Server app -- see eink-app/agenda.py, which owns this shape from
+# the other end, and eink-app/README.md for choosing which calendars feed it.
 #
 # Defines: agenda_json.  Consumed by: packages/display.yaml.
 # ============================================================================

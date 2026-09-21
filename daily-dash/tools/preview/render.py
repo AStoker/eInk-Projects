@@ -128,7 +128,7 @@ def main():
         for k in keys:
             paths = [render(k, evset, at(t, a.date), a.scale) for t in times]
             out = dashsim.contact_sheet(
-                paths, OUT / f"day-{k}-{a.set}.png", cols=3, labels=times)
+                paths, OUT / f"day-{k}-{evset}.png", cols=3, labels=times)
             print(out)
         return
 

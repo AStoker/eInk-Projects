@@ -239,8 +239,9 @@ def option_b(it, events, now):
         bands = out
 
     def trimmed(prefix):
-        """A prefix of bands with trailing blanks dropped -- a ruler that ends
-        on three empty hours is spending height on nothing."""
+        """A prefix of bands with trailing blanks dropped. Only worth doing
+        when the height buys list rows: with nothing to list, those same empty
+        hours are what lets the ruler reach the footer."""
         out = list(prefix)
         while out and (out[-1][0] is None or not bucket(out[-1][0])):
             out.pop()
@@ -261,11 +262,14 @@ def option_b(it, events, now):
     plan, rest, LH = None, None, 16
     for lh in (16, 13):
         for k in range(len(bands), -1, -1):
-            cand = trimmed(bands[:k])
+            cand = bands[:k]
+            # Trimming only ever drops EMPTY bands, so it cannot change which
+            # events the ruler covers -- left is the same either way.
             left = [e for e in upcoming if id(e) not in drawn_by(cand)]
             need = sum(b for _, b in cand)
             if left:
-                need += LIST_HDR + len(left) * lh
+                cand = trimmed(cand)
+                need = sum(b for _, b in cand) + LIST_HDR + len(left) * lh
             if need <= avail:
                 plan, rest, LH = cand, left, lh
                 break

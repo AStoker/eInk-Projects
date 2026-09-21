@@ -28,6 +28,42 @@ def font(family: str, weight: int, size: int) -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(str(FONT_DIR / f"{family}@{weight}@False@v1.ttf"), size)
 
 
+_GLYPHS: dict = {}
+
+
+def _has_glyph(f: ImageFont.FreeTypeFont, ch: str) -> bool:
+    """Whether the face carries this codepoint.
+
+    FreeType answers with the .notdef box for anything it lacks, so the
+    character is compared against a noncharacter that is guaranteed absent:
+    matching bitmaps mean the same (missing) glyph. Keyed on the face's file
+    and size, because the layouts build a fresh font object per call.
+    """
+    def mask(c):
+        m = f.getmask(c, mode="1")
+        return m.size, bytes(m)
+
+    face = (f.path, f.size)
+    if face not in _GLYPHS:
+        _GLYPHS[face] = {None: mask("\ufffe")}
+    seen = _GLYPHS[face]
+    if ch not in seen:
+        seen[ch] = mask(ch) != seen[None]
+    return seen[ch]
+
+
+def drawable(f: ImageFont.FreeTypeFont, s: str) -> str:
+    """The text the panel would actually show.
+
+    The firmware builds its fonts with `ignore_missing_glyphs: true`, so a
+    codepoint outside the glyphset is skipped at render time -- an emoji in an
+    event title costs its space and nothing more. Dropping it here too keeps
+    the preview honest, where PIL would otherwise draw a .notdef box that the
+    glass never shows.
+    """
+    return "".join(c for c in (s or "") if _has_glyph(f, c))
+
+
 class Canvas:
     """The `it` object a display lambda is handed."""
 
@@ -68,13 +104,13 @@ class Canvas:
             "BOTTOM_RIGHT": "rs",
             "CENTER": "mm",
         }[align]
-        self.d.text((x, y), text, font=f, fill=color, anchor=anchor)
+        self.d.text((x, y), drawable(f, text), font=f, fill=color, anchor=anchor)
 
     # --- measurement, matching the lambda's text_w / wrap_lines -------------
 
     @staticmethod
     def text_w(f, s: str) -> int:
-        return int(f.getlength(s))
+        return int(f.getlength(drawable(f, s)))
 
     @staticmethod
     def font_h(f) -> int:

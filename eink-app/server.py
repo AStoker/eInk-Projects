@@ -24,6 +24,7 @@ import os
 import threading
 import time
 from dataclasses import dataclass
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -101,9 +102,17 @@ class Blob:
     source: Path
 
 
-def current_slot(now: time.struct_time | None = None) -> str:
-    """Which AI image belongs on the panel right now."""
-    hour = (now or time.localtime()).tm_hour
+def current_slot(hour: int | None = None) -> str:
+    """Which AI image belongs on the panel right now.
+
+    The hour comes from Home Assistant's timezone rather than the container's.
+    Nothing sets TZ in here -- Supervisor does not pass one and the base is
+    plain Alpine -- so the container clock is UTC, and picking slots on it puts
+    the morning image up at 1am. `agenda.timezone()` caches after its first
+    answer, so this costs one call, not one per request.
+    """
+    if hour is None:
+        hour = datetime.now(agenda.timezone()).hour
     chosen = SLOTS[-1][0]  # night, since the day starts inside it
     for name, start in SLOTS:
         if hour >= start:

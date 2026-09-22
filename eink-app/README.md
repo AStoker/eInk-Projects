@@ -186,3 +186,20 @@ all-day event starting tomorrow would otherwise land on today's panel.
 A cycle in which no calendar answers publishes nothing rather than publishing
 an empty day, because an empty day is indistinguishable on the glass from a
 clear one. The last good agenda stays up until a cycle succeeds.
+
+### Which clock the app runs on
+
+Every local-time decision here — which day the agenda is for, and which AI
+image slot is current — reads Home Assistant's timezone, fetched once from
+Core and cached.
+
+The container's own clock is UTC and cannot be relied on. Supervisor passes no
+`TZ`, the base image is plain Alpine, and musl with no zone database answers
+UTC silently rather than failing. A UTC container crosses midnight at 8pm in
+New York, which is the exact shape of the bug it caused: tomorrow's all-day
+events appearing on tonight's panel after 8pm, and the morning image going up
+at 1am.
+
+`tzdata` is in the image so `ZoneInfo` can resolve the name Core reports. If
+Core cannot be reached the app falls back to the container clock and says so in
+the log, and it does not cache that fallback — the next cycle asks again.

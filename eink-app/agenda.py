@@ -25,7 +25,8 @@ import logging
 import os
 import urllib.error
 import urllib.request
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, tzinfo
+from zoneinfo import ZoneInfo
 
 LOG = logging.getLogger("eink.agenda")
 
@@ -77,6 +78,39 @@ def _call(path: str, payload: dict | None = None, params: str = "",
         return None
 
 
+_TZ: dict[str, tzinfo] = {}
+
+
+def timezone() -> tzinfo:
+    """Core's timezone, asked for rather than assumed.
+
+    This module's whole job is day boundaries, so the container's idea of local
+    time is the one thing it must not trust. The image is plain Alpine, and
+    musl with no tzdata answers UTC whatever TZ says -- and a UTC container
+    rolls into tomorrow at 8pm in New York, which puts tomorrow's all-day
+    events on tonight's panel. Core knows its own timezone; it is the same one
+    the calendars and the panel's clock are in.
+
+    Cached once it is known, and deliberately not cached when it is not, so a
+    cycle that ran before Core was up does not pin the fallback forever.
+    """
+    if "tz" in _TZ:
+        return _TZ["tz"]
+
+    config = _call("config")
+    name = config.get("time_zone") if isinstance(config, dict) else None
+    if name:
+        try:
+            _TZ["tz"] = ZoneInfo(name)
+            return _TZ["tz"]
+        except (KeyError, ValueError, OSError):
+            # tzdata missing from the image, or a name it does not carry.
+            LOG.warning("core timezone %r is not in this image's tzdata", name)
+
+    LOG.warning("falling back to the container clock; day boundaries may be wrong")
+    return datetime.now().astimezone().tzinfo
+
+
 def _slug(entity: str) -> str:
     return entity.split(".", 1)[-1]
 
@@ -103,16 +137,16 @@ def enabled(calendars: list[str]) -> list[str]:
     return live
 
 
-def _boundary(value: str) -> date | datetime:
+def _boundary(value: str, tz: tzinfo) -> date | datetime:
     """A calendar boundary, which is a bare date for an all-day event.
 
-    Timed boundaries come back with Core's own UTC offset; converting to local
-    makes the minute arithmetic below independent of what the container thinks
-    its timezone is.
+    Timed boundaries carry their own UTC offset; moving them into Core's
+    timezone is what makes the minute arithmetic below independent of whatever
+    the container believes local time to be.
     """
     if "T" not in value:
         return date.fromisoformat(value)
-    return datetime.fromisoformat(value).astimezone()
+    return datetime.fromisoformat(value).astimezone(tz)
 
 
 def _is_all_day(value: date | datetime) -> bool:
@@ -157,7 +191,7 @@ def fetch(calendars: list[str], day: date) -> tuple[list[dict], int]:
     return found, answered
 
 
-def entries(events: list[dict], day: date) -> list[dict]:
+def entries(events: list[dict], day: date, tz: tzinfo) -> list[dict]:
     """The events as the panel wants them, in time order.
 
     Core answers a one-day window with anything it considers nearby, which
@@ -165,13 +199,13 @@ def entries(events: list[dict], day: date) -> list[dict]:
     day is decided here rather than trusted from the query.
     """
     out: list[dict] = []
-    midnight = datetime.combine(day, datetime.min.time()).astimezone()
+    midnight = datetime.combine(day, datetime.min.time(), tzinfo=tz)
     tomorrow = midnight + timedelta(days=1)
 
     for event in events:
         try:
-            start = _boundary(event["start"])
-            end = _boundary(event["end"])
+            start = _boundary(event["start"], tz)
+            end = _boundary(event["end"], tz)
         except (KeyError, TypeError, ValueError):
             LOG.warning("skipping unparseable event: %r", event)
             continue
@@ -233,7 +267,8 @@ def refresh(calendars: list[str], entity: str) -> dict:
     turning a calendar off show up on the panel within one refresh instead of
     requiring the app to be restarted.
     """
-    day = datetime.now().astimezone().date()
+    tz = timezone()
+    day = datetime.now(tz).date()
     live = enabled(calendars)
     events, answered = fetch(live, day)
 
@@ -245,7 +280,7 @@ def refresh(calendars: list[str], entity: str) -> dict:
         return {"day": day.isoformat(), "published": False,
                 "error": "no calendar answered"}
 
-    payload = entries(events, day)
+    payload = entries(events, day, tz)
     published = publish(entity, payload, day)
     if published:
         LOG.info("agenda: %d events for %s from %d/%d calendars",

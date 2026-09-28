@@ -1,6 +1,6 @@
 # Home Assistant app manifest for the eInk image server.
 name: eInk Image Server
-version: "1.0.9"
+version: "1.0.10"
 slug: eink_image_server
 description: Converts photos and generated images into panel-ready blobs for the eInk Daily Dash
 url: https://github.com/AStoker/eInk-Projects
@@ -28,6 +28,9 @@ ports_description:
 options:
   photo_rotate_minutes: 15
   scan_seconds: 20
+  # Minutes each saved AI picture stays up while generation is switched off.
+  # 0 = change at each time-of-day slot (morning / day / night), 3 a day.
+  library_rotate_minutes: 0
   log_level: INFO
   # The calendars the dash may draw. Opt in by adding one here; nothing joins
   # on its own. Each is then gated at runtime by
@@ -42,6 +45,7 @@ options:
 schema:
   photo_rotate_minutes: int(1,1440)
   scan_seconds: int(10,3600)
+  library_rotate_minutes: int(0,1440)
   log_level: list(DEBUG|INFO|WARNING|ERROR)
   agenda_calendars:
     - str

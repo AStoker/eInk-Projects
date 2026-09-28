@@ -24,7 +24,7 @@ import os
 import threading
 import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -63,6 +63,10 @@ def _opt(key: str, env: str, default):
 PHOTO_DIR = Path(os.environ.get("EINK_PHOTO_DIR", "/media/eink/photos"))
 AI_DIR = Path(os.environ.get("EINK_AI_DIR", "/media/runpod/eink"))
 OUT_DIR = Path(os.environ.get("EINK_OUT_DIR", "/media/eink/out"))
+# Saved AI art to cycle through instead of the nightly renders -- a themed set
+# kept from earlier generations. Recursive, like photos, so a set can live in a
+# subfolder of its own. Converted as art (clamped, red kept), not as a photo.
+LIBRARY_DIR = Path(os.environ.get("EINK_LIBRARY_DIR", "/media/eink/ai-library"))
 PORT = int(os.environ.get("EINK_PORT", "8100"))
 # Reported by /health so a deploy can be confirmed by asking the running
 # container what it is, rather than by trusting that the update applied.
@@ -81,6 +85,15 @@ PHOTO_ROTATE_SECONDS = int(_OPT["photo_rotate_minutes"]) * 60 if "photo_rotate_m
 
 # The three AI slots and the local hour each begins. Night wraps midnight.
 SLOTS = (("morning", 5), ("day", 11), ("night", 18))
+
+# Which AI source is live. On (or missing) means the nightly job generates and
+# AI mode shows morning/day/night; off means the job stands down and AI mode
+# cycles LIBRARY_DIR instead. The same helper gates the automation, so one
+# switch moves both halves and there is nothing else to undo to go back.
+GENERATE_SWITCH = "input_boolean.eink_daily_dash_generate_ai"
+# How long one library picture stays up. 0 steps at each AI slot boundary --
+# three pictures a day, the same refresh budget the generated set spends.
+LIBRARY_ROTATE_SECONDS = int(_opt("library_rotate_minutes", "EINK_LIBRARY_ROTATE_MINUTES", 0)) * 60
 AI_NAMES = {"morning", "day", "night"}
 
 SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tif", ".tiff"}
@@ -120,6 +133,41 @@ def current_slot(hour: int | None = None) -> str:
     return chosen
 
 
+def library_index(count: int, offset: int = 0) -> int:
+    """Which library picture is current, from the clock alone.
+
+    Stateless for the same reason photo rotation is: /revision and /next must
+    agree, and asking what is current must not change it. In slot mode the
+    step counts slots since a fixed day, with the day starting at the morning
+    slot so the small hours still belong to the previous night.
+    """
+    if LIBRARY_ROTATE_SECONDS:
+        step = int(time.time() // LIBRARY_ROTATE_SECONDS)
+    else:
+        now = datetime.now(agenda.timezone())
+        day = (now - timedelta(hours=SLOTS[0][1])).date().toordinal()
+        names = [name for name, _ in SLOTS]
+        step = day * len(SLOTS) + names.index(current_slot(now.hour))
+    return (step + offset) % count
+
+
+def generating(previous: bool) -> bool:
+    """Whether the generate switch is on, keeping the last answer on a miss.
+
+    A Core blip must not flip the panel between sources, so an unanswered
+    lookup keeps what was known. No helper at all counts as on: that is how
+    this ran before the library existed.
+    """
+    if not agenda.TOKEN:
+        return previous
+    got = agenda._call(f"states/{GENERATE_SWITCH}", quiet=True)  # noqa: SLF001
+    if got is None:
+        return previous
+    if isinstance(got, dict) and got.get("state") == "off":
+        return False
+    return True
+
+
 def source_ident(path: Path) -> str:
     """Content hash, not mtime.
 
@@ -141,6 +189,8 @@ class Library:
         self._lock = threading.Lock()
         self._photos: list[Blob] = []
         self._ai: dict[str, Blob] = {}
+        self._library: list[Blob] = []
+        self._generate = True
         OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # -- conversion ---------------------------------------------------------
@@ -204,9 +254,25 @@ class Library:
             if blob:
                 ai[src.stem] = blob
 
+        library = []
+        for src in sorted(_images(LIBRARY_DIR, recursive=True)):
+            if not _settled(src):
+                LOG.info("still copying, will pick up next scan: %s", src.name)
+                continue
+            blob = self._convert(src, "art")
+            if blob:
+                library.append(blob)
+
+        generate = generating(self._generate)
+        if generate != self._generate:
+            LOG.info("AI source -> %s", "generated" if generate else "library")
+
         with self._lock:
             self._photos, self._ai = photos, ai
-        self._prune({b.path.name for b in photos} | {b.path.name for b in ai.values()})
+            self._library, self._generate = library, generate
+        self._prune({b.path.name for b in photos}
+                    | {b.path.name for b in ai.values()}
+                    | {b.path.name for b in library})
 
     def _prune(self, keep: set[str]) -> None:
         for stale in OUT_DIR.glob("*.bin"):
@@ -218,6 +284,7 @@ class Library:
     def current(self, mode: str, offset: int = 0) -> Blob | None:
         with self._lock:
             photos, ai = list(self._photos), dict(self._ai)
+            library, generate = list(self._library), self._generate
 
         if mode.lower().startswith("photo"):
             if not photos:
@@ -228,6 +295,11 @@ class Library:
             # always agree -- asking what is current cannot change it.
             idx = (int(time.time() // PHOTO_ROTATE_SECONDS) + offset) % len(photos)
             return photos[idx]
+
+        # Library when generation is switched off. An empty library falls back
+        # to whatever was last generated rather than blanking the panel.
+        if not generate and library:
+            return library[library_index(len(library), offset)]
 
         slot = current_slot()
         return ai.get(slot) or next(iter(ai.values()), None)
@@ -283,12 +355,16 @@ class Handler(BaseHTTPRequestHandler):
 
         if route.path == "/health":
             with self.library._lock:  # noqa: SLF001
-                counts = (len(self.library._photos), len(self.library._ai))
+                lib = self.library
+                counts = (len(lib._photos), len(lib._ai), len(lib._library))
+                generate = lib._generate
             return self._json(200, {
                 "ok": True,
                 "version": VERSION,
                 "photos": counts[0],
                 "ai": counts[1],
+                "library": counts[2],
+                "ai_source": "generated" if generate or not counts[2] else "library",
                 "slot": current_slot(),
             })
 
@@ -321,6 +397,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, {
                     "photos": [b.source.name for b in self.library._photos],
                     "ai": {k: v.source.name for k, v in self.library._ai.items()},
+                    "library": [b.source.name for b in self.library._library],
+                    "generate": self.library._generate,
                     "slot": current_slot(),
                 })
 
@@ -378,7 +456,7 @@ def main() -> None:
     else:
         LOG.info("agenda disabled: no calendars configured")
 
-    LOG.info("serving on :%d  photos=%s  ai=%s", PORT, PHOTO_DIR, AI_DIR)
+    LOG.info("serving on :%d  photos=%s  ai=%s  library=%s", PORT, PHOTO_DIR, AI_DIR, LIBRARY_DIR)
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
 
 

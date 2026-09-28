@@ -52,6 +52,7 @@ container that did.
 |---|---|
 | `/media/eink/photos/` | Drop photographs here. Subfolders are fine |
 | `/media/runpod/eink/` | `morning.png`, `day.png`, `night.png` from the 3am job |
+| `/media/eink/ai-library/` | Saved AI art, cycled while `input_boolean.eink_daily_dash_generate_ai` is off. Subfolders are fine |
 | `/media/eink/out/` | Converted blobs. Disposable — deleting them forces a rebuild |
 
 Only those two source directories, never `/media/runpod/` itself: the RunPod
@@ -98,7 +99,7 @@ dithered on luminance alone.
 |---|---|
 | `GET /revision?mode=AI` | The id of the blob that `/next` would serve, or empty |
 | `GET /next?mode=AI` | The blob, `application/octet-stream`, 30,413 bytes |
-| `GET /index` | What it has found and which slot is current — for debugging |
+| `GET /index` | What it has found, which slot is current, and whether generation is on — for debugging |
 | `GET /agenda` | The last agenda pushed, and which calendars were on — for debugging |
 | `GET /health` | `{"ok": true}` |
 
@@ -128,6 +129,19 @@ image can come back as a photograph.
 whenever `panelise()` would turn the same source into different pixels: every
 blob gets a new name, the cache on disk rebuilds instead of serving what the
 old converter made, and the panel is told the picture moved.
+
+## Saved AI art
+
+Turn `input_boolean.eink_daily_dash_generate_ai` off and AI mode stops using
+the nightly renders and cycles `/media/eink/ai-library/` instead; the 3am
+automation checks the same switch and stands down. Turn it on to go back. The
+app reads the switch on each scan, so a flip lands within `scan_seconds`, and a
+Core hiccup keeps the last answer rather than bouncing the panel between
+sources. `GET /health` reports `ai_source`.
+
+The picture changes at each time-of-day slot unless `library_rotate_minutes`
+is set, and the panel's Next/Previous offset steps through it like photos.
+See [Generated or saved](../IMAGE-PIPELINE.md#generated-or-saved).
 
 ## Photo rotation
 

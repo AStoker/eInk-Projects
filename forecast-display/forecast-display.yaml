@@ -9,10 +9,10 @@ substitutions:
   comment: "eInk-WeatherBoard from Trip5"
   project_version: "2024.11.28"
   time_zone: "America/New_York" # Check https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
-  adc_pin: GPIO14 # Can't use ADC with wifi
+  adc_pin: GPIO14 # ADC2, which WiFi takes over: read at boot, before WiFi starts
   adc_gpio: '14'
   sleep_time: 60min # this is the default but is overridden
-  max_run_time: 60s # this is the maximum time the ESP32 can run before it goes to sleep (if deep sleep is enabled) - this is to prevent the ESP32 from running too long and draining the battery
+  max_run_time: 3min # failsafe: the longest a wake can last before it sleeps for ${sleep_time} anyway (e.g. WiFi or Home Assistant down). The Disable Deep Sleep helper overrides it.
 
 # Home Assistant entitites:
   ha_disable_update: input_boolean.eink_weatherboard_disable_update
@@ -46,12 +46,32 @@ esphome:
     name: "${project_name}"
     version: "${project_version}"
   on_boot:
-      priority: -100.0
+    # Battery first, before WiFi starts (WiFi sets up at priority 250). GPIO14
+    # is on ADC2, which the radio takes over once it is up, so this is the one
+    # point in a wake where it can be read without dropping the connection.
+    - priority: 600
+      then:
+        - lambda: |-
+            // Read the raw ADC value (0-4095, proportional to the pin voltage)
+            int raw_value = analogRead(${adc_gpio});
+            // Reference voltage for the ADC (typically 3.3V for ESP32)
+            float V_ref = 3.3;
+            float V_adc = ((float) raw_value / 4095.0) * V_ref;
+            // Divider factor from your voltage divider.
+            // For example, many Lilygo T5 boards have a divider factor around 1.84.
+            float divider_factor = 1.84;
+            float battery_voltage = V_adc * divider_factor;
+            // Trim battery voltage to two decimals:
+            battery_voltage = round(battery_voltage * 100.0) / 100.0;
+            id(battery_voltage_global) = battery_voltage;
+            ESP_LOGI("battery", "Raw ADC: %d, ADC Voltage: %.2f V, Battery Voltage: %.2f V", raw_value, V_adc, battery_voltage);
+    - priority: -100.0
       then:
         # - lambda: 'id(recorded_display_refresh) = 1488;' # if you need to manually update the number of refreshes (flash once with a set value then comment the line and reflash again)
         # - script.execute: led_blink
         - wait_until:
             condition: api.connected
+        - component.update: battery_voltage # this wake's reading, not the last one
         - if:
             condition:
               or:
@@ -60,44 +80,31 @@ esphome:
               - script.execute: deep_sleep_evaluation
             else:
               - script.execute: get_data_then_refresh_screen
-  platformio_options:
-    # board_dir: boards
-    #include https://github.com/Xinyuan-LilyGO/LilyGo-EPD47/blob/master/platformio/boards/lilygo-t5-47-plus.json as custom board
-    # board: lilygo-t5-47-plus
-    upload_speed: 921600
-    monitor_speed: 115200
-    board_build.mcu: esp32s3
-    board_build.f_cpu: 240000000L
-    board_build.arduino.memory_type: qspi_opi
-    board_build.flash_size: 4MB
-    board_build.flash_mode: qio
-    board_build.flash_type: qspi
-    board_build.psram_type: opi
-    board_build.memory_type: qspi_opi
-    board_build.boot_freq: 80m
-    build_flags:
-      - "-DBOARD_HAS_PSRAM"
-      - "-DARDUINO_USB_CDC_ON_BOOT=1"
-      - "-mfix-esp32-psram-cache-issue"
+  # Runs on every deep sleep. The t547 driver ends each refresh with
+  # epd_poweroff(), which leaves the panel's control register partly set;
+  # LilyGo's own sleep example clears all of it with epd_poweroff_all()
+  # before esp_deep_sleep_start().
+  on_shutdown:
+    - lambda: 'epd_poweroff_all();'
   libraries:
     - SPI
+    - Wire # the t547 component's touch.h includes it; newer ESPHome no longer links it by default
+  area: Master Bedroom
   # build_path: /config/esphome/.esphome/forecast-display/
 
 esp32:
   board: esp32-s3-devkitc-1
+  # The board has 16MB, but the installed partition table is the 4MB layout,
+  # and OTA cannot rewrite a partition table. Moving to 16MB takes one USB flash.
+  flash_size: 4MB
+  cpu_frequency: 240MHz
   framework:
     type: arduino
-    # CRITICAL for ESP-IDF 5.4.2+: Enable PSRAM initialization (thanks @hbast!)
-    sdkconfig_options:
-      CONFIG_SPIRAM: "y"
-      CONFIG_SPIRAM_MODE_OCT: "y"
-      CONFIG_SPIRAM_SPEED_80M: "y"
-      CONFIG_SPIRAM_USE_MALLOC: "y"
-      CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL: "16384"
-      CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP: "y"
-      CONFIG_ESP32S3_SPIRAM_SUPPORT: "y"
-      CONFIG_SPIRAM_BOOT_INIT: "y"
-      CONFIG_SPIRAM_IGNORE_NOTFOUND: "n"
+
+# The panel's framebuffer lives in PSRAM (8MB octal on this board).
+psram:
+  mode: octal
+  speed: 80MHz
 
 preferences:
   flash_write_interval: 5s # default is 1min but seems sometimes id(recorded_display_refresh) doesn't get saved unless this is short
@@ -211,31 +218,45 @@ script:
     then:
       - wait_until:
           condition:
-            lambda: 'return id(data_updated) == true;'
-          timeout: 60s
-      - logger.log: "Data updated == true"
-      - wait_until: # should wait until the wake_time_helper is actually updated (to evaluate the next condition)
+            lambda: 'return id(data_updated) && id(wake_time_helper_updated);'
+          timeout: 30s
+      - logger.log: "Data and wake time helper received, or timeout 30 seconds"
+      # The deep-sleep clock runs fast, by about 1% overnight, so the 06:05 wake
+      # lands around 06:01. Within 8 minutes of the scheduled time, go back to
+      # sleep for the rest of it rather than waiting awake with WiFi on.
+      # Waiting out the overnight case cost about 5 minutes awake every
+      # morning; sleeping again costs one more WiFi connect.
+      - if:
           condition:
-            lambda: 'return id(wake_time_helper_updated) == true;'
-          timeout: 2min
-      - logger.log: "Wake time helper updated, or timeout 2 minutes"
-      - if:  # with longer sleep delays, the ESP32 tends to wake up a bit too early... if the wake time is within the next 8 minutes, wait for the scheduled wake time (less 30s) (preventing it from updating twice in a row)
-          # Bug: check out line 3670 of logs. Wake time helper set to 0 (caught it right at 0 seconds left), so now it waits for -30 seconds
+            and:
+              - binary_sensor.is_off: deep_sleep_disable_ha
+              - lambda: 'return id(wake_time_helper).state > 60 && id(wake_time_helper).state <= (8 * 60);'
+          then:
+            - logger.log:
+                format: "Woke up %.0f seconds early. Going back to sleep until the scheduled wake."
+                args: ['id(wake_time_helper).state']
+            - deep_sleep.enter:
+                id: deep_sleep_control
+                sleep_duration: !lambda 'return id(wake_time_helper).state * 1000;'
+      # Within a minute of the scheduled time (HA re-renders the helper once a
+      # minute, so it can read up to 60s high), wait it out, less 30s, so the
+      # refresh does not land just before the slot and then again just after it.
+      - if:
           condition:
-            lambda: 'return (id(wake_time_helper).state <= (8 * 60));'
+            lambda: 'return (id(wake_time_helper).state <= 60);'
           then:
             - lambda: |
                 int delay_time = (id(wake_time_helper).state - 30) < 0 ? 0 : (id(wake_time_helper).state - 30);
                 id(delay_time_helper).publish_state(delay_time);  // Store value for use in logger.log
             - logger.log:
-                format: "Woke up too soon (within 8 minutes). Wake Time Helper is set to %.1f seconds. Waiting for %.1f seconds before refreshing display."
+                format: "Woke up just before the scheduled time. Wake Time Helper is set to %.1f seconds. Waiting for %.1f seconds before refreshing display."
                 args: ['id(wake_time_helper).state', 'id(delay_time_helper).state']
             - delay: !lambda 'return (id(delay_time_helper).state * 1000);'
       - if:
           condition:
             lambda: 'return id(data_updated) == true;'
           then:
-            - delay: 10s # Wait a bit longer so all the items are received. Might need to be more.
+            - delay: 3s # The weather attributes arrive as one burst on connect; this lets the burst finish.
             - logger.log: "Sensor data received."
             - script.execute: refresh_screen
           else:
@@ -248,58 +269,16 @@ script:
           condition:
             binary_sensor.is_off: disable_update
           then:
-            - script.execute: check_battery
             - lambda: 'id(recorded_display_refresh) += 1;'
             - lambda: 'id(display_last_update).publish_state(id(homeassistant_time).now().timestamp);'
             - logger.log: "Refreshing display..."
             - component.update: eink_display
             - lambda: 'id(data_updated) = false;'
-            - delay: 5s # If deep sleep follows immediately, then we need a short delay here so HA catches the refresh count
+            - component.update: recorded_display_refresh_sensor
+            - delay: 1s # Let the refresh count reach HA before deep sleep takes the radio down
           else:
             - logger.log: "Home Assistant Helper 'Disable Update' is on. Skipping display refresh."
       - script.execute: deep_sleep_evaluation
-  - id: check_battery
-    mode: restart
-    then:
-      - if:
-          condition: wifi.enabled
-          then:
-            # Disable wifi so we can get battery, then re-enable
-            - logger.log: "WiFi is enabled. Disabling WiFi to get battery level..."
-            - wifi.disable:
-      - delay: 100ms # Allow time for WiFi to disable
-        # Now manually get the battery sensor levels
-      - logger.log: "Checking battery level..."
-      - lambda: |-
-          // Read raw ADC value on the defined pin
-          int raw = analogRead(${adc_gpio});
-          // Apply any calibration factor needed 
-          float voltage = raw * 1.84;
-          id(battery_voltage_global) = voltage;
-          ESP_LOGI("battery", "Battery level: %.2fV", voltage);
-
-          // Read the raw ADC value from the configured pin (e.g., GPIO14)
-          int raw_value = analogRead(${adc_gpio});
-          // Reference voltage for the ADC (typically 3.3V for ESP32)
-          float V_ref = 3.3;
-          // Calculate voltage at ADC pin: (ADC will be raw value between 0 and 4095, value will be proportional to the voltage)
-          float V_adc = ((float) raw_value / 4095.0) * V_ref;
-          // Divider factor from your voltage divider.
-          // For example, many Lilygo T5 boards have a divider factor around 1.84.
-          float divider_factor = 1.84;
-          // Calculate actual battery voltage
-          float battery_voltage = V_adc * divider_factor;
-          // Trim battery voltage to two decimals:
-          battery_voltage = round(battery_voltage * 100.0) / 100.0;
-          // Store the computed value in the global variable
-          id(battery_voltage_global) = battery_voltage;
-          ESP_LOGI("battery", "Raw ADC: %d, ADC Voltage: %.2f V, Battery Voltage: %.2f V", raw_value, V_adc, battery_voltage);
-      - logger.log:
-          format: "Battery level is %.2fV"
-          args: ['id(battery_voltage).state']
-      - delay: 1s
-      # Finished up, re-nable wifi
-      - wifi.enable:
   - id: deep_sleep_evaluation
     # This dynamic deep sleep script inspired by https://webbinaro.dev/blog/battery-powered-esp-sensors-esphome/
     mode: restart
@@ -310,22 +289,36 @@ script:
               - binary_sensor.is_on: deep_sleep_disable_ha # checks Home Assistant Helper
           then:
             - logger.log: 'Deep Sleep Disabled.'
+            # Also cancels the ${max_run_time} failsafe, so the board stays up
+            # for as long as the helper is on.
+            - deep_sleep.prevent: deep_sleep_control
             - script.execute: deep_sleep_disabled_check_refresh_time
-            - script.execute: check_battery
           else:
+            # HA rolls the helper over to the next slot at the scheduled
+            # minute, so straight after a refresh it can still be counting
+            # down to the slot just drawn. That lasts a minute at most.
             - logger.log:
                 format: 'Wake Time Helper is set to %.1f seconds. Waiting for value to be >= 360 before entering deep sleep.'
                 args: ['id(wake_time_helper).state']
             - wait_until:
                 condition:
                   lambda: 'return (id(wake_time_helper).state >= (6 * 60));'
-            - logger.log: 
-                format: 'Entering Deep Sleep. Will wake in %.1f seconds...' 
-                args: ['id(wake_time_helper).state']
-            - deep_sleep.enter:
-                id: deep_sleep_control
-                sleep_duration: !lambda return id(wake_time_helper).state * 1000;
-                # lambdas should return value as ms
+                timeout: 90s
+            - if:
+                condition:
+                  lambda: 'return (id(wake_time_helper).state >= (6 * 60));'
+                then:
+                  - logger.log:
+                      format: 'Entering Deep Sleep. Will wake in %.1f seconds...'
+                      args: ['id(wake_time_helper).state']
+                  - deep_sleep.enter:
+                      id: deep_sleep_control
+                      sleep_duration: !lambda return id(wake_time_helper).state * 1000;
+                      # lambdas should return value as ms
+                else:
+                  - logger.log: 'No usable wake time from Home Assistant. Entering Deep Sleep for ${sleep_time}.'
+                  - deep_sleep.enter:
+                      id: deep_sleep_control
       - delay: 60s
       - script.execute: deep_sleep_evaluation
   - id: deep_sleep_disabled_check_refresh_time
@@ -342,7 +335,7 @@ script:
 deep_sleep:
   id: deep_sleep_control
   sleep_duration: ${sleep_time}
-  # run_duration: ${max_run_time}
+  run_duration: ${max_run_time}
 
 time:
   - platform: homeassistant
@@ -475,6 +468,7 @@ sensor:
     update_interval: 3s
   - platform: template
     name: "${friendly_name} Recorded Display Refresh"
+    id: recorded_display_refresh_sensor
     accuracy_decimals: 0
     unit_of_measurement: "Refreshes"
     state_class: "total_increasing"

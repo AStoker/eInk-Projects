@@ -52,7 +52,7 @@ container that did.
 |---|---|
 | `/media/eink/photos/` | Drop photographs here. Subfolders are fine |
 | `/media/runpod/eink/` | `morning.png`, `day.png`, `night.png` from the 3am job |
-| `/media/eink/ai-library/` | Saved AI art, cycled while `input_boolean.eink_daily_dash_generate_ai` is off. Subfolders are fine |
+| `/media/eink/ai-library/<theme>/` | Every nightly render, filed by theme (`default/` when blank). Cycled while `input_boolean.eink_daily_dash_generate_ai` is off |
 | `/media/eink/out/` | Converted blobs. Disposable — deleting them forces a rebuild |
 
 Only those two source directories, never `/media/runpod/` itself: the RunPod
@@ -132,12 +132,18 @@ old converter made, and the panel is told the picture moved.
 
 ## Saved AI art
 
+Each new nightly render is copied to `/media/eink/ai-library/<theme>/`, named
+`<date>_<slot>_<hash>.png`, where `<theme>` is the theme text as a folder name
+(`default` when blank). Archived hashes live in `/data/archived.json`, so a
+picture deleted from the library stays deleted.
+
 Turn `input_boolean.eink_daily_dash_generate_ai` off and AI mode stops using
-the nightly renders and cycles `/media/eink/ai-library/` instead; the 3am
-automation checks the same switch and stands down. Turn it on to go back. The
-app reads the switch on each scan, so a flip lands within `scan_seconds`, and a
-Core hiccup keeps the last answer rather than bouncing the panel between
-sources. `GET /health` reports `ai_source`.
+the nightly renders and cycles the current theme's folder instead (the whole
+library if that folder is empty); the 3am automation checks the same switch and
+stands down. Turn it on to go back. The switch and theme are read on each scan,
+so a change lands within `scan_seconds`, and a Core hiccup keeps the last answer
+rather than bouncing the panel between sources. `GET /health` reports
+`ai_source` and `theme`; `GET /index` lists what is cycling.
 
 The picture changes at each time-of-day slot unless `library_rotate_minutes`
 is set, and the panel's Next/Previous offset steps through it like photos.

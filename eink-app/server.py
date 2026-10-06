@@ -21,6 +21,8 @@ import hashlib
 import json
 import logging
 import os
+import re
+import shutil
 import threading
 import time
 from dataclasses import dataclass
@@ -67,6 +69,8 @@ OUT_DIR = Path(os.environ.get("EINK_OUT_DIR", "/media/eink/out"))
 # kept from earlier generations. Recursive, like photos, so a set can live in a
 # subfolder of its own. Converted as art (clamped, red kept), not as a photo.
 LIBRARY_DIR = Path(os.environ.get("EINK_LIBRARY_DIR", "/media/eink/ai-library"))
+# Survives restarts and upgrades; /data is the app's own persistent volume.
+STATE_DIR = Path(os.environ.get("EINK_STATE_DIR", "/data"))
 PORT = int(os.environ.get("EINK_PORT", "8100"))
 # Reported by /health so a deploy can be confirmed by asking the running
 # container what it is, rather than by trusting that the update applied.
@@ -91,6 +95,11 @@ SLOTS = (("morning", 5), ("day", 11), ("night", 18))
 # cycles LIBRARY_DIR instead. The same helper gates the automation, so one
 # switch moves both halves and there is nothing else to undo to go back.
 GENERATE_SWITCH = "input_boolean.eink_daily_dash_generate_ai"
+# The theme the nightly job follows. It also names the library folder a new
+# render is filed into, and the folder the library cycles while generation is
+# off -- so each theme's pictures stay together and only its own come round.
+THEME_TEXT = "input_text.eink_daily_dash_theme"
+DEFAULT_THEME = "default"
 # How long one library picture stays up. 0 steps at each AI slot boundary --
 # three pictures a day, the same refresh budget the generated set spends.
 LIBRARY_ROTATE_SECONDS = int(_opt("library_rotate_minutes", "EINK_LIBRARY_ROTATE_MINUTES", 0)) * 60
@@ -151,6 +160,18 @@ def library_index(count: int, offset: int = 0) -> int:
     return (step + offset) % count
 
 
+def _state(entity: str) -> str | None:
+    """One entity's state, or None when Core did not answer."""
+    if not agenda.TOKEN:
+        return None
+    got = agenda._call(f"states/{entity}", quiet=True)  # noqa: SLF001
+    if got is None:
+        return None
+    if isinstance(got, dict):
+        return str(got.get("state", ""))
+    return ""  # answered, but no such entity
+
+
 def generating(previous: bool) -> bool:
     """Whether the generate switch is on, keeping the last answer on a miss.
 
@@ -158,14 +179,30 @@ def generating(previous: bool) -> bool:
     lookup keeps what was known. No helper at all counts as on: that is how
     this ran before the library existed.
     """
-    if not agenda.TOKEN:
+    state = _state(GENERATE_SWITCH)
+    if state is None:
         return previous
-    got = agenda._call(f"states/{GENERATE_SWITCH}", quiet=True)  # noqa: SLF001
-    if got is None:
-        return previous
-    if isinstance(got, dict) and got.get("state") == "off":
-        return False
-    return True
+    return state != "off"
+
+
+def theme_slug(text: str | None) -> str:
+    """A theme as a folder name: "cute Trick-or-treat" -> cute-trick-or-treat."""
+    text = (text or "").strip()
+    if text in ("unknown", "unavailable"):
+        text = ""
+    slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:60]
+    return slug or DEFAULT_THEME
+
+
+def current_theme(previous: str) -> str:
+    state = _state(THEME_TEXT)
+    return previous if state is None else theme_slug(state)
+
+
+def library_folder(blob: "Blob") -> str:
+    """The top-level library folder a picture sits in ("" for the root)."""
+    parts = blob.source.relative_to(LIBRARY_DIR).parts
+    return parts[0] if len(parts) > 1 else ""
 
 
 def source_ident(path: Path) -> str:
@@ -191,6 +228,8 @@ class Library:
         self._ai: dict[str, Blob] = {}
         self._library: list[Blob] = []
         self._generate = True
+        self._theme = DEFAULT_THEME
+        self._archived = self._load_archived()
         OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # -- conversion ---------------------------------------------------------
@@ -234,6 +273,64 @@ class Library:
             LOG.info("converted %s -> %s (%d bytes)", src.name, out.name, len(blob))
         return Blob(ident=ident, path=out, source=src)
 
+    # -- archiving ----------------------------------------------------------
+    # Every render the nightly job makes is kept in the library, filed under
+    # the theme it was made for. The job overwrites morning/day/night each
+    # night, so this is the only copy that outlives the day -- the RunPod app's
+    # own copy is private to it and out of this app's reach.
+    #
+    # Archived hashes are remembered on disk rather than inferred from what is
+    # in the library, so deleting a picture you did not like keeps it deleted
+    # instead of it coming straight back from the still-present slot file.
+    def _archive_file(self) -> Path:
+        return STATE_DIR / "archived.json"
+
+    def _load_archived(self) -> set[str] | None:
+        try:
+            return set(json.loads(self._archive_file().read_text()))
+        except (OSError, ValueError):
+            return None  # first run: seeded from whatever is on disk now
+
+    def _save_archived(self) -> None:
+        path = self._archive_file()
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(sorted(self._archived)))
+            os.replace(tmp, path)
+        except OSError as exc:
+            LOG.warning("could not record archived renders: %s", exc)
+
+    def _archive(self, ai: dict[str, Blob], theme: str) -> None:
+        hashes = {slot: blob.ident[:16] for slot, blob in ai.items()}
+        if self._archived is None:
+            # The renders already on disk when this first runs were made under
+            # whatever theme was set that night, which is not knowable now.
+            # Filing them under today's theme would put them in the wrong
+            # folder, so the archive starts with the next render.
+            self._archived = set(hashes.values())
+            self._save_archived()
+            return
+        fresh = {slot: h for slot, h in hashes.items() if h not in self._archived}
+        if not fresh:
+            return
+        day = datetime.now(agenda.timezone()).strftime("%Y-%m-%d")
+        folder = LIBRARY_DIR / theme
+        for slot, h in fresh.items():
+            src = ai[slot].source
+            dest = folder / f"{day}_{slot}_{h[:8]}{src.suffix.lower()}"
+            try:
+                folder.mkdir(parents=True, exist_ok=True)
+                tmp = dest.with_name(dest.name + ".tmp")  # .tmp is never scanned
+                shutil.copyfile(src, tmp)
+                os.replace(tmp, dest)
+            except OSError as exc:
+                LOG.warning("could not archive %s: %s", src.name, exc)
+                continue  # retried next scan
+            self._archived.add(h)
+            LOG.info("archived %s -> %s", src.name, dest.relative_to(LIBRARY_DIR))
+        self._save_archived()
+
     def rescan(self) -> None:
         photos, ai = [], {}
 
@@ -254,6 +351,12 @@ class Library:
             if blob:
                 ai[src.stem] = blob
 
+        generate = generating(self._generate)
+        if generate != self._generate:
+            LOG.info("AI source -> %s", "generated" if generate else "library")
+        theme = current_theme(self._theme)
+        self._archive(ai, theme)
+
         library = []
         for src in sorted(_images(LIBRARY_DIR, recursive=True)):
             if not _settled(src):
@@ -263,13 +366,9 @@ class Library:
             if blob:
                 library.append(blob)
 
-        generate = generating(self._generate)
-        if generate != self._generate:
-            LOG.info("AI source -> %s", "generated" if generate else "library")
-
         with self._lock:
             self._photos, self._ai = photos, ai
-            self._library, self._generate = library, generate
+            self._library, self._generate, self._theme = library, generate, theme
         self._prune({b.path.name for b in photos}
                     | {b.path.name for b in ai.values()}
                     | {b.path.name for b in library})
@@ -281,10 +380,19 @@ class Library:
                 LOG.info("pruned %s", stale.name)
 
     # -- selection ----------------------------------------------------------
+    def themed_library(self) -> list[Blob]:
+        """The current theme's folder, or the whole library if it has none.
+
+        Caller holds the lock. Falling back to everything means a theme with
+        nothing saved yet still shows something rather than the stale renders.
+        """
+        own = [b for b in self._library if library_folder(b) == self._theme]
+        return own or list(self._library)
+
     def current(self, mode: str, offset: int = 0) -> Blob | None:
         with self._lock:
             photos, ai = list(self._photos), dict(self._ai)
-            library, generate = list(self._library), self._generate
+            library, generate = self.themed_library(), self._generate
 
         if mode.lower().startswith("photo"):
             if not photos:
@@ -356,14 +464,15 @@ class Handler(BaseHTTPRequestHandler):
         if route.path == "/health":
             with self.library._lock:  # noqa: SLF001
                 lib = self.library
-                counts = (len(lib._photos), len(lib._ai), len(lib._library))
-                generate = lib._generate
+                counts = (len(lib._photos), len(lib._ai), len(lib.themed_library()))
+                generate, theme = lib._generate, lib._theme
             return self._json(200, {
                 "ok": True,
                 "version": VERSION,
                 "photos": counts[0],
                 "ai": counts[1],
                 "library": counts[2],
+                "theme": theme,
                 "ai_source": "generated" if generate or not counts[2] else "library",
                 "slot": current_slot(),
             })
@@ -397,7 +506,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, {
                     "photos": [b.source.name for b in self.library._photos],
                     "ai": {k: v.source.name for k, v in self.library._ai.items()},
-                    "library": [b.source.name for b in self.library._library],
+                    "library": [str(b.source.relative_to(LIBRARY_DIR)) for b in self.library._library],
+                    "theme": self.library._theme,
+                    "cycling": [str(b.source.relative_to(LIBRARY_DIR)) for b in self.library.themed_library()],
                     "generate": self.library._generate,
                     "slot": current_slot(),
                 })

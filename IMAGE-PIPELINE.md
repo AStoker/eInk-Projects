@@ -20,7 +20,49 @@ Three display modes, chosen by `input_select.eink_daily_dash_mode` (created):
 |---|---|
 | `Dash` | The agenda, drawn on-device. No images involved |
 | `Photos` | The next picture from `/media/eink/photos/` |
-| `AI` | Whichever of the three generated images matches the time of day |
+| `AI` | Whichever of the three generated images matches the time of day — or, with generation switched off, the next saved picture from `/media/eink/ai-library/` |
+
+### Generated or saved
+
+`input_boolean.eink_daily_dash_generate_ai` picks where AI mode's pictures come
+from, and it is the only thing to flip either way:
+
+| Switch | 3am job | AI mode shows |
+|---|---|---|
+| **on** | Generates morning / day / night | Tonight's three renders, by time of day |
+| **off** | Skips — no GPU renders | The images in `/media/eink/ai-library/`, one per slot (3 a day) |
+
+### The library is organised by theme
+
+Every render the 3am job makes is also kept, filed by the theme it was made
+under: the e-ink app notices a new `morning`/`day`/`night` file and copies it to
+
+```
+/media/eink/ai-library/<theme>/<YYYY-MM-DD>_<slot>_<hash>.png
+```
+
+`<theme>` is `input_text.eink_daily_dash_theme` as a folder name — lower case,
+anything that is not a letter or digit becomes a hyphen, so `cute
+Trick-or-treat` files under `cute-trick-or-treat/` — and a blank theme files
+under `default/`. The nightly files are overwritten every night, so this copy is
+the only one that outlives the day; the RunPod app's own copy is private to it.
+
+With generation off, the rotation uses **the current theme's folder only**, so
+setting the theme to `christmas` in December brings back last year's Christmas
+set and nothing from October. A theme with nothing saved yet falls back to the
+whole library. Folders can be added by hand too — any folder whose name matches
+the theme's slug is that theme's set.
+
+Deleting a picture you did not like keeps it deleted: archived hashes are
+recorded in the app's `/data/archived.json`, so the still-present nightly file
+is not copied back in. Renders already on disk when archiving was first
+installed are not filed, because the theme they were made under is not
+knowable after the fact.
+
+Images are converted as art — clamped, red kept — exactly like the nightly
+renders. `library_rotate_minutes` in the app's options changes the pace (0, the
+default, steps at each slot boundary). An empty library falls back to the last
+generated set rather than blanking the panel.
 
 ---
 
@@ -179,10 +221,12 @@ A reference implementation of all of the above — fit, gate, dither switch — 
 A new app, separate from the RunPod client, because both modes need the same
 conversion and photo mode has nothing to do with RunPod.
 
-**Watches** exactly two directories, neither of them recursively:
+**Watches** three directories:
 
 - `/media/eink/photos/` — drop any images in here; this is photo mode's source
-- `/media/runpod/eink/` — the three stable files the 3am job writes
+- `/media/runpod/eink/` — the three stable files the 3am job writes (not recursive)
+- `/media/eink/ai-library/` — saved AI art, one folder per theme. Every nightly
+  render is copied in here; it is what the panel cycles when generation is off
 
 `/media/runpod/eink/` specifically, never its parent. The RunPod app's own
 gallery lives at `/media/runpod/<endpoint>/<YYYY-MM>/`, a sibling — watching
@@ -311,6 +355,10 @@ that is already running — it is not a snippet to paste.
 At 03:00 it asks WeatherKit for the day's forecast, asks Claude for three
 matched prompts, and renders each on RunPod into `/media/runpod/eink/`. The
 e-ink app notices the new files within 20 seconds and converts them.
+
+It only runs while `input_boolean.eink_daily_dash_generate_ai` is on — see
+[Generated or saved](#generated-or-saved). Running it by hand from its page
+skips that condition, so a manual run still generates.
 
 To watch it work, run it manually from its page. It takes about four minutes
 and spends three GPU renders.

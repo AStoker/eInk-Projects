@@ -272,7 +272,10 @@ display:
 
       if (id(agenda_json).has_state()) {
         std::string js = id(agenda_json).state;
-        if (js.length() > 2 && js != "unknown" && js != "unavailable") {
+        // "[]" is a real answer -- a clear day -- and must reach the parser so
+        // the panel says "Nothing on" instead of "No agenda data". Only an
+        // absent or unavailable sensor is missing data.
+        if (!js.empty() && js != "unknown" && js != "unavailable") {
           JsonDocument doc;
           DeserializationError err = deserializeJson(doc, js);
           if (err) {

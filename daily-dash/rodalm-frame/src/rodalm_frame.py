@@ -34,8 +34,8 @@ import uuid
 import zipfile
 from pathlib import Path
 
-from build123d import (Align, Axis, Box, Circle, Compound, Cone, Cylinder, Mesher, fillet,
-                       Plane, Polygon, Pos, Rectangle, RectangleRounded, Rot,
+from build123d import (Align, Axis, Box, Circle, Compound, Cone, Cylinder, Kind, Mesher,
+                       fillet, offset, Plane, Polygon, Pos, Rectangle, RectangleRounded, Rot,
                        SlotCenterToCenter, Text, export_step, extrude)
 
 # ===========================================================================
@@ -113,29 +113,49 @@ WELL_WALL = 1.2
 LEDGE_FOAM = 0.0                           # set if the tab needs packing
 
 # USB-C pigtail: the 6-wire part's panel hole (the stand's .scad, newer than its
-# README).  Body 12.0 x 5.3 x 12 behind a 16.7 x 10.3 x 2.0 flange.
+# README).  Body 12.0 x 5.3 x 12 behind a 16.7 x 10.3 x 2.0 flange.  The flange
+# sits in a recess, flush with the lid's back, on a 2 mm panel like the stand's.
 USB_HOLE = (13.6, 6.3, 1.3)
 USB_AT = (-31.0, -29.25)
 USB_BODY = (12.0, 5.3, 12.0)
 USB_FLANGE = (16.7, 10.3, 2.0)
+USB_FLANGE_R = 1.0
+USB_PANEL = 2.0         # panel the body snaps through: the old lid's thickness
+USB_CLR = 0.3           # around the flange, per side
+USB_BOSS_WALL = 1.6
 
 # keyholes, for hanging on a wall
 KEY_AT = [(-32.0, 60.0), (32.0, 60.0)]
 KEY_HEAD_D, KEY_SLOT_W, KEY_SLOT_L = 8.0, 4.2, 7.0
 
 # --- the easel strut ---------------------------------------------------------
-DEP_ANG = 35.0          # swing from folded
-LEAN_TARGET = 20.0      # the pivot height is solved for this lean
-ST_W, ST_T = 24.0, 4.0     # width at the hinge (sets the pin length), thickness
-ST_FOOT_W = 44.0           # ... flaring to this at the foot, for side-to-side support.
-                           #   Folded, it must clear the USB-C flange: see the check
+# The strut folds into a pocket in the lid, so with it folded nothing stands
+# proud of the back and the frame hangs flat.  The pocket is a tub reaching into
+# the cassette, so it has to miss everything in there: the driver (0.5 under the
+# lid, no room at all), the tab wells and the corner bosses.  That puts the hinge
+# a little right of the driver and the foot between the bottom tab well and the
+# bottom-right boss -- so the strut is a skewed trapezoid, off centre (X is
+# seen from the BACK).  A strut that fits inside the frame folded is too short
+# for a 20 deg lean: the swing is chosen for the flattest lean it can give.
+ST_T = 4.0
+ST_W = 24.0             # at the hinge: with the hinge walls, sets the rod length
+HINGE_X = 7.0           # hinge centre.  Its left edge, -5, is 4 clear of the driver
+FOOT_X = (0.5, 38.0)    # foot edges: right of the bottom tab well, left of the boss
+Y_PIN = 56.0            # pivot: the pocket's top end stays below the top tab well
+Y_TIP = -70.9           # foot tip, folded: the pocket's end is 1.8 inside the lid edge
+HEEL = 6.0              # past the pin; trimmed to a flat that lands on the pocket floor
 ST_FOOT_R = 4.0
-ST_LEN = 100.0          # pin to foot tip.  About 0.6 of the frame's height, like a
-                        #   stock easel; the pivot height is solved from it
-HEEL = 7.0              # heel length past the pin
-PIN_D, PIN_FIT = 2.0, 0.10
-EAR_W, EAR_LEN, EAR_CLR, EAR_TOP = 3.0, 10.0, 0.4, 1.6
-EAR_MOUTH = 0.72        # C-socket mouth, as a fraction of the bore
+LEAN_SLACK = 0.5        # take the largest swing within this of the flattest lean:
+                        #   past the minimum the lean barely grows, while the foot
+                        #   moves back and the stance gets steadier side to side
+PIN_D = 2.0             # steel rod, 30.8 long
+PIN_WALL_FIT = 0.0      # snug in the hinge walls (a drop of CA if it walks)
+PIN_STRUT_FIT = 0.2     # free in the strut
+HW_T, HW_CLR, HW_DOWN = 3.0, 0.4, 6.0   # hinge walls: thickness, gap to the strut, run below the pin
+POCKET_CLR = 0.6        # strut to pocket, in plan and at the far end
+POCKET_FLOOR_CLR = 0.6  # strut to pocket floor
+POCKET_FLOOR, POCKET_WALL = 1.6, 1.2
+SCOOP_R, SCOOP_Y, SCOOP_Z = 6.0, -56.0, 17.0   # finger scoop beside the foot: radius, Y, floor
 COM_N = -15.0           # estimated centre of mass, mm IN FRONT of the back plane
 
 # --- the printer and the slicer project ---------------------------------------
@@ -195,19 +215,38 @@ BOSS_X, BOSS_Y = IN_W / 2 - BOSS_D / 2, IN_H / 2 - BOSS_D / 2
 OPEN_A = (ADAPT[0] - 0.5, ADAPT[1] + 0.5, ADAPT[2] - 0.5, ADAPT[3] + 0.5)
 OPEN_B = (OPEN_A[1], RIB_X1, RIB_Y0, RIB_Y1)
 
-# strut: the pin sits far enough off the lid that the strut's front edge clears it
-# through the whole swing (needs (ST_T/2)/cos(DEP_ANG)), and far enough that the
-# folded strut clears the moulding where it crosses the bottom rail
-PIV_H = max(max(LID_RECESS, 0.0) + ST_T / 2, ST_T / 2 / math.cos(math.radians(DEP_ANG)) + 0.1)
-Z_PIN = Z_BACK + PIV_H
+# strut.  The rod goes in along X from outside one hinge wall, before the lid is
+# fitted, so its way in has to pass under the lid plate: that sets the pin's
+# depth, and the folded strut ends up ST_SINK below the lid's back face.
+Z_PIN = Z_LID0 - (PIN_D + PIN_WALL_FIT) / 2 - 0.25
+ST_SINK = Z_BACK - (Z_PIN + ST_T / 2)
+Z_PFLOOR = Z_PIN - ST_T / 2 - POCKET_FLOOR_CLR      # pocket floor: the heel lands here
+Z_TUB0 = Z_PFLOOR - POCKET_FLOOR                    # the tub's underside, in the cassette
+ST_LEN = Y_PIN - Y_TIP
+ST_X0, ST_X1 = HINGE_X - ST_W / 2, HINGE_X + ST_W / 2
+Y_FLARE = Y_PIN - HW_DOWN - 1.0     # straight between the hinge walls, skewed out below
+R_HEEL = math.hypot(HEEL, ST_T / 2) # the heel's back corner sweeps out to this
+PIN_LEN = ST_W + 2 * (HW_CLR + HW_T)
 BOTTOM_EDGE = -FR_H / 2
 
 
-def stance(y_pin, L=ST_LEN):
-    """Lean (deg), footprint and CoM margin for a pivot at y_pin.  2-D, in the frame's
+def strut_outline():
+    """The folded strut in plan, counter-clockwise seen from +Z."""
+    return [(ST_X0, Y_PIN + HEEL), (ST_X0, Y_FLARE), (FOOT_X[0], Y_TIP),
+            (FOOT_X[1], Y_TIP), (ST_X1, Y_FLARE), (ST_X1, Y_PIN + HEEL)]
+
+
+def strut_edge_x(y, side):
+    """X of the strut's left (0) or right (1) edge at height y, below Y_FLARE."""
+    x_top, x_foot = (ST_X0, FOOT_X[0]) if side == 0 else (ST_X1, FOOT_X[1])
+    return x_top + (x_foot - x_top) * (Y_FLARE - y) / (Y_FLARE - Y_TIP)
+
+
+def stance(dep, y_pin=Y_PIN, L=ST_LEN):
+    """Lean (deg), footprint and CoM margin for a swing of dep.  2-D, in the frame's
     side view: s = height above the bottom edge, n = distance behind the back plane."""
     s_p, n_p = y_pin - BOTTOM_EDGE, Z_PIN - INSIDE_D
-    th = math.radians(DEP_ANG)
+    th = math.radians(dep)
     pts = []
     for zl in (-ST_T / 2, ST_T / 2):
         yl = -L
@@ -220,22 +259,31 @@ def stance(y_pin, L=ST_LEN):
     return math.degrees(lam), foot, com, L
 
 
-def solve_pivot():
-    # For a fixed strut, a higher pivot leans the frame further back:
-    # tan(lean) = (pivot height - L cos(swing)) / (pin offset + L sin(swing))
-    lo, hi = BOTTOM_EDGE + ST_LEN, FR_H / 2
-    for _ in range(60):
-        mid = (lo + hi) / 2
-        if stance(mid)[0] > LEAN_TARGET:
-            hi = mid
-        else:
-            lo = mid
-    return (lo + hi) / 2
+def solve_swing():
+    """For a strut that fits the frame, the lean has a minimum in the swing and is
+    nearly flat around it.  Swinging further moves the foot back, which matters
+    because the foot is off centre: the side-to-side margin grows with it.  Take
+    the largest swing within LEAN_SLACK of the flattest lean."""
+    angles = [a / 4 for a in range(40, 241)]          # 10 .. 60 deg
+    best = min(stance(a)[0] for a in angles)
+    return max(a for a in angles if stance(a)[0] <= best + LEAN_SLACK)
 
 
-Y_PIN = solve_pivot()
-LEAN, FOOTPRINT, COM_MARGIN, _ = stance(Y_PIN)
-TIP_CLR = Y_PIN - ST_LEN - BOTTOM_EDGE      # folded tip, above the bottom edge
+DEP_ANG = solve_swing()
+LEAN, FOOTPRINT, COM_MARGIN, _ = stance(DEP_ANG)
+
+
+def side_margin():
+    """How far the centre of mass sits inside the support outline, side to side:
+    the frame's bottom edge in front, the strut's foot behind it."""
+    fx0, fx1 = FOOT_X[0] + ST_FOOT_R, FOOT_X[1] - ST_FOOT_R   # the flat of the foot
+    c = COM_MARGIN
+
+    def dist(x0, x1):
+        # line from (x0, 0) to (x1, FOOTPRINT); distance of (0, c) from it
+        dx, dn = x1 - x0, FOOTPRINT
+        return abs(dn * (0 - x0) - dx * (c - 0)) / math.hypot(dx, dn)
+    return dist(-FR_W / 2, fx0), dist(FR_W / 2, fx1)
 
 # ===========================================================================
 # HELPERS
@@ -379,49 +427,91 @@ def make_lid():
             lid -= cyl(SCR_FREE, Z_LID0 - 1, Z_BACK + 1, x, y)
             lid -= Pos(x, y, Z_BACK - csk) * Cone(SCR_FREE / 2, SCR_HEAD / 2 + 0.01, csk + 0.01,
                                                   align=(Align.CENTER, Align.CENTER, Align.MIN))
-    # USB-C pigtail
-    uw, uh, ur = USB_HOLE
-    lid -= rbox(uw, uh, ur, Z_LID0 - 1, Z_BACK + 1, *USB_AT)
     # keyholes: the head goes in through the round hole, the frame drops, the shank
     # rides up the slot.  The head ends up inside the cassette, in clear space.
     for x, y in KEY_AT:
         lid -= cyl(KEY_HEAD_D, Z_LID0 - 1, Z_BACK + 1, x, y)
         lid -= Pos(x, y + KEY_SLOT_L / 2, Z_LID0 - 1) * extrude(
             SlotCenterToCenter(KEY_SLOT_L, KEY_SLOT_W, rotation=90), LID_T + 2)
-    # strut hinge ears, with C-sockets opening away from the lid
-    bore = PIN_D + PIN_FIT
-    ear_top = Z_PIN + bore / 2 + EAR_TOP
-    for sx in (-1, 1):
-        xa = sx * (ST_W / 2 + EAR_CLR)
-        x0, x1 = sorted((xa, xa + sx * EAR_W))
-        lid += bx(x0, x1, Y_PIN - EAR_LEN / 2, Y_PIN + EAR_LEN / 2, Z_BACK - 0.01, ear_top)
-    pin_len = ST_W + 2 * (EAR_CLR + EAR_W)
-    lid -= Pos(0, Y_PIN, Z_PIN) * Rot(0, 90, 0) * Cylinder(bore / 2, pin_len + 2)
-    lid -= bx(-pin_len / 2 - 1, pin_len / 2 + 1, Y_PIN - bore * EAR_MOUTH / 2,
-              Y_PIN + bore * EAR_MOUTH / 2, Z_PIN, ear_top + 1)
+    lid = add_strut_pocket(lid)
+    lid = add_usb_recess(lid)
+    return lid
+
+
+def plan(grow, z0, z1):
+    """The folded strut's outline, grown by grow (sharp corners), as a slab."""
+    f = Polygon(*strut_outline(), align=None)
+    if grow:
+        f = offset(f, grow, kind=Kind.INTERSECTION)
+    return Pos(0, 0, z0) * extrude(f, z1 - z0)
+
+
+def hinge_walls(z0, z1):
+    y0, y1 = Y_PIN - HW_DOWN, Y_PIN + R_HEEL + POCKET_CLR
+    return (bx(ST_X0 - HW_CLR - HW_T, ST_X0 - HW_CLR, y0, y1, z0, z1)
+            + bx(ST_X1 + HW_CLR, ST_X1 + HW_CLR + HW_T, y0, y1, z0, z1))
+
+
+def heel_room(grow, z0, z1):
+    """Past the strut's top end: its back corner sweeps out to R_HEEL as it swings."""
+    return bx(ST_X0 - HW_CLR - grow, ST_X1 + HW_CLR + grow, Y_PIN,
+              Y_PIN + R_HEEL + POCKET_CLR + grow, z0, z1)
+
+
+def scoop_xy():
+    return strut_edge_x(SCOOP_Y, 1) + POCKET_CLR, SCOOP_Y
+
+
+def add_strut_pocket(lid):
+    """The strut's pocket: a tub reaching into the cassette, two hinge walls carrying
+    the rod, and a finger scoop beside the foot."""
+    sx, sy = scoop_xy()
+    tub = (plan(POCKET_CLR + POCKET_WALL, Z_TUB0, Z_LID0 + 0.01)
+           + heel_room(POCKET_WALL, Z_TUB0, Z_LID0 + 0.01)
+           + hinge_walls(Z_TUB0, Z_LID0 + 0.01)
+           + cyl(2 * (SCOOP_R + POCKET_WALL), SCOOP_Z - POCKET_FLOOR, Z_LID0 + 0.01, sx, sy))
+    lid += tub
+    lid -= (plan(POCKET_CLR, Z_PFLOOR, Z_BACK + 1) + heel_room(0, Z_PFLOOR, Z_BACK + 1)
+            + cyl(2 * SCOOP_R, SCOOP_Z, Z_BACK + 1, sx, sy))
+    lid += hinge_walls(Z_PFLOOR - 0.01, Z_BACK)
+    lid -= Pos(HINGE_X, Y_PIN, Z_PIN) * Rot(0, 90, 0) * Cylinder((PIN_D + PIN_WALL_FIT) / 2,
+                                                                  PIN_LEN + 2)
+    return lid
+
+
+def usb_seat():
+    """Z of the flange's underside: the flange's back is flush with the lid's."""
+    return Z_BACK - USB_FLANGE[2] - 0.05
+
+
+def add_usb_recess(lid):
+    uw, uh, ur = USB_HOLE
+    fw, fh, ft = USB_FLANGE
+    z = usb_seat()
+    pw, ph = fw + 2 * USB_CLR, fh + 2 * USB_CLR
+    lid += rbox(pw + 2 * USB_BOSS_WALL, ph + 2 * USB_BOSS_WALL, USB_FLANGE_R + USB_BOSS_WALL,
+                z - USB_PANEL, Z_LID0 + 0.01, *USB_AT)
+    lid -= rbox(pw, ph, USB_FLANGE_R, z, Z_BACK + 1, *USB_AT)
+    lid -= rbox(uw, uh, ur, z - USB_PANEL - 1, Z_BACK + 1, *USB_AT)
     return lid
 
 
 def make_strut(theta=0.0):
-    """The strut, folded (theta = 0) or swung out by theta degrees."""
-    yt = Y_PIN - ST_LEN
-    z0, z1 = Z_PIN - ST_T / 2, Z_PIN + ST_T / 2
-    # straight at the hinge, flaring from the pin to the foot
-    # Straight between the ears, then flaring to the foot.  Counter-clockwise seen
-    # from +Z, so the face's normal is +Z and it extrudes toward the back.
-    y_flare = Y_PIN - EAR_LEN / 2 - 1.0
-    outline = [(-ST_W / 2, Y_PIN + HEEL), (-ST_W / 2, y_flare), (-ST_FOOT_W / 2, yt),
-               (ST_FOOT_W / 2, yt), (ST_W / 2, y_flare), (ST_W / 2, Y_PIN + HEEL)]
-    body = Pos(0, 0, z0) * extrude(Polygon(*outline, align=None), ST_T)
+    """The strut, folded into its pocket (theta = 0) or swung out by theta degrees."""
+    z0 = Z_PIN - ST_T / 2
+    # Counter-clockwise seen from +Z, so the face's normal is +Z and it extrudes
+    # toward the back.
+    body = Pos(0, 0, z0) * extrude(Polygon(*strut_outline(), align=None), ST_T)
     assert abs(body.bounding_box().min.Z - z0) < 1e-6, "strut extruded the wrong way"
-    feet = body.edges().filter_by(Axis.Z).filter_by_position(Axis.Y, yt - 0.01, yt + 0.01)
+    feet = body.edges().filter_by(Axis.Z).filter_by_position(Axis.Y, Y_TIP - 0.01, Y_TIP + 0.01)
     body = fillet(feet, ST_FOOT_R)
-    # THE STOP: the lid's face, pulled back through the deployed rotation.  What is
-    # left of the heel is a flat that lands on the lid at exactly DEP_ANG.
-    pin_axis = Axis((0, Y_PIN, Z_PIN), (1, 0, 0))
-    lidside = bx(-ST_FOOT_W, ST_FOOT_W, Y_PIN - 60, Y_PIN + 60, Z_BACK - 60, Z_BACK)
-    body -= lidside.rotate(pin_axis, DEP_ANG)
-    body -= Pos(0, Y_PIN, Z_PIN) * Rot(0, 90, 0) * Cylinder((PIN_D + PIN_FIT) / 2, ST_W + 2)
+    # THE STOP: the pocket floor, pulled back through the deployed rotation.  What
+    # is left of the heel is a flat that lands on the floor at exactly DEP_ANG.
+    pin_axis = Axis((HINGE_X, Y_PIN, Z_PIN), (1, 0, 0))
+    floorside = bx(-300, 300, Y_PIN - 300, Y_PIN + 300, Z_PFLOOR - 300, Z_PFLOOR)
+    body -= floorside.rotate(pin_axis, DEP_ANG)
+    body -= Pos(HINGE_X, Y_PIN, Z_PIN) * Rot(0, 90, 0) * Cylinder((PIN_D + PIN_STRUT_FIT) / 2,
+                                                                   ST_W + 2)
     if theta:
         body = body.rotate(pin_axis, -theta)
     return body
@@ -456,16 +546,23 @@ def mocks():
     m["cell"] = bx(*CELL, Z_FLOOR, Z_FLOOR + CELL_TAPE + CELL_T)
     bw, bh, bd = USB_BODY
     fw, fh, ft = USB_FLANGE
+    zu = usb_seat()
     m["usb"] = (bx(USB_AT[0] - bw / 2, USB_AT[0] + bw / 2, USB_AT[1] - bh / 2, USB_AT[1] + bh / 2,
-                   Z_BACK - bd, Z_BACK)
+                   zu - bd, zu)
                 + bx(USB_AT[0] - fw / 2, USB_AT[0] + fw / 2, USB_AT[1] - fh / 2, USB_AT[1] + fh / 2,
-                     Z_BACK, Z_BACK + ft))
+                     zu, zu + ft))
     tabs = None
     for side, frac in TABS.items():
         t = side_place(side, frac) * bx(-FIT, -FIT + TAB_L, -3, 3, TAB_Z + LEDGE_FOAM, TAB_Z + LEDGE_FOAM + 0.4)
         tabs = t if tabs is None else tabs + t
     m["tabs"] = tabs
-    m["pin"] = Pos(0, Y_PIN, Z_PIN) * Rot(0, 90, 0) * Cylinder(PIN_D / 2, ST_W + 2 * (EAR_CLR + EAR_W))
+    m["pin"] = Pos(HINGE_X, Y_PIN, Z_PIN) * Rot(0, 90, 0) * Cylinder(PIN_D / 2, PIN_LEN)
+    # the rod's way in: along X, from outside the left hinge wall, lid off the cassette
+    x_out = ST_X0 - HW_CLR - HW_T
+    m["rod_path"] = Pos(x_out - PIN_LEN / 2 - 0.5, Y_PIN, Z_PIN) * Rot(0, 90, 0) * Cylinder(
+        PIN_D / 2, PIN_LEN)
+    # everything behind the back plane: nothing may stand there
+    m["behind"] = bx(-FR_W, FR_W, -FR_H, FR_H, INSIDE_D, INSIDE_D + 60)
     return m
 
 
@@ -534,21 +631,27 @@ def run_checks(p, m):
         chk(f"{k} x moulding", p[k], m["moulding"])
         chk(f"{k} x cover", p[k], m["cover"])
     chk("strut(folded) x moulding", p["strut"], m["moulding"])
+    # THE BACK IS FLUSH: nothing behind the frame's back plane with the strut folded
+    for k in ("cassette", "lid", "strut"):
+        chk(f"{k}{'(folded)' if k == 'strut' else ''} behind the back", p[k], m["behind"])
+    chk("usb flange behind the back", m["usb"], m["behind"])
     # hardware against the parts
     for hw in ("glass", "tail", "adapter", "carrier", "driver", "charger", "cell", "usb", "tabs", "pin"):
         for k in ("mat", "cassette", "lid"):
             if hw == "pin" and k == "lid":
                 continue
             chk(f"{hw} x {k}", m[hw], p[k])
+    chk("pin x strut", m["pin"], p["strut"])
+    chk("rod's way in x lid", m["rod_path"], p["lid"])
     # hardware against hardware that shares space
     chk("driver x adapter", m["driver"], m["adapter"])
     chk("driver x usb", m["driver"], m["usb"])
     chk("charger x usb", m["charger"], m["usb"])
     chk("cell x usb", m["cell"], m["usb"])
     chk("cell x carrier", m["cell"], m["carrier"])
-    chk("strut(folded) x usb flange", p["strut"], m["usb"])
     # the strut through its whole swing: empty up to DEP_ANG, then the heel lands
-    for th in (5, 10, 15, 20, 25, 30, DEP_ANG):
+    swing = [a for a in range(5, int(DEP_ANG) + 1, 5) if a < DEP_ANG] + [DEP_ANG]
+    for th in swing:
         s = make_strut(th)
         chk(f"strut @{th:g} x lid+moulding", s, p["lid"] + m["moulding"])
     chk(f"strut @{DEP_ANG + 1:g} x lid (heel lands)", make_strut(DEP_ANG + 1), p["lid"], expect="contact")
@@ -570,11 +673,15 @@ def params_text():
         f"window {WIN_W:.1f} x {WIN_H:.1f}; mat shows {(SIGHT_W - WIN_W) / 2:.1f} at the sides, "
         f"{(SIGHT_H - WIN_H) / 2:.1f} top and bottom",
         f"glass centre X {GX:.2f}; ribbon edge {GLASS_EDGE:.2f}; relief to {RIB_X1:.2f}, Y {RIB_Y0:.1f}..{RIB_Y1:.1f}",
-        f"strut: pivot {Y_PIN - BOTTOM_EDGE:.1f} above the bottom edge (Y {Y_PIN:.2f}), "
-        f"{PIV_H:.2f} off the lid; length {ST_LEN:.1f}, {ST_W:g} wide at the hinge to {ST_FOOT_W:g} at the foot, "
-        f"folded tip {TIP_CLR:.1f} above the bottom edge; "
-        f"pin {PIN_D} x {ST_W + 2 * (EAR_CLR + EAR_W):.1f}",
-        f"stance: lean {LEAN:.1f} deg, footprint {FOOTPRINT:.1f}, CoM {COM_MARGIN:.1f} behind the contact edge",
+        f"strut: folds into a pocket in the lid, {ST_SINK:.2f} below its back face; hinge X "
+        f"{ST_X0:g}..{ST_X1:g} at Y {Y_PIN:g} ({Y_PIN - BOTTOM_EDGE:.1f} above the bottom edge), "
+        f"foot X {FOOT_X[0]:g}..{FOOT_X[1]:g} at Y {Y_TIP:g}; length {ST_LEN:.1f}; "
+        f"rod {PIN_D:g} x {PIN_LEN:.1f}",
+        f"pocket floor {Z_PFLOOR:.2f}, tub underside {Z_TUB0:.2f} (driver top {Z_DRV1:.2f}, "
+        f"charger top {Z_FLOOR + CHG_POST_H + CHG_T:.2f}, cell top {Z_FLOOR + CELL_TAPE + CELL_T:.2f})",
+        f"stance: swing {DEP_ANG:g} deg, lean {LEAN:.1f} deg, footprint {FOOTPRINT:.1f}, "
+        f"CoM {COM_MARGIN:.1f} behind the contact edge, {min(side_margin()):.1f} inside it side to side",
+        f"USB-C flange recessed: seat {usb_seat():.2f}, panel {usb_seat() - USB_PANEL:.2f}..{usb_seat():.2f}",
         f"inserts: M2.5 bore {M25_BORE} x {M25_DEPTH}, M2 bore {M2_BORE} x {M2_DEPTH}",
     ]
     return "\n".join(lines)
@@ -597,7 +704,7 @@ def print_parts(p, coupons, gauge):
     return {
         "mat": on_bed(p["mat"]),                 # face down, on the smooth sheet
         "cassette": on_bed(p["cassette"]),       # floor down
-        "lid": on_bed(p["lid"]),                 # inner face down, ears up
+        "lid": on_bed(p["lid"], flip=True),      # back face down: it is flat now
         "strut": on_bed(p["strut"], flip=True),  # back face down: the heel needs no support
         "coupon_mat": on_bed(coupons[0]),
         "coupon_cassette": on_bed(coupons[1]),

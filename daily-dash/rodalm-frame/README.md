@@ -7,20 +7,25 @@ moulding becomes the outer shell, and the printed parts turn into an insert that
 
 **Status: coupons printed and fitting; ready to print the parts.** One parametric build123d
 file, [`src/rodalm_frame.py`](src/rodalm_frame.py), builds four parts plus fit coupons. It
-runs 54 interference checks (all clear), counts one body per part, and writes 3MF and STEP
+runs 59 interference checks (all clear), counts one body per part, and writes 3MF and STEP
 files. The coupons confirmed the rebate fit, all four tab ledges at 17.5, and the ribbon path.
+
+**The back is flush.** With the strut folded into its pocket, nothing stands behind the
+frame's back edge, so it can hang on a wall from the keyholes. Four checks hold that line:
+the cassette, the lid, the folded strut and the USB-C flange each against the space behind
+the back plane.
 
 | | |
 |---|---|
-| [`3mf/rodalm-frame.3mf`](3mf/rodalm-frame.3mf) | **One OrcaSlicer project with every part**, on three named plates, already in print orientation. No rotating, no supports |
+| [`3mf/rodalm-frame.3mf`](3mf/rodalm-frame.3mf) | **One OrcaSlicer project with every part**, on three named plates, already in print orientation. No rotating, no supports (the lid's pocket floor is a bridge: see Printing) |
 | [`slicer/orca_project_settings.config`](slicer/orca_project_settings.config) | Your AD5M Pro presets, copied from the stand's Orca projects; the 3MF carries them |
 | [`step/`](step/) | Each part, plus `rodalm-assembly.step` with the boards, for Fusion |
 | [`renders/`](renders/) | Built from the model by `tools/render.py` |
 | [`schematics/power-and-battery-sense.svg`](schematics/power-and-battery-sense.svg) | Power path, battery sense and USB-present sense |
 | [`drawings/layout-sketch.svg`](drawings/layout-sketch.svg) | The plan-stage sketch. The model is the source of truth |
 
-<img src="renders/02-cassette-boards.png" width="49%" alt="Cassette with the boards"> <img src="renders/03-back-folded.png" width="49%" alt="From the back, strut folded">
-<img src="renders/05-standing-side.png" width="49%" alt="Standing, side view"> <img src="renders/06-front.png" width="49%" alt="From the front">
+<img src="renders/03-back-folded.png" width="49%" alt="From the back, strut folded flush into its pocket"> <img src="renders/04-back-deployed.png" width="49%" alt="From the back, strut swung out">
+<img src="renders/05-standing-side.png" width="49%" alt="Standing, side view"> <img src="renders/02-cassette-boards.png" width="49%" alt="Cassette with the boards">
 
 Tags: **(I)** IKEA's listing, **(F)** measured on the frame, **(M)** measured on the stand
 build.
@@ -37,8 +42,8 @@ python3 tools/render.py              # renders/ (needs pyvista)
 
 The script prints its derived numbers first, so a parameter change shows its consequences
 before anything is written. Every check is a volume, `(a & b).volume`: an empty intersection
-is 0.0, not a missing file. The swept strut check expects contact past 35°, because that's
-the heel landing.
+is 0.0, not a missing file. The swept strut check expects contact 1° past the swing (34.5°),
+because that's the heel landing.
 
 **Coordinates**, from the file's header: seen from the **back**, X runs toward the ribbon
 side, Y is up, and Z is depth from the inside face of the frame's front lip. From the front,
@@ -93,7 +98,9 @@ board) → lid.** The frame's own tabs clamp the stack against the front lip.
 | Clearance | 22.45 | 22.95 |
 | Lid | 22.95 | **24.95** |
 
-The frame is 25.0 deep inside, so **the lid sits 0.05 inside the back edge: flush**. Getting
+The frame is 25.0 deep inside, so **the lid sits 0.05 inside the back edge: flush**. The
+strut's pocket reaches into the cassette below the lid, down to **17.5**, but only right of
+the driver, where the tallest thing is the cell (12.35). See the next section. Getting
 there cost two things against the plan: the floor went from 1.6 to 1.4, and the air under the
 carrier from 2.5 to 1.5. **So the header tails under the carrier have to be flush-cut to
 under 1.5, solder included.** If you'd rather not, set `CARRIER_LIFT = 2.5` and the lid stands
@@ -112,30 +119,47 @@ under 1.5, solder included.** If you'd rather not, set `CARRIER_LIFT = 2.5` and 
 | Cell 44 × 49 | −6.5…37.5, −66…−17 | L-shaped corner fences, 3 tall |
 | Corner bosses | (±44.1, ±69.1) | Ø8, with M2.5 inserts for the lid |
 | Tab wells | top X 16.7 · bottom X −10 · left and right Y 15 | 14 wide, so a tab can be a few mm off and still land |
+| Strut pocket (in the lid) | hinge −8.4…22.4 at the top, foot −1.3…39.8 at the bottom; Y −72.7…64.1 | A tub under the lid, 17.5…22.95. Right of the driver, over the cell, between the bottom tab well and the bottom-right boss. **The FFC from the adapter to the driver has to run under it**, below 17.5 |
 
 ## Back: lid, strut, hanging
 
 - **Lid:** 2.0 thick, inside the cassette walls, on 4 × **M2.5 countersunk** screws. Notched
-  over the four tab wells. Has the USB-C opening and two **keyholes** at (±32, 60): the screw
-  head goes in through the Ø8 hole and the frame drops onto the 4.2 slot. The head ends up
-  inside the cassette, where there's clear space.
-- **Easel strut**, replacing the stand that was stamped into the backboard. It's 100 long and
-  4 thick: **24 wide at the hinge, flaring to 44 at the foot** for side-to-side support. It
-  snaps onto a **Ø2 × 30.8 mm pin** in two ears on the lid, and stays straight between the ears
-  before it flares. Folded, it clears the USB-C flange by about 5 mm. Its heel lands flat on
-  the lid at 35°, ported from the stand's leg. The pivot height is *solved* for the lean:
+  over the four tab wells. Two **keyholes** at (±32, 60): the screw head goes in through the
+  Ø8 hole and the frame drops onto the 4.2 slot. The head ends up inside the cassette, where
+  there's clear space.
+- **USB-C, recessed.** The pigtail's flange sits in a pocket, flush with the lid's back, on a
+  2.0 panel like the stand's (a boss under the lid carries it). The body reaches 12 into the
+  cassette, clear of the charger and the driver. A straight plug still stands out of the back,
+  so on a wall it runs on the cell, or on a right-angle plug.
+- **Easel strut**, replacing the stand that was stamped into the backboard. It **folds into a
+  pocket in the lid**, 1.25 below the lid's back face, so with it folded the back is flat. It
+  turns on a captive **Ø2 × 30.8 rod** through two hinge walls in the pocket. A finger scoop
+  beside the foot lets you lift it out. Swung out, its heel lands flat on the pocket floor.
+
+  The pocket is a tub reaching into the cassette, so it has to miss the driver (0.5 under the
+  lid: no room at all), the tab wells and the corner bosses. That puts the strut off centre:
 
   | | |
   |---|---|
-  | Pivot | 104.2 above the bottom edge, on the centreline |
-  | Lean | **20.0°** |
-  | Footprint | 65.8 |
-  | Centre of mass | 15.2 behind the front contact edge |
-  | Folded tip | 4.2 above the bottom edge |
+  | Hinge | X −5…19 (24 wide), 141.7 above the bottom edge: above the driver's top end, below the top tab well. Below the hinge the strut runs right of the driver |
+  | Foot | X 0.5…38 (37.5 wide), between the bottom tab well and the bottom-right boss |
+  | Length, thickness | 126.9, 4 |
+  | Swing | **34.5°** |
+  | Lean | **28.3°** |
+  | Footprint | 80.0 |
+  | Centre of mass | 27.4 behind the front contact edge, **29.6 inside the support outline side to side** |
 
-  The pin sits 2.54 off the lid. That's the height at which the strut's front edge clears the
-  lid through the whole swing, which needs (thickness/2)/cos 35°. The swept check confirms it
-  every 5°.
+  **Why 28° and not 20°.** Folded, the strut has to fit inside the frame. Its tip can get no
+  lower than 14.8 above the bottom edge (the moulding's bottom rail, then the lid edge), and
+  a strut that short can't reach a 20° lean at any swing. The flattest it can do is 27.8°.
+  The swing is the largest within 0.5° of that: past the minimum the lean barely changes,
+  while the foot moves back, and an off-centre foot needs that for side-to-side support.
+  `LEAN_SLACK` sets the trade.
+
+  **The rod goes in from inside the lid**, along X, through the left hinge wall, the strut and
+  the right wall. Its way in runs just under the lid plate. That sets the pin's depth, and it's
+  why the folded strut sits 1.25 down rather than flush. The check `rod's way in x lid` keeps
+  that path clear.
 
 ---
 
@@ -208,12 +232,18 @@ part fits the 220 × 220 × 220 bed with 4 mm to spare at the edges.
 
 | Plate | Parts | Notes |
 |---|---|---|
-| 1 · Mat + lid (smooth sheet) | mat face down, lid inner face down | The mat's face is the visible one, so this plate goes on the **smooth sheet**. Pick that sheet in the plate's settings if your profile has it, or just swap the sheet |
+| 1 · Mat + lid (smooth sheet) | mat face down, **lid back face down** | The mat's face is the visible one, so this plate goes on the **smooth sheet**. Pick that sheet in the plate's settings if your profile has it, or just swap the sheet. The lid's back is flat now, so it prints on its back and gets the smooth finish too |
 | 2 · Cassette + strut | cassette floor down, strut back face down | Cassette 21.4 tall; the strut's heel stop faces up |
 | 3 · Fit test: coupons + insert gauge | both coupons, the gauge | Already printed and passed; kept so the project is complete |
 
 The plate layout is set by `PLATES` at the top of `src/rodalm_frame.py` (rows of parts,
 `PART_GAP` between them). The script refuses to write a plate that doesn't fit the bed.
+
+**The lid's pocket floor is a bridge.** Printed on its back, the floor spans the pocket: about
+25 at the hinge, 39 at the foot. Orca bridges that without supports. The pocket has 0.6 of
+room under the strut for a little droop. If the floor sags more than that, the folded strut
+sits proud. In that case, reprint the lid with supports on (build plate only): they only land
+inside the pocket.
 
 ### What the coupons tell you
 
@@ -238,7 +268,8 @@ The plate layout is set by `PLATES` at the top of `src/rodalm_frame.py` (rows of
 - RÖDALM 4×6 (have)
 - **M2.5 × 4 heat-set inserts ×4**, 3.5 OD (lid), with **M2.5 × 6 countersunk screws ×4**
 - **M2 × 4 inserts ×4**, 3.0 OD (charger posts), with M2 × 5 screws
-- **Ø2 rod, 30.8 long** (the strut pin)
+- **Ø2 rod, 30.8 long** (the strut's hinge pin; snug in the lid's hinge walls, free in the
+  strut)
 - R1, R2, R3 100 kΩ 1 %; R4 150 kΩ 1 %; C1 100 nF
 - Thin foam for the glass (0.3 compressed) and the cell
 - From the stand: carrier perfboard 30 × 70 with two 19-pin female headers, bq25185, cell,
@@ -249,12 +280,18 @@ The plate layout is set by `PLATES` at the top of `src/rodalm_frame.py` (rows of
 1. Flush-cut the carrier's header tails to under 1.5 mm.
 2. Glass face down into the mat's pocket, tail out through the ribbon-side opening.
 3. Cassette onto the mat, tail through the floor opening. Tape the adapter to the glass back,
-   plug in the tail, then the FFC.
+   plug in the tail, then the FFC. **Keep the FFC low** between the adapter and the driver:
+   the lid's strut pocket comes down to 17.5 over that strip.
 4. Carrier on its pegs (a drop of glue holds it; the driver plugs on top). Charger on its posts,
    cell in its fences, then wiring. **Flash and bench-test now.**
 5. Cover into the frame, then mat and cassette together. Bend the four tabs onto their ledges,
    once.
-6. Lid on with the four screws. Press the pin through the strut and snap it into the ears.
+6. **Strut onto the lid, before the lid goes on.** Lay the strut in its pocket. From the
+   inside of the lid, push the rod through the left hinge wall, the strut and into the right
+   wall, until both ends are flush with the walls. If it slides, put a drop of CA on each end
+   at the wall, keeping glue away from the strut. Swing the strut out and back to check it
+   lands on its heel.
+7. Lid on with the four screws.
 
 ## Still to do
 

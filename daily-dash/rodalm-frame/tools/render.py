@@ -54,9 +54,13 @@ def main():
     shot(boards, "02-cassette-boards.png", BACK_ISO, "Cassette with the boards, lid off")
     shot([(m["moulding"], WOOD), (p["lid"], LID), (p["strut"], STRUT), (m["usb"], "#c0392b"),
           (m["pin"], "#cccccc")], "03-back-folded.png", BACK_ISO,
-         "In the frame, from the back: lid, strut folded")
+         "From the back, strut folded into its pocket: nothing stands proud, ready to hang")
     shot([(m["moulding"], WOOD), (p["lid"], LID), (M.make_strut(M.DEP_ANG), STRUT),
-          (m["usb"], "#c0392b")], "04-back-deployed.png", BACK_ISO, "Strut deployed")
+          (m["usb"], "#c0392b"), (m["pin"], "#cccccc")], "04-back-deployed.png", BACK_ISO,
+         f"Strut swung out {M.DEP_ANG:g} deg to its stop")
+    shot([(p["lid"], LID), (m["pin"], "#cccccc"), (m["usb"], "#c0392b")],
+         "08-lid-inside.png", [(230, -90, -80), (10, -5, 20), (0, 1, 0)],
+         "Lid from inside: the strut pocket's tub, the hinge walls and rod, the USB-C panel")
     edge = Axis((0, M.BOTTOM_EDGE, M.INSIDE_D), (1, 0, 0))
     stood = [(s.rotate(edge, M.LEAN), c) for s, c in
              [(m["moulding"], WOOD), (p["lid"], LID), (M.make_strut(M.DEP_ANG), STRUT)]]

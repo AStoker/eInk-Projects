@@ -7,12 +7,13 @@ moulding becomes the outer shell, and the printed parts turn into an insert that
 
 **Status: coupons printed and fitting; ready to print the parts.** One parametric build123d
 file, [`src/rodalm_frame.py`](src/rodalm_frame.py), builds four parts plus fit coupons. It
-runs 53 interference checks (all clear), counts one body per part, and writes 3MF and STEP
+runs 54 interference checks (all clear), counts one body per part, and writes 3MF and STEP
 files. The coupons confirmed the rebate fit, all four tab ledges at 17.5, and the ribbon path.
 
 | | |
 |---|---|
-| [`3mf/`](3mf/) | Print files, already in print orientation. No rotating, no supports |
+| [`3mf/rodalm-frame.3mf`](3mf/rodalm-frame.3mf) | **One OrcaSlicer project with every part**, on three named plates, already in print orientation. No rotating, no supports |
+| [`slicer/orca_project_settings.config`](slicer/orca_project_settings.config) | Your AD5M Pro presets, copied from the stand's Orca projects; the 3MF carries them |
 | [`step/`](step/) | Each part, plus `rodalm-assembly.step` with the boards, for Fusion |
 | [`renders/`](renders/) | Built from the model by `tools/render.py` |
 | [`schematics/power-and-battery-sense.svg`](schematics/power-and-battery-sense.svg) | Power path, battery sense and USB-present sense |
@@ -28,7 +29,7 @@ build.
 
 ```bash
 pip install build123d
-python3 src/rodalm_frame.py          # build, check, write 3mf/ and step/
+python3 src/rodalm_frame.py          # build, check, write 3mf/rodalm-frame.3mf and step/
 python3 src/rodalm_frame.py check    # checks only
 python3 src/rodalm_frame.py params   # the derived numbers
 python3 tools/render.py              # renders/ (needs pyvista)
@@ -118,8 +119,10 @@ under 1.5, solder included.** If you'd rather not, set `CARRIER_LIFT = 2.5` and 
   over the four tab wells. Has the USB-C opening and two **keyholes** at (±32, 60): the screw
   head goes in through the Ø8 hole and the frame drops onto the 4.2 slot. The head ends up
   inside the cassette, where there's clear space.
-- **Easel strut**, replacing the stand that was stamped into the backboard. It's 100 long,
-  14 × 4, and snaps onto a **Ø2 × 20.8 mm pin** in two ears on the lid. Its heel lands flat on
+- **Easel strut**, replacing the stand that was stamped into the backboard. It's 100 long and
+  4 thick: **24 wide at the hinge, flaring to 44 at the foot** for side-to-side support. It
+  snaps onto a **Ø2 × 30.8 mm pin** in two ears on the lid, and stays straight between the ears
+  before it flares. Folded, it clears the USB-C flange by about 5 mm. Its heel lands flat on
   the lid at 35°, ported from the stand's leg. The pivot height is *solved* for the lean:
 
   | | |
@@ -197,17 +200,20 @@ the firmware:
 
 ## Printing
 
-All 3MF, millimetres, already in print orientation, **no supports anywhere**. PLA or PETG,
-0.2 mm layers, 3–4 walls.
+Open **`3mf/rodalm-frame.3mf`** in OrcaSlicer. It's one project: every part is already on a
+named plate, in print orientation, with **no supports anywhere**. It opens with the presets
+from the stand's projects: **Flashforge Adventurer 5M Pro 0.4 Nozzle**, *0.20mm Standard
+@Flashforge AD5M Pro 0.4 Nozzle - Calibrated*, *ELEGOO PLA Matte White - Calibrated*. Every
+part fits the 220 × 220 × 220 bed with 4 mm to spare at the edges.
 
-| File | On the bed | Notes |
+| Plate | Parts | Notes |
 |---|---|---|
-| `rodalm-coupon-gauge.3mf` | as exported | **First.** Bores for M2.5 (3.2–3.8) and M2 (2.5–3.1), engraved with their sizes |
-| `rodalm-coupon-mat.3mf` + `rodalm-coupon-cassette.3mf` | as exported | **First.** Cut from the real parts: the rebate ring, the four tab ledges, the ribbon side |
-| `rodalm-mat.3mf` | face down, on the smooth sheet | 99.4 × 149.4 × 2.25 |
-| `rodalm-cassette.3mf` | floor down | 99.4 × 149.4 × 21.4 |
-| `rodalm-lid.3mf` | inner face down, ears up | 95.8 × 145.8, ears 5.2 tall |
-| `rodalm-strut.3mf` | back face down | The heel's stop face points up, so it needs no support |
+| 1 · Mat + lid (smooth sheet) | mat face down, lid inner face down | The mat's face is the visible one, so this plate goes on the **smooth sheet**. Pick that sheet in the plate's settings if your profile has it, or just swap the sheet |
+| 2 · Cassette + strut | cassette floor down, strut back face down | Cassette 21.4 tall; the strut's heel stop faces up |
+| 3 · Fit test: coupons + insert gauge | both coupons, the gauge | Already printed and passed; kept so the project is complete |
+
+The plate layout is set by `PLATES` at the top of `src/rodalm_frame.py` (rows of parts,
+`PART_GAP` between them). The script refuses to write a plate that doesn't fit the bed.
 
 ### What the coupons tell you
 
@@ -232,7 +238,7 @@ All 3MF, millimetres, already in print orientation, **no supports anywhere**. PL
 - RÖDALM 4×6 (have)
 - **M2.5 × 4 heat-set inserts ×4**, 3.5 OD (lid), with **M2.5 × 6 countersunk screws ×4**
 - **M2 × 4 inserts ×4**, 3.0 OD (charger posts), with M2 × 5 screws
-- **Ø2 rod, 20.8 long** (the strut pin)
+- **Ø2 rod, 30.8 long** (the strut pin)
 - R1, R2, R3 100 kΩ 1 %; R4 150 kΩ 1 %; C1 100 nF
 - Thin foam for the glass (0.3 compressed) and the cell
 - From the stand: carrier perfboard 30 × 70 with two 19-pin female headers, bq25185, cell,

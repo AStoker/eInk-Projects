@@ -2,7 +2,7 @@
 """
 RÖDALM 4x6 frame insert for the 4.2" e-paper daily dash -- build123d.
 
-    python3 src/rodalm_frame.py            build, check, export 3MF + STEP
+    python3 src/rodalm_frame.py            build, check, export the 3MF project + STEP
     python3 src/rodalm_frame.py check      build and run the interference checks only
     python3 src/rodalm_frame.py params     print the derived numbers
 
@@ -25,11 +25,16 @@ COORDINATES -- read this once, it is the source of most mistakes.
 Every length is in mm.  Tags: (F) measured on the frame, (M) measured on the
 stand build (../../stand-4.2in), (A) assumed.
 """
+import json
 import math
+import re
 import sys
+import tempfile
+import uuid
+import zipfile
 from pathlib import Path
 
-from build123d import (Align, Axis, Box, Circle, Compound, Cone, Cylinder, Mesher,
+from build123d import (Align, Axis, Box, Circle, Compound, Cone, Cylinder, Mesher, fillet,
                        Plane, Polygon, Pos, Rectangle, RectangleRounded, Rot,
                        SlotCenterToCenter, Text, export_step, extrude)
 
@@ -121,7 +126,9 @@ KEY_HEAD_D, KEY_SLOT_W, KEY_SLOT_L = 8.0, 4.2, 7.0
 # --- the easel strut ---------------------------------------------------------
 DEP_ANG = 35.0          # swing from folded
 LEAN_TARGET = 20.0      # the pivot height is solved for this lean
-ST_W, ST_T = 14.0, 4.0
+ST_W, ST_T = 24.0, 4.0     # width at the hinge (sets the pin length), thickness
+ST_FOOT_W = 44.0           # ... flaring to this at the foot, for side-to-side support.
+                           #   Folded, it must clear the USB-C flange: see the check
 ST_FOOT_R = 4.0
 ST_LEN = 100.0          # pin to foot tip.  About 0.6 of the frame's height, like a
                         #   stock easel; the pivot height is solved from it
@@ -130,6 +137,25 @@ PIN_D, PIN_FIT = 2.0, 0.10
 EAR_W, EAR_LEN, EAR_CLR, EAR_TOP = 3.0, 10.0, 0.4, 1.6
 EAR_MOUTH = 0.72        # C-socket mouth, as a fraction of the bore
 COM_N = -15.0           # estimated centre of mass, mm IN FRONT of the back plane
+
+# --- the printer and the slicer project ---------------------------------------
+# FlashForge Adventurer 5M Pro, as set in the stand's OrcaSlicer projects: a
+# 220 x 220 bed centred on the origin, 220 tall.  slicer/orca_project_settings.config
+# is copied from those projects, so the 3MF opens with the same printer, filament
+# and process presets.
+BED_W, BED_D, BED_H = 220.0, 220.0, 220.0
+BED_MARGIN = 4.0        # keep every part this far inside the bed edge
+PART_GAP = 8.0          # between parts sharing a plate
+# Plates, in order.  Each is a name and its rows, top row first; each row lists
+# parts left to right.  Parts are placed print-side down (see on_bed()).
+PLATES = [
+    ("Mat + lid (smooth sheet)", [["mat", "lid"]]),
+    ("Cassette + strut", [["cassette", "strut"]]),
+    ("Fit test: coupons + insert gauge", [["coupon_mat", "coupon_cassette"], ["gauge"]]),
+]
+PART_NAMES = {"mat": "Mat", "lid": "Lid", "cassette": "Cassette", "strut": "Strut",
+              "coupon_mat": "Coupon - mat", "coupon_cassette": "Coupon - cassette",
+              "gauge": "Insert gauge"}
 
 # ===========================================================================
 # DERIVED
@@ -380,14 +406,20 @@ def make_strut(theta=0.0):
     """The strut, folded (theta = 0) or swung out by theta degrees."""
     yt = Y_PIN - ST_LEN
     z0, z1 = Z_PIN - ST_T / 2, Z_PIN + ST_T / 2
-    body = bx(-ST_W / 2, ST_W / 2, yt + ST_FOOT_R, Y_PIN + HEEL, z0, z1)
-    body += bx(-ST_W / 2 + ST_FOOT_R, ST_W / 2 - ST_FOOT_R, yt, yt + ST_FOOT_R, z0, z1)
-    for sx in (-1, 1):
-        body += cyl(2 * ST_FOOT_R, z0, z1, sx * (ST_W / 2 - ST_FOOT_R), yt + ST_FOOT_R)
+    # straight at the hinge, flaring from the pin to the foot
+    # Straight between the ears, then flaring to the foot.  Counter-clockwise seen
+    # from +Z, so the face's normal is +Z and it extrudes toward the back.
+    y_flare = Y_PIN - EAR_LEN / 2 - 1.0
+    outline = [(-ST_W / 2, Y_PIN + HEEL), (-ST_W / 2, y_flare), (-ST_FOOT_W / 2, yt),
+               (ST_FOOT_W / 2, yt), (ST_W / 2, y_flare), (ST_W / 2, Y_PIN + HEEL)]
+    body = Pos(0, 0, z0) * extrude(Polygon(*outline, align=None), ST_T)
+    assert abs(body.bounding_box().min.Z - z0) < 1e-6, "strut extruded the wrong way"
+    feet = body.edges().filter_by(Axis.Z).filter_by_position(Axis.Y, yt - 0.01, yt + 0.01)
+    body = fillet(feet, ST_FOOT_R)
     # THE STOP: the lid's face, pulled back through the deployed rotation.  What is
     # left of the heel is a flat that lands on the lid at exactly DEP_ANG.
     pin_axis = Axis((0, Y_PIN, Z_PIN), (1, 0, 0))
-    lidside = bx(-ST_W, ST_W, Y_PIN - 60, Y_PIN + 60, Z_BACK - 60, Z_BACK)
+    lidside = bx(-ST_FOOT_W, ST_FOOT_W, Y_PIN - 60, Y_PIN + 60, Z_BACK - 60, Z_BACK)
     body -= lidside.rotate(pin_axis, DEP_ANG)
     body -= Pos(0, Y_PIN, Z_PIN) * Rot(0, 90, 0) * Cylinder((PIN_D + PIN_FIT) / 2, ST_W + 2)
     if theta:
@@ -514,6 +546,7 @@ def run_checks(p, m):
     chk("charger x usb", m["charger"], m["usb"])
     chk("cell x usb", m["cell"], m["usb"])
     chk("cell x carrier", m["cell"], m["carrier"])
+    chk("strut(folded) x usb flange", p["strut"], m["usb"])
     # the strut through its whole swing: empty up to DEP_ANG, then the heel lands
     for th in (5, 10, 15, 20, 25, 30, DEP_ANG):
         s = make_strut(th)
@@ -538,7 +571,8 @@ def params_text():
         f"{(SIGHT_H - WIN_H) / 2:.1f} top and bottom",
         f"glass centre X {GX:.2f}; ribbon edge {GLASS_EDGE:.2f}; relief to {RIB_X1:.2f}, Y {RIB_Y0:.1f}..{RIB_Y1:.1f}",
         f"strut: pivot {Y_PIN - BOTTOM_EDGE:.1f} above the bottom edge (Y {Y_PIN:.2f}), "
-        f"{PIV_H:.2f} off the lid; length {ST_LEN:.1f}, folded tip {TIP_CLR:.1f} above the bottom edge; "
+        f"{PIV_H:.2f} off the lid; length {ST_LEN:.1f}, {ST_W:g} wide at the hinge to {ST_FOOT_W:g} at the foot, "
+        f"folded tip {TIP_CLR:.1f} above the bottom edge; "
         f"pin {PIN_D} x {ST_W + 2 * (EAR_CLR + EAR_W):.1f}",
         f"stance: lean {LEAN:.1f} deg, footprint {FOOTPRINT:.1f}, CoM {COM_MARGIN:.1f} behind the contact edge",
         f"inserts: M2.5 bore {M25_BORE} x {M25_DEPTH}, M2 bore {M2_BORE} x {M2_DEPTH}",
@@ -551,30 +585,180 @@ def build():
     return p
 
 
+def on_bed(shape, flip=False):
+    """The part as it prints: rotated if it needs to be, lowest face on z = 0,
+    centred on the origin in X and Y."""
+    s = shape.rotate(Axis.Y, 180) if flip else shape
+    bb = s.bounding_box()
+    return Pos(-(bb.min.X + bb.max.X) / 2, -(bb.min.Y + bb.max.Y) / 2, -bb.min.Z) * s
+
+
+def print_parts(p, coupons, gauge):
+    return {
+        "mat": on_bed(p["mat"]),                 # face down, on the smooth sheet
+        "cassette": on_bed(p["cassette"]),       # floor down
+        "lid": on_bed(p["lid"]),                 # inner face down, ears up
+        "strut": on_bed(p["strut"], flip=True),  # back face down: the heel needs no support
+        "coupon_mat": on_bed(coupons[0]),
+        "coupon_cassette": on_bed(coupons[1]),
+        "gauge": on_bed(gauge),
+    }
+
+
+def mesh_of(shape):
+    """Vertices and triangles, welded, via build123d's own 3MF writer."""
+    with tempfile.TemporaryDirectory() as tmp:
+        f = Path(tmp) / "m.3mf"
+        mesher = Mesher()
+        mesher.add_shape(shape, linear_deflection=0.01, angular_deflection=0.15)
+        mesher.write(str(f))
+        xml = zipfile.ZipFile(f).read("3D/3dmodel.model").decode()
+    v = [tuple(map(float, m)) for m in
+         re.findall(r'<vertex x="([^"]+)" y="([^"]+)" z="([^"]+)"', xml)]
+    t = [tuple(map(int, m)) for m in
+         re.findall(r'<triangle v1="(\d+)" v2="(\d+)" v3="(\d+)"', xml)]
+    return v, t
+
+
+def plate_origin(i, n):
+    """Where OrcaSlicer puts plate i of n: a grid of ceil-ish(sqrt(n)) columns, one bed
+    plus a fifth apart (its LOGICAL_PART_PLATE_GAP), rows running toward -Y."""
+    root = math.sqrt(n)
+    cols = int(round(root)) + (1 if root > round(root) else 0)
+    return (i % cols) * BED_W * 1.2, -(i // cols) * BED_D * 1.2
+
+
+def layout(parts):
+    """Place each plate's rows inside the bed.  Returns {plate: [(key, x, y)]} in
+    bed coordinates, and raises if anything lands outside the margin."""
+    placed = []
+    for name, rows in PLATES:
+        sizes = [[parts[k].bounding_box().size for k in row] for row in rows]
+        heights = [max(sz.Y for sz in row) for row in sizes]
+        total_h = sum(heights) + PART_GAP * (len(rows) - 1)
+        y = total_h / 2
+        items = []
+        for row, row_sz, h in zip(rows, sizes, heights):
+            total_w = sum(sz.X for sz in row_sz) + PART_GAP * (len(row) - 1)
+            x = -total_w / 2
+            for k, sz in zip(row, row_sz):
+                items.append((k, x + sz.X / 2, y - h / 2))
+                x += sz.X + PART_GAP
+            y -= h + PART_GAP
+        for k, x, y in items:
+            sz = parts[k].bounding_box().size
+            lim_x, lim_y = BED_W / 2 - BED_MARGIN, BED_D / 2 - BED_MARGIN
+            if abs(x) + sz.X / 2 > lim_x or abs(y) + sz.Y / 2 > lim_y or sz.Z > BED_H:
+                raise ValueError(f"{k} does not fit on plate '{name}'")
+        placed.append((name, items))
+    return placed
+
+
+def write_orca_project(parts, path, settings_path):
+    """One OrcaSlicer project: every part, on named plates.  Written the way Orca
+    2.x writes its own: each object's mesh in 3D/Objects/, the plates in
+    Metadata/model_settings.config, the presets in Metadata/project_settings.config."""
+    ns = ('xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" '
+          'xmlns:BambuStudio="http://schemas.bambulab.com/package/2021" '
+          'xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06" '
+          'requiredextensions="p"')
+    plates = layout(parts)
+    n = len(plates)
+    objects, items, rels, cfg_objects, cfg_plates = [], [], [], [], []
+    files = {}
+    oid = 0
+    for pi, (pname, pitems) in enumerate(plates):
+        ox, oy = plate_origin(pi, n)
+        instances = []
+        for k, x, y in pitems:
+            oid += 2
+            mesh_id, obj_id = oid - 1, oid
+            v, t = mesh_of(parts[k])
+            bb = parts[k].bounding_box()
+            cx, cy, cz = (bb.min.X + bb.max.X) / 2, (bb.min.Y + bb.max.Y) / 2, (bb.min.Z + bb.max.Z) / 2
+            fname = f"3D/Objects/{k}_{mesh_id}.model"
+            body = "\n".join(f'     <vertex x="{a - cx:.6f}" y="{b - cy:.6f}" z="{c - cz:.6f}"/>' for a, b, c in v)
+            tris = "\n".join(f'     <triangle v1="{a}" v2="{b}" v3="{c}"/>' for a, b, c in t)
+            files[fname] = (f'<?xml version="1.0" encoding="UTF-8"?>\n<model unit="millimeter" xml:lang="en-US" {ns}>\n'
+                            f' <metadata name="BambuStudio:3mfVersion">1</metadata>\n <resources>\n'
+                            f'  <object id="{mesh_id}" p:UUID="{uuid.uuid4()}" type="model">\n   <mesh>\n'
+                            f'    <vertices>\n{body}\n    </vertices>\n    <triangles>\n{tris}\n    </triangles>\n'
+                            f'   </mesh>\n  </object>\n </resources>\n <build/>\n</model>\n')
+            rels.append(f' <Relationship Target="/{fname}" Id="rel-{mesh_id}" '
+                        f'Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/>')
+            objects.append(f'  <object id="{obj_id}" p:UUID="{uuid.uuid4()}" type="model">\n   <components>\n'
+                           f'    <component p:path="/{fname}" objectid="{mesh_id}" p:UUID="{uuid.uuid4()}" '
+                           f'transform="1 0 0 0 1 0 0 0 1 0 0 0"/>\n   </components>\n  </object>')
+            items.append(f'  <item objectid="{obj_id}" p:UUID="{uuid.uuid4()}" transform="1 0 0 0 1 0 0 0 1 '
+                         f'{ox + x:.6f} {oy + y:.6f} {bb.size.Z / 2:.6f}" printable="1"/>')
+            label = PART_NAMES.get(k, k)
+            cfg_objects.append(
+                f'  <object id="{obj_id}">\n    <metadata key="name" value="{label}"/>\n'
+                f'    <metadata key="extruder" value="1"/>\n    <part id="{mesh_id}" subtype="normal_part">\n'
+                f'      <metadata key="name" value="{label}"/>\n'
+                f'      <metadata key="matrix" value="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"/>\n'
+                f'      <metadata key="source_file" value="rodalm_frame.py"/>\n'
+                f'      <metadata key="source_object_id" value="0"/>\n      <metadata key="source_volume_id" value="0"/>\n'
+                f'      <mesh_stat edges_fixed="0" degenerate_facets="0" facets_removed="0" facets_reversed="0" backwards_edges="0"/>\n'
+                f'    </part>\n  </object>')
+            instances.append(f'    <model_instance>\n      <metadata key="object_id" value="{obj_id}"/>\n'
+                             f'      <metadata key="instance_id" value="0"/>\n'
+                             f'      <metadata key="identify_id" value="{1000 + obj_id}"/>\n    </model_instance>')
+        cfg_plates.append(f'  <plate>\n    <metadata key="plater_id" value="{pi + 1}"/>\n'
+                          f'    <metadata key="plater_name" value="{pname}"/>\n'
+                          f'    <metadata key="locked" value="false"/>\n'
+                          f'    <metadata key="filament_map_mode" value="Auto For Flush"/>\n'
+                          f'    <metadata key="filament_maps" value="1"/>\n' + "\n".join(instances) + '\n  </plate>')
+    files["3D/3dmodel.model"] = (
+        f'<?xml version="1.0" encoding="UTF-8"?>\n<model unit="millimeter" xml:lang="en-US" {ns}>\n'
+        ' <metadata name="Application">BambuStudio-02.06.00.51</metadata>\n'
+        ' <metadata name="OrcaSlicer">2.4.2</metadata>\n'
+        ' <metadata name="BambuStudio:3mfVersion">1</metadata>\n'
+        ' <metadata name="Title">RÖDALM 4x6 daily dash</metadata>\n'
+        ' <metadata name="Description">Generated by daily-dash/rodalm-frame/src/rodalm_frame.py</metadata>\n'
+        ' <resources>\n' + "\n".join(objects) + '\n </resources>\n'
+        f' <build p:UUID="{uuid.uuid4()}">\n' + "\n".join(items) + '\n </build>\n</model>\n')
+    files["3D/_rels/3dmodel.model.rels"] = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n'
+        + "\n".join(rels) + '\n</Relationships>\n')
+    files["_rels/.rels"] = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n'
+        ' <Relationship Target="/3D/3dmodel.model" Id="rel-1" '
+        'Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/>\n</Relationships>\n')
+    files["[Content_Types].xml"] = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">\n'
+        ' <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>\n'
+        ' <Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>\n'
+        ' <Default Extension="png" ContentType="image/png"/>\n'
+        ' <Default Extension="gcode" ContentType="text/x.gcode"/>\n</Types>\n')
+    files["Metadata/model_settings.config"] = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n<config>\n' + "\n".join(cfg_objects) + "\n"
+        + "\n".join(cfg_plates) + '\n</config>\n')
+    files["Metadata/slice_info.config"] = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n<config>\n  <header>\n'
+        '    <header_item key="X-BBL-Client-Type" value="slicer"/>\n'
+        '    <header_item key="X-BBL-Client-Version" value="02.06.00.51"/>\n'
+        '    <header_item key="OrcaSlicer-Version" value="2.4.2"/>\n  </header>\n</config>\n')
+    if settings_path.exists():
+        files["Metadata/project_settings.config"] = settings_path.read_text()
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
+        order = ["[Content_Types].xml", "_rels/.rels", "3D/3dmodel.model", "3D/_rels/3dmodel.model.rels"]
+        for name in order + sorted(k for k in files if k not in order):
+            z.writestr(name, files[name])
+    return plates
+
+
 def export(p, coupons, gauge, root):
     out3 = root / "3mf"
     outs = root / "step"
     out3.mkdir(exist_ok=True)
     outs.mkdir(exist_ok=True)
-
-    def on_bed(shape, flip=False):
-        s = shape.rotate(Axis.Y, 180) if flip else shape
-        bb = s.bounding_box()
-        return Pos(-(bb.min.X + bb.max.X) / 2, -(bb.min.Y + bb.max.Y) / 2, -bb.min.Z) * s
-
-    plates = {
-        "rodalm-mat": on_bed(p["mat"]),                 # face down
-        "rodalm-cassette": on_bed(p["cassette"]),       # floor down
-        "rodalm-lid": on_bed(p["lid"]),                 # inner face down, ears up
-        "rodalm-strut": on_bed(p["strut"], flip=True),  # back face down: no supports
-        "rodalm-coupon-mat": on_bed(coupons[0]),
-        "rodalm-coupon-cassette": on_bed(coupons[1]),
-        "rodalm-coupon-gauge": on_bed(gauge),
-    }
-    for name, s in plates.items():
-        mesher = Mesher()
-        mesher.add_shape(s, linear_deflection=0.01, angular_deflection=0.15, part_number=name)
-        mesher.write(str(out3 / f"{name}.3mf"))
+    parts = print_parts(p, coupons, gauge)
+    plates = write_orca_project(parts, out3 / "rodalm-frame.3mf",
+                                root / "slicer" / "orca_project_settings.config")
     for name in ("mat", "cassette", "lid", "strut"):
         export_step(p[name], str(outs / f"rodalm-{name}.step"))
     m = mocks()
@@ -609,8 +793,11 @@ def main():
         if n != 1:
             bad.append((name, n, False, "1 body"))
     root = Path(__file__).resolve().parent.parent
-    export(p, coupons, gauge, root)
-    print("\nexported 3MF + STEP to", root)
+    plates = export(p, coupons, gauge, root)
+    print("\n3mf/rodalm-frame.3mf, one OrcaSlicer project:")
+    for i, (name, items) in enumerate(plates, 1):
+        print(f"  plate {i}: {name:<34} " + ", ".join(f"{k} ({x:+.0f}, {y:+.0f})" for k, x, y in items))
+    print("exported 3MF + STEP to", root)
     return 1 if bad else 0
 
 
